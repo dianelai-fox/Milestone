@@ -25,12 +25,15 @@ public class DashboardServiceTests
 
         DashboardService.ApplyOverrides(snapshot, overrides);
 
-        Assert.NotNull(snapshot.Cameras[0].Location);
-        Assert.Equal(34.05, snapshot.Cameras[0].Location.Latitude);
-        Assert.Equal(-118.25, snapshot.Cameras[0].Location.Longitude);
+        var lobby = snapshot.Cameras[0].Location;
+        Assert.NotNull(lobby);
+        Assert.Equal(34.05, lobby.Latitude);
+        Assert.Equal(-118.25, lobby.Longitude);
         Assert.True(snapshot.Cameras[0].LocationIsOverride);
         Assert.Equal("Main Campus", snapshot.Cameras[0].Site);
-        Assert.Equal(34.06, snapshot.Cameras[1].Location!.Latitude);
+        var dock = snapshot.Cameras[1].Location;
+        Assert.NotNull(dock);
+        Assert.Equal(34.06, dock.Latitude);
         Assert.True(snapshot.Cameras[1].LocationIsOverride);
     }
 }
