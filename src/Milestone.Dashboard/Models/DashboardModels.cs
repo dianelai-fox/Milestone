@@ -1,0 +1,161 @@
+namespace Milestone.Dashboard.Models;
+
+public sealed record CameraLocation(double Longitude, double Latitude, double? Altitude = null);
+
+public sealed class CameraInfo
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public bool Enabled { get; init; }
+    public string? HardwareId { get; init; }
+    public string? HardwareName { get; init; }
+    public string? HardwareAddress { get; init; }
+    public string? RecordingServerId { get; init; }
+    public string? RecordingServerName { get; init; }
+    public string? Site { get; set; }
+    public CameraLocation? Location { get; set; }
+    public bool LocationIsOverride { get; set; }
+}
+
+public sealed class StorageVolume
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public string? RecordingServerId { get; init; }
+    public string? RecordingServerName { get; init; }
+    public string? DiskPath { get; init; }
+    public string Kind { get; init; } = "Recording";
+    public long MaxSizeMb { get; init; }
+    public long UsedSpaceMb { get; init; }
+    public long LockedUsedSpaceMb { get; init; }
+    public int RetainMinutes { get; init; }
+    public bool IsDefault { get; init; }
+    public bool IsAvailable { get; init; } = true;
+    public bool IsMounted { get; init; } = true;
+    public string? EncryptionMethod { get; init; }
+
+    public double UsagePercent => StorageMetrics.UsagePercent(UsedSpaceMb, MaxSizeMb);
+}
+
+public sealed class RecordingServerInfo
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public string? HostName { get; init; }
+    public bool Enabled { get; init; } = true;
+    public int CameraCount { get; init; }
+    public long UsedSpaceMb { get; init; }
+    public long MaxSizeMb { get; init; }
+}
+
+public sealed class DashboardSnapshot
+{
+    public DateTimeOffset GeneratedAt { get; init; } = DateTimeOffset.UtcNow;
+    public string Source { get; set; } = "demo";
+    public string? SiteName { get; init; }
+    public IReadOnlyList<CameraInfo> Cameras { get; init; } = [];
+    public IReadOnlyList<StorageVolume> Storages { get; init; } = [];
+    public IReadOnlyList<RecordingServerInfo> RecordingServers { get; init; } = [];
+
+    public DashboardSummary Summary => DashboardSummary.From(this);
+}
+
+public sealed class DashboardSummary
+{
+    public int CameraCount { get; init; }
+    public int EnabledCameraCount { get; init; }
+    public int MappedCameraCount { get; init; }
+    public int UnmappedCameraCount { get; init; }
+    public int RecordingServerCount { get; init; }
+    public int StorageCount { get; init; }
+    public long UsedSpaceMb { get; init; }
+    public long MaxSizeMb { get; init; }
+    public double StorageUsagePercent { get; init; }
+
+    public static DashboardSummary From(DashboardSnapshot snapshot)
+    {
+        var used = snapshot.Storages.Sum(s => s.UsedSpaceMb);
+        var max = snapshot.Storages.Sum(s => s.MaxSizeMb);
+        return new DashboardSummary
+        {
+            CameraCount = snapshot.Cameras.Count,
+            EnabledCameraCount = snapshot.Cameras.Count(c => c.Enabled),
+            MappedCameraCount = snapshot.Cameras.Count(c => c.Location is not null),
+            UnmappedCameraCount = snapshot.Cameras.Count(c => c.Location is null),
+            RecordingServerCount = snapshot.RecordingServers.Count,
+            StorageCount = snapshot.Storages.Count,
+            UsedSpaceMb = used,
+            MaxSizeMb = max,
+            StorageUsagePercent = StorageMetrics.UsagePercent(used, max)
+        };
+    }
+}
+
+public static class StorageMetrics
+{
+    public static double UsagePercent(long usedMb, long maxMb)
+    {
+        if (maxMb <= 0)
+        {
+            return 0;
+        }
+
+        var percent = usedMb * 100d / maxMb;
+        return Math.Clamp(Math.Round(percent, 1), 0, 999);
+    }
+
+    public static string FormatSize(long megaBytes)
+    {
+        if (megaBytes < 1024)
+        {
+            return $"{megaBytes:N0} MB";
+        }
+
+        var gigaBytes = megaBytes / 1024d;
+        if (gigaBytes < 1024)
+        {
+            return $"{gigaBytes:N1} GB";
+        }
+
+        return $"{gigaBytes / 1024d:N2} TB";
+    }
+
+    public static string FormatRetention(int minutes)
+    {
+        if (minutes <= 0)
+        {
+            return "Not set";
+        }
+
+        if (minutes % 1440 == 0)
+        {
+            var days = minutes / 1440;
+            return days == 1 ? "1 day" : $"{days} days";
+        }
+
+        if (minutes % 60 == 0)
+        {
+            var hours = minutes / 60;
+            return hours == 1 ? "1 hour" : $"{hours} hours";
+        }
+
+        return $"{minutes} minutes";
+    }
+}
+
+public sealed class LocationOverrideRequest
+{
+    public required string CameraId { get; init; }
+    public required double Latitude { get; init; }
+    public required double Longitude { get; init; }
+    public string? Site { get; init; }
+}
+
+public sealed class HealthStatus
+{
+    public required string Status { get; init; }
+    public required string Source { get; init; }
+    public DateTimeOffset GeneratedAt { get; init; }
+    public bool SqlCacheEnabled { get; init; }
+}
