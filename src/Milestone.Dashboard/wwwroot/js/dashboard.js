@@ -304,6 +304,9 @@ function visibleCameras() {
       camera.intelligence?.ndaaStatus,
       camera.intelligence?.replacementModel,
       camera.intelligence?.suggestedFirmware,
+      camera.intelligence?.recordingStatus,
+      camera.intelligence?.storageServer,
+      camera.intelligence?.sdStatus,
       ...(camera.labels ?? []),
       ...Object.entries(camera.customProperties ?? {}).flatMap(([key, value]) => [key, value])
     ].filter(Boolean).join(" ").toLowerCase();
@@ -343,6 +346,7 @@ function renderCameras() {
           <span class="conn-tag ${edge ? "on" : "off"}" title="Edge storage">EDGE</span>
         </div>
       </td>
+      <td>${intel.alertStatus ? escapeHtml(intel.alertStatus) : ""}</td>
       <td class="name-cell">${escapeHtml(camera.name)}</td>
       <td>
         <span class="cred ${credentials ? "ok" : "off"}" title="${credentials ? `User ${camera.hardwareUserName}` : "No hardware user"}">${credentials ? "✓" : "!"}</span>
@@ -380,10 +384,17 @@ function renderCameras() {
       <td>${dotLabel(intel.sslExpiryStatus, "na")}</td>
       <td>${escapeHtml(formatDateOnly(intel.sslExpiryDate))}</td>
       <td>${escapeHtml(intel.lastSslCertificate ?? "—")}</td>
+      <td>${dotLabel(intel.sslCompliance, intel.sslCompliance === "Non Compliant" ? "bad" : "na")}</td>
+      <td>${dotLabel(intel.dot1xStatus, "na")}</td>
+      <td>${escapeHtml(intel.lastHardened ?? "N/A")}</td>
+      <td>${escapeHtml(intel.recordingStatus ?? "—")}</td>
+      <td>${escapeHtml(intel.storageServer ?? camera.recordingServerName ?? "—")}</td>
+      <td>${escapeHtml(intel.sdStatus ?? "—")}</td>
+      <td>${escapeHtml(intel.sdWearStatus ?? "—")}</td>
     </tr>
     ${expanded ? renderCameraDetails(camera) : ""}
   `;
-  }).join("") || `<tr><td colspan="30">No cameras match the current filters.</td></tr>`;
+  }).join("") || `<tr><td colspan="38">No cameras match the current filters.</td></tr>`;
 
   document.querySelectorAll("[data-select]").forEach((box) => {
     box.addEventListener("click", (event) => event.stopPropagation());
@@ -547,6 +558,10 @@ function renderCameraDetails(camera) {
     ["EOS date", formatDateOnly(camera.intelligence?.eosDate)],
     ["Replacement", camera.intelligence?.replacementModel],
     ["NDAA", camera.intelligence?.ndaaStatus],
+    ["SSL compliance", camera.intelligence?.sslCompliance],
+    ["Recording", camera.intelligence?.recordingStatus],
+    ["Storage server", camera.intelligence?.storageServer],
+    ["SD status", camera.intelligence?.sdStatus],
     ["Password policy", camera.intelligence?.passwordExpiryStatus],
     ["Serial number", camera.serialNumber],
     ["MAC address", camera.macAddress],
@@ -571,7 +586,7 @@ function renderCameraDetails(camera) {
 
   return `
     <tr class="detail-row">
-      <td colspan="30">
+      <td colspan="38">
         <div class="detail-grid">
           ${fields.filter(([, value]) => value !== null && value !== undefined && value !== "").map(([label, value]) => `
             <div class="detail-item">

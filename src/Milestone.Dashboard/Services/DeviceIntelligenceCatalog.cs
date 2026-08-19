@@ -74,7 +74,17 @@ public static class DeviceIntelligenceCatalog
             PasswordExpiryStatus = PasswordStatus(passwordExpiry, clock),
             PasswordExpiryDate = passwordExpiry,
             SslExpiryStatus = null,
-            LastSslCertificate = null
+            LastSslCertificate = null,
+            SslCompliance = SslCompliance(camera.HardwareAddress),
+            Dot1xStatus = null,
+            LastHardened = null,
+            RecordingStatus = camera.RecordingEnabled == false || !camera.Enabled
+                ? "Not Recording"
+                : "Recording",
+            StorageServer = camera.RecordingServerName,
+            SdStatus = camera.EdgeStorageEnabled == true ? "Connected" : "Disconnected",
+            SdWearStatus = camera.EdgeStorageEnabled == true ? "Unknown" : "No Disk",
+            AlertStatus = camera.Enabled ? null : "Disabled"
         };
     }
 
@@ -136,6 +146,18 @@ public static class DeviceIntelligenceCatalog
         }
 
         return expiry.Value - now <= TimeSpan.FromDays(30) ? "Due Soon" : "Up To Date";
+    }
+
+    private static string? SslCompliance(string? address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return null;
+        }
+
+        return address.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            ? null
+            : "Non Compliant";
     }
 
     private static string? FirmwareFamily(string? firmware)

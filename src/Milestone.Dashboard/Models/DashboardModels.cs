@@ -63,6 +63,14 @@ public sealed class DeviceIntelligence
     public string? SslExpiryStatus { get; init; }
     public DateTimeOffset? SslExpiryDate { get; init; }
     public string? LastSslCertificate { get; init; }
+    public string? SslCompliance { get; init; }
+    public string? Dot1xStatus { get; init; }
+    public string? LastHardened { get; init; }
+    public string? RecordingStatus { get; init; }
+    public string? StorageServer { get; init; }
+    public string? SdStatus { get; init; }
+    public string? SdWearStatus { get; init; }
+    public string? AlertStatus { get; init; }
 }
 
 public sealed class StorageVolume

@@ -39,6 +39,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.False(string.IsNullOrWhiteSpace(camera.GetProperty("ipAddress").GetString()));
         Assert.Equal("Demo", camera.GetProperty("deviceSource").GetString());
         Assert.Equal("Compliant", camera.GetProperty("intelligence").GetProperty("ndaaStatus").GetString());
+        Assert.Equal("Recording", camera.GetProperty("intelligence").GetProperty("recordingStatus").GetString());
+        Assert.Equal("Disconnected", camera.GetProperty("intelligence").GetProperty("sdStatus").GetString());
         Assert.False(string.IsNullOrWhiteSpace(camera.GetProperty("intelligence").GetProperty("suggestedFirmware").GetString()));
         Assert.True(camera.GetProperty("labels").GetArrayLength() > 0);
         Assert.True(camera.GetProperty("customProperties").GetProperty("Owner").GetString()?.Length > 0);
@@ -95,6 +97,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Last Seen", html);
         Assert.Contains("NDAA Status", html);
         Assert.Contains("Lifecycle Status", html);
+        Assert.Contains("Recording Status", html);
+        Assert.Contains("Storage Server", html);
+        Assert.Contains("SD Status", html);
         Assert.Contains("All labels", html);
         Assert.Contains("/lib/leaflet/leaflet.js", html);
     }

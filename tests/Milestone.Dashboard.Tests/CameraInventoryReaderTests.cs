@@ -143,4 +143,29 @@ public class CameraInventoryReaderTests
         Assert.Equal("Restricted", intel.NdaaStatus);
         Assert.Null(intel.SslExpiryStatus);
     }
+
+    [Fact]
+    public void Intelligence_maps_recording_storage_sd_and_http_ssl()
+    {
+        var camera = new CameraInfo
+        {
+            Id = "c3",
+            Name = "Lot",
+            Enabled = true,
+            HardwareAddress = "http://10.208.5.119/",
+            RecordingEnabled = true,
+            RecordingServerName = "FOXUSWDMSAP681",
+            EdgeStorageEnabled = false
+        };
+
+        var intel = DeviceIntelligenceCatalog.Evaluate(camera);
+
+        Assert.Equal("Non Compliant", intel.SslCompliance);
+        Assert.Equal("Recording", intel.RecordingStatus);
+        Assert.Equal("FOXUSWDMSAP681", intel.StorageServer);
+        Assert.Equal("Disconnected", intel.SdStatus);
+        Assert.Equal("No Disk", intel.SdWearStatus);
+        Assert.Null(intel.Dot1xStatus);
+        Assert.Null(intel.LastHardened);
+    }
 }
