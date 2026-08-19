@@ -78,8 +78,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await _client.GetAsync("/");
         response.EnsureSuccessStatusCode();
         var html = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Camera location and storage", html);
+        Assert.Contains("XProtect Operations", html);
         Assert.Contains("Select camera to place", html);
+        Assert.Contains("Sites view", html);
     }
 
     [Fact]

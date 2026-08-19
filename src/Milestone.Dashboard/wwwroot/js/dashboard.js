@@ -1,6 +1,11 @@
 const state = {
   cameras: [],
+  storages: [],
+  recordingServers: [],
+  summary: {},
+  siteName: "",
   map: null,
+  cluster: null,
   markers: [],
   mapCenter: { latitude: 34.0522, longitude: -118.2437, zoom: 13 },
   placingCameraId: ""
@@ -33,8 +38,18 @@ addressSearch.addEventListener("keydown", (event) => {
 });
 csvImport.addEventListener("change", importCsv);
 
+document.querySelectorAll(".nav-btn").forEach((button) => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".nav-btn").forEach((item) => item.classList.remove("active"));
+    button.classList.add("active");
+    document.getElementById(button.dataset.scroll)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+});
+
 async function loadDashboard() {
   refreshButton.disabled = true;
+  const pageError = document.getElementById("page-error");
+  pageError.hidden = true;
   try {
     const response = await fetch("/api/dashboard", { cache: "no-store" });
     if (!response.ok) {
@@ -43,17 +58,26 @@ async function loadDashboard() {
 
     const data = await response.json();
     state.cameras = data.cameras ?? [];
+    state.storages = data.storages ?? [];
+    state.recordingServers = data.recordingServers ?? [];
+    state.summary = data.summary ?? {};
+    state.siteName = data.siteName ?? "";
     state.mapCenter = data.mapCenter ?? state.mapCenter;
     renderSource(data);
-    renderKpis(data.summary ?? {});
-    renderStorage(data.storages ?? []);
-    fillServerFilter(data.recordingServers ?? []);
+    renderOverview();
+    renderDeviceTypes();
+    renderOperational();
+    renderDonut();
+    renderMaintenance();
+    renderStorage(state.storages);
+    fillServerFilter(state.recordingServers);
     fillPlaceCamera();
     renderCameras();
     renderMap(state.cameras);
   } catch (error) {
     document.getElementById("source-badge").textContent = "Unavailable";
-    document.getElementById("kpi-row").innerHTML = `<article class="kpi"><div class="label">Error</div><div class="value">Could not load dashboard</div><div class="hint muted">${error.message}</div></article>`;
+    pageError.hidden = false;
+    pageError.textContent = `Could not load dashboard: ${error.message}`;
   } finally {
     refreshButton.disabled = false;
   }
@@ -62,27 +86,129 @@ async function loadDashboard() {
 function renderSource(data) {
   const badge = document.getElementById("source-badge");
   const source = data.source ?? "unknown";
-  badge.textContent = source === "demo" ? "Demo data" : source;
+  badge.textContent = source === "demo" ? "Demo data" : "Live";
   badge.className = `badge ${source === "demo" ? "demo" : "live"}`;
   document.getElementById("generated-at").textContent = data.generatedAt
-    ? `Updated ${new Date(data.generatedAt).toLocaleString()}`
+    ? new Date(data.generatedAt).toLocaleString()
     : "";
 }
 
-function renderKpis(summary) {
-  const cards = [
-    ["Cameras", summary.cameraCount ?? 0, `${summary.enabledCameraCount ?? 0} enabled`],
-    ["Mapped", summary.mappedCameraCount ?? 0, `${summary.unmappedCameraCount ?? 0} still need coordinates`],
-    ["Recording servers", summary.recordingServerCount ?? 0, `${summary.storageCount ?? 0} storage volumes`],
-    ["Storage used", formatPercent(summary.storageUsagePercent), `${formatMb(summary.usedSpaceMb)} of ${formatMb(summary.maxSizeMb)}`]
-  ];
+function counts() {
+  const cameras = state.cameras;
+  const storages = state.storages;
+  const servers = state.recordingServers;
+  return {
+    cameras: cameras.length,
+    enabled: cameras.filter((item) => item.enabled).length,
+    disabled: cameras.filter((item) => !item.enabled).length,
+    mapped: cameras.filter((item) => item.location).length,
+    unmapped: cameras.filter((item) => !item.location).length,
+    servers: servers.length,
+    serversOnline: servers.filter((item) => item.enabled !== false).length,
+    storage: storages.length,
+    archives: storages.filter((item) => item.kind === "Archive").length,
+    warn: storages.filter((item) => item.usagePercent >= 75).length,
+    critical: storages.filter((item) => item.usagePercent >= 90).length,
+    unavailable: storages.filter((item) => item.isAvailable === false || item.isMounted === false).length,
+    locked: storages.filter((item) => item.lockedUsedSpaceMb > 0).length
+  };
+}
 
-  document.getElementById("kpi-row").innerHTML = cards.map(([label, value, hint]) => `
-    <article class="kpi">
-      <div class="label">${label}</div>
-      <div class="value">${value}</div>
-      <div class="hint muted">${hint}</div>
+function renderOverview() {
+  const data = counts();
+  const siteLabel = state.siteName || "XProtect site";
+  document.getElementById("overview").innerHTML = `
+    <article class="summary-card">
+      <h3>Managed sites</h3>
+      <div class="value">1</div>
+      <div class="legend">
+        <span><i class="dot teal"></i>${escapeHtml(siteLabel)}</span>
+        <span><i class="dot orange"></i>${data.unmapped} cameras unmapped</span>
+      </div>
     </article>
+    <article class="summary-card">
+      <h3>Managed cameras</h3>
+      <div class="value">${formatCount(data.cameras)}</div>
+      <div class="legend">
+        <span><i class="dot teal"></i>${data.enabled} Enabled</span>
+        <span><i class="dot red"></i>${data.disabled} Disabled</span>
+        <span><i class="dot orange"></i>${data.unmapped} Unmapped</span>
+      </div>
+    </article>
+    <article class="summary-card">
+      <h3>Recording servers</h3>
+      <div class="value">${data.servers}</div>
+      <div class="legend">
+        <span><i class="dot teal"></i>${data.serversOnline} Online</span>
+        <span><i class="dot gray"></i>${data.storage} storage volumes</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderDeviceTypes() {
+  const data = counts();
+  const items = [
+    [data.cameras, "Camera"],
+    [data.servers, "Recording Server"],
+    [data.storage, "Storage"],
+    [data.archives, "Archive"],
+    [data.mapped, "Mapped"],
+    [data.unmapped, "Unmapped"]
+  ];
+  document.getElementById("device-types").innerHTML = items.map(([count, label]) => `
+    <div class="device-item">
+      <div class="count">${formatCount(count)}</div>
+      <div class="label">${label}</div>
+    </div>
+  `).join("");
+}
+
+function renderOperational() {
+  const data = counts();
+  const rows = [
+    ["Unmapped cameras", data.unmapped, data.unmapped > 0 ? "up" : "down"],
+    ["Disabled cameras", data.disabled, data.disabled > 0 ? "up" : "down"],
+    ["Storage over 75%", data.warn, data.warn > 0 ? "up" : "down"],
+    ["Storage over 90%", data.critical, data.critical > 0 ? "up" : "down"],
+    ["Unavailable volumes", data.unavailable, data.unavailable > 0 ? "up" : "down"]
+  ];
+  document.getElementById("alert-list").innerHTML = rows.map(([label, value, trend]) => `
+    <div class="stat-row">
+      <span>${label}</span>
+      <strong class="${trend}">${value} ${trend === "up" ? "▲" : "▼"}</strong>
+    </div>
+  `).join("");
+}
+
+function renderDonut() {
+  const data = counts();
+  const total = Math.max(data.cameras, 1);
+  const mappedPct = (data.mapped / total) * 100;
+  document.getElementById("donut").style.background =
+    `conic-gradient(var(--teal) 0 ${mappedPct}%, var(--red) ${mappedPct}% 100%)`;
+  document.getElementById("donut").innerHTML = `
+    <div class="donut-inner">
+      <b>${data.unmapped}</b>
+      Unmapped cameras
+      <div class="muted">${data.cameras} total cameras</div>
+    </div>
+  `;
+}
+
+function renderMaintenance() {
+  const data = counts();
+  const rows = [
+    ["Locked evidence data", data.locked],
+    ["Archive volumes", data.archives],
+    ["Cameras still unmapped", data.unmapped],
+    ["Critical storage", data.critical]
+  ];
+  document.getElementById("maintenance-list").innerHTML = rows.map(([label, value]) => `
+    <div class="stat-row">
+      <span>${label}</span>
+      <strong>${value}</strong>
+    </div>
   `).join("");
 }
 
@@ -167,25 +293,31 @@ function renderMap(cameras) {
   const center = [state.mapCenter.latitude, state.mapCenter.longitude];
   if (!state.map) {
     state.map = L.map("map", { zoomControl: true }).setView(center, state.mapCenter.zoom ?? 13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors"
+      attribution: "&copy; OpenStreetMap &copy; CARTO"
     }).addTo(state.map);
+    state.cluster = L.markerClusterGroup();
+    state.map.addLayer(state.cluster);
     state.map.on("click", onMapClick);
   }
 
-  state.markers.forEach((marker) => marker.remove());
-  state.markers = [];
+  state.cluster.clearLayers();
   const bounds = [];
 
   cameras.filter((camera) => camera.location).forEach((camera) => {
     const point = [camera.location.latitude, camera.location.longitude];
-    const marker = L.marker(point).addTo(state.map).bindPopup(
+    const marker = L.marker(point).bindPopup(
       `<strong>${escapeHtml(camera.name)}</strong><br>${escapeHtml(camera.site ?? "")}<br>${escapeHtml(camera.recordingServerName ?? "")}`
     );
-    state.markers.push(marker);
+    state.cluster.addLayer(marker);
     bounds.push(point);
   });
+
+  const mapCopy = document.getElementById("map-copy");
+  mapCopy.textContent = bounds.length
+    ? `${bounds.length} cameras are on the map. Select another camera and click to move or add a pin.`
+    : "No camera coordinates yet. Search a place, choose a camera, then click the map.";
 
   if (bounds.length > 0) {
     state.map.fitBounds(bounds, { padding: [28, 28], maxZoom: 16 });
@@ -341,6 +473,11 @@ function formatLocation(camera) {
 
 function formatPercent(value) {
   return `${Number(value ?? 0).toFixed(1)}%`;
+}
+
+function formatCount(value) {
+  const number = Number(value ?? 0);
+  return number >= 1000 ? `${(number / 1000).toFixed(number >= 10000 ? 0 : 1)}K` : String(number);
 }
 
 function formatMb(value) {
