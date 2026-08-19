@@ -73,7 +73,11 @@ async function loadDashboard() {
     fillServerFilter(state.recordingServers);
     fillPlaceCamera();
     renderCameras();
-    renderMap(state.cameras);
+    try {
+      renderMap(state.cameras);
+    } catch (mapError) {
+      document.getElementById("map-copy").textContent = `Map could not start: ${mapError.message}`;
+    }
   } catch (error) {
     document.getElementById("source-badge").textContent = "Unavailable";
     pageError.hidden = false;
@@ -290,15 +294,20 @@ function renderCameras() {
 }
 
 function renderMap(cameras) {
+  const mapCopy = document.getElementById("map-copy");
+  if (typeof L === "undefined") {
+    mapCopy.textContent = "Map library did not load. Cameras still appear in the table below.";
+    return;
+  }
+
   const center = [state.mapCenter.latitude, state.mapCenter.longitude];
   if (!state.map) {
     state.map = L.map("map", { zoomControl: true }).setView(center, state.mapCenter.zoom ?? 13);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
-      attribution: "&copy; OpenStreetMap &copy; CARTO"
+      attribution: "&copy; OpenStreetMap contributors"
     }).addTo(state.map);
-    state.cluster = L.markerClusterGroup();
-    state.map.addLayer(state.cluster);
+    state.cluster = L.layerGroup().addTo(state.map);
     state.map.on("click", onMapClick);
   }
 
@@ -314,7 +323,6 @@ function renderMap(cameras) {
     bounds.push(point);
   });
 
-  const mapCopy = document.getElementById("map-copy");
   mapCopy.textContent = bounds.length
     ? `${bounds.length} cameras are on the map. Select another camera and click to move or add a pin.`
     : "No camera coordinates yet. Search a place, choose a camera, then click the map.";

@@ -81,6 +81,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("XProtect Operations", html);
         Assert.Contains("Select camera to place", html);
         Assert.Contains("Sites view", html);
+        Assert.Contains("/lib/leaflet/leaflet.js", html);
     }
 
     [Fact]

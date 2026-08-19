@@ -71,7 +71,19 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 }
 
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        var path = context.File.Name;
+        if (path.EndsWith(".html", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".css", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".js", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+        }
+    }
+});
 
 app.MapGet("/api/health", async (DashboardService dashboard, CancellationToken cancellationToken) =>
 {
