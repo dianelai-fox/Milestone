@@ -7,7 +7,7 @@ A web dashboard for Milestone XProtect that shows camera locations on a map and 
 - Map of cameras that have GIS coordinates in XProtect (`gisPoint`)
 - Local location overrides for cameras that are not mapped yet
 - Storage usage for recording and archive volumes
-- Camera inventory with recording server, hardware address, and enabled state
+- Camera inventory with firmware, labels/groups, model, serial, custom properties, recording server, and hardware details
 - Optional SQL Server cache so the last snapshot still shows if the management server is briefly unavailable
 
 The dashboard does **not** query the XProtect `Surveillance` database. Milestone stores configuration there, but that schema is unsupported for integrations. Live data comes from the [MIP VMS RESTful Configuration API](https://doc.developer.milestonesys.com/mipvmsapi/api/config-rest/v1/) through the API Gateway.
@@ -48,7 +48,7 @@ The app authenticates the same way Milestone documents for the API Gateway:
 
 `POST /API/IDP/connect/token` with `grant_type=password` and `client_id=GrantValidatorClient`
 
-Then it reads `/api/rest/v1/cameras`, `/hardware`, `/recordingServers`, `/storages`, and `/storageInformation`.
+Then it reads `/api/rest/v1/cameras` (including custom properties), `/hardware`, `/hardwareDriverSettings` (firmware, serial, MAC when the driver reports them), `/cameraGroups` (labels), `/hardwareDrivers`, `/recordingServers`, `/storages`, and `/storageInformation`.
 
 If a camera has no `gisPoint` in Management Client, you can still place it:
 

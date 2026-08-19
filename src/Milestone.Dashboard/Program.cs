@@ -52,7 +52,7 @@ else
 {
     builder.Services.AddHttpClient<IVmsClient, MilestoneApiClient>((sp, client) =>
         {
-            client.Timeout = TimeSpan.FromSeconds(60);
+            client.Timeout = TimeSpan.FromMinutes(3);
         })
         .ConfigurePrimaryHttpMessageHandler(() =>
         {
@@ -123,7 +123,44 @@ app.MapGet("/api/dashboard", async (DashboardService dashboard, CancellationToke
         snapshot.Source,
         snapshot.SiteName,
         summary = snapshot.Summary,
-        cameras = snapshot.Cameras,
+        cameras = snapshot.Cameras.Select(camera => new
+        {
+            camera.Id,
+            camera.Name,
+            camera.ShortName,
+            camera.Description,
+            camera.Enabled,
+            camera.Channel,
+            camera.HardwareId,
+            camera.HardwareName,
+            camera.HardwareAddress,
+            camera.HardwareUserName,
+            camera.HardwareEnabled,
+            camera.HardwareDriver,
+            camera.Model,
+            camera.Firmware,
+            camera.SerialNumber,
+            camera.MacAddress,
+            camera.RecordingServerId,
+            camera.RecordingServerName,
+            camera.RecordingStorageId,
+            camera.RecordingStorageName,
+            camera.FailoverSetting,
+            camera.RecordingEnabled,
+            camera.EdgeStorageEnabled,
+            camera.EdgeStoragePlaybackEnabled,
+            camera.PrebufferEnabled,
+            camera.PrebufferSeconds,
+            camera.PtzEnabled,
+            camera.CreatedDate,
+            camera.LastModified,
+            camera.PasswordLastModified,
+            camera.Labels,
+            camera.CustomProperties,
+            camera.Site,
+            camera.Location,
+            camera.LocationIsOverride
+        }),
         storages = snapshot.Storages.Select(storage => new
         {
             storage.Id,

@@ -52,5 +52,9 @@ public class DemoVmsClientTests
         Assert.NotEmpty(snapshot.Storages);
         Assert.True(snapshot.Summary.StorageUsagePercent > 0);
         Assert.Equal(snapshot.Storages.Sum(item => item.UsedSpaceMb), snapshot.Summary.UsedSpaceMb);
+        Assert.Contains(snapshot.Cameras, camera => !string.IsNullOrWhiteSpace(camera.Firmware));
+        Assert.Contains(snapshot.Cameras, camera => camera.Labels.Count > 0);
+        Assert.Contains(snapshot.Cameras, camera => camera.CustomProperties.ContainsKey("Owner"));
+        Assert.Contains(snapshot.Cameras, camera => camera.PtzEnabled == true);
     }
 }

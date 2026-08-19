@@ -8,13 +8,15 @@ const state = {
   cluster: null,
   markers: [],
   mapCenter: { latitude: 34.0522, longitude: -118.2437, zoom: 13 },
-  placingCameraId: ""
+  placingCameraId: "",
+  expandedCameraId: ""
 };
 
 const refreshButton = document.getElementById("refresh-btn");
 const searchInput = document.getElementById("search");
 const serverFilter = document.getElementById("server-filter");
 const locationFilter = document.getElementById("location-filter");
+const labelFilter = document.getElementById("label-filter");
 const placeCamera = document.getElementById("place-camera");
 const placeHint = document.getElementById("place-hint");
 const addressSearch = document.getElementById("address-search");
@@ -25,6 +27,7 @@ refreshButton.addEventListener("click", () => loadDashboard());
 searchInput.addEventListener("input", renderCameras);
 serverFilter.addEventListener("change", renderCameras);
 locationFilter.addEventListener("change", renderCameras);
+labelFilter.addEventListener("change", renderCameras);
 placeCamera.addEventListener("change", () => {
   state.placingCameraId = placeCamera.value;
   updatePlaceHint();
@@ -71,6 +74,7 @@ async function loadDashboard() {
     renderMaintenance();
     renderStorage(state.storages);
     fillServerFilter(state.recordingServers);
+    fillLabelFilter(state.cameras);
     fillPlaceCamera();
     renderCameras();
     try {
@@ -243,6 +247,15 @@ function fillServerFilter(servers) {
   serverFilter.value = current;
 }
 
+function fillLabelFilter(cameras) {
+  const current = labelFilter.value;
+  const labels = [...new Set(cameras.flatMap((camera) => camera.labels ?? []))].sort((left, right) =>
+    left.localeCompare(right));
+  labelFilter.innerHTML = `<option value="">All labels</option>` +
+    labels.map((label) => `<option value="${escapeHtml(label)}">${escapeHtml(label)}</option>`).join("");
+  labelFilter.value = labels.includes(current) ? current : "";
+}
+
 function fillPlaceCamera() {
   const current = state.placingCameraId;
   placeCamera.innerHTML = `<option value="">Select camera to place</option>` +
@@ -258,39 +271,140 @@ function fillPlaceCamera() {
 function renderCameras() {
   const query = searchInput.value.trim().toLowerCase();
   const rows = state.cameras.filter((camera) => {
-    const haystack = [camera.name, camera.site, camera.recordingServerName, camera.hardwareAddress]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+    const haystack = [
+      camera.name,
+      camera.shortName,
+      camera.description,
+      camera.site,
+      camera.recordingServerName,
+      camera.hardwareAddress,
+      camera.model,
+      camera.firmware,
+      camera.serialNumber,
+      camera.macAddress,
+      camera.hardwareDriver,
+      camera.hardwareUserName,
+      ...(camera.labels ?? []),
+      ...Object.entries(camera.customProperties ?? {}).flatMap(([key, value]) => [key, value])
+    ].filter(Boolean).join(" ").toLowerCase();
     const matchesQuery = !query || haystack.includes(query);
     const matchesServer = !serverFilter.value || camera.recordingServerId === serverFilter.value;
+    const matchesLabel = !labelFilter.value || (camera.labels ?? []).includes(labelFilter.value);
     const mapped = Boolean(camera.location);
     const matchesLocation = !locationFilter.value
       || (locationFilter.value === "mapped" && mapped)
       || (locationFilter.value === "unmapped" && !mapped);
-    return matchesQuery && matchesServer && matchesLocation;
+    return matchesQuery && matchesServer && matchesLabel && matchesLocation;
   });
 
-  document.getElementById("camera-body").innerHTML = rows.map((camera) => `
-    <tr>
-      <td>${escapeHtml(camera.name)}</td>
+  document.getElementById("camera-body").innerHTML = rows.map((camera) => {
+    const expanded = camera.id === state.expandedCameraId;
+    return `
+    <tr class="camera-row ${expanded ? "active" : ""}" data-toggle="${escapeHtml(camera.id)}">
+      <td>
+        <strong>${escapeHtml(camera.name)}</strong>
+        <div class="muted">${escapeHtml(camera.hardwareAddress ?? camera.description ?? "")}</div>
+      </td>
+      <td>${renderChips(camera.labels)}</td>
+      <td>${escapeHtml(camera.model ?? "—")}</td>
+      <td>${escapeHtml(camera.firmware ?? "—")}</td>
       <td>${escapeHtml(camera.site ?? "—")}</td>
       <td>${escapeHtml(camera.recordingServerName ?? "—")}</td>
-      <td>${escapeHtml(camera.hardwareAddress ?? "—")}</td>
       <td><span class="status ${camera.enabled ? "on" : "off"}">${camera.enabled ? "Enabled" : "Disabled"}</span></td>
       <td>${formatLocation(camera)}</td>
-      <td><button class="link-btn" type="button" data-place="${escapeHtml(camera.id)}">Place on map</button></td>
+      <td>
+        <button class="link-btn" type="button" data-place="${escapeHtml(camera.id)}">Place</button>
+        <button class="link-btn" type="button" data-toggle="${escapeHtml(camera.id)}">${expanded ? "Hide" : "Details"}</button>
+      </td>
     </tr>
-  `).join("") || `<tr><td colspan="7">No cameras match the current filters.</td></tr>`;
+    ${expanded ? renderCameraDetails(camera) : ""}
+  `;
+  }).join("") || `<tr><td colspan="9">No cameras match the current filters.</td></tr>`;
 
   document.querySelectorAll("[data-place]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
       state.placingCameraId = button.getAttribute("data-place") ?? "";
       placeCamera.value = state.placingCameraId;
       updatePlaceHint();
       document.getElementById("map").scrollIntoView({ behavior: "smooth", block: "center" });
     });
   });
+
+  document.querySelectorAll("[data-toggle]").forEach((item) => {
+    item.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const cameraId = item.getAttribute("data-toggle") ?? "";
+      state.expandedCameraId = state.expandedCameraId === cameraId ? "" : cameraId;
+      renderCameras();
+    });
+  });
+}
+
+function renderChips(values) {
+  if (!values?.length) {
+    return "—";
+  }
+
+  return `<div class="chips">${values.map((value) => `<span class="chip">${escapeHtml(value)}</span>`).join("")}</div>`;
+}
+
+function renderCameraDetails(camera) {
+  const properties = Object.entries(camera.customProperties ?? {});
+  const fields = [
+    ["Camera ID", camera.id],
+    ["Short name", camera.shortName],
+    ["Description", camera.description],
+    ["Channel", camera.channel],
+    ["Model", camera.model],
+    ["Firmware", camera.firmware],
+    ["Serial number", camera.serialNumber],
+    ["MAC address", camera.macAddress],
+    ["Hardware", camera.hardwareName],
+    ["Hardware address", camera.hardwareAddress],
+    ["Hardware user", camera.hardwareUserName],
+    ["Hardware enabled", formatYesNo(camera.hardwareEnabled)],
+    ["Driver", camera.hardwareDriver],
+    ["Recording server", camera.recordingServerName],
+    ["Recording storage", camera.recordingStorageName],
+    ["Failover", camera.failoverSetting],
+    ["Recording", formatYesNo(camera.recordingEnabled)],
+    ["Edge storage", formatYesNo(camera.edgeStorageEnabled)],
+    ["Edge playback", formatYesNo(camera.edgeStoragePlaybackEnabled)],
+    ["Prebuffer", camera.prebufferEnabled == null ? null : `${formatYesNo(camera.prebufferEnabled)}${camera.prebufferSeconds ? ` (${camera.prebufferSeconds}s)` : ""}`],
+    ["PTZ", formatYesNo(camera.ptzEnabled)],
+    ["Created", formatDate(camera.createdDate)],
+    ["Last modified", formatDate(camera.lastModified)],
+    ["Password changed", formatDate(camera.passwordLastModified)],
+    ["Coordinates", formatLocation(camera)]
+  ];
+
+  return `
+    <tr class="detail-row">
+      <td colspan="9">
+        <div class="detail-grid">
+          ${fields.filter(([, value]) => value !== null && value !== undefined && value !== "").map(([label, value]) => `
+            <div class="detail-item">
+              <div class="label">${escapeHtml(label)}</div>
+              <div>${escapeHtml(value)}</div>
+            </div>
+          `).join("")}
+        </div>
+        ${properties.length ? `
+          <h3>Custom properties</h3>
+          <div class="detail-grid">
+            ${properties.map(([key, value]) => `
+              <div class="detail-item">
+                <div class="label">${escapeHtml(key)}</div>
+                <div>${escapeHtml(value)}</div>
+              </div>
+            `).join("")}
+          </div>
+        ` : ""}
+        ${camera.labels?.length ? `<h3>Labels</h3>${renderChips(camera.labels)}` : ""}
+      </td>
+    </tr>
+  `;
 }
 
 function renderMap(cameras) {
@@ -317,7 +431,10 @@ function renderMap(cameras) {
   cameras.filter((camera) => camera.location).forEach((camera) => {
     const point = [camera.location.latitude, camera.location.longitude];
     const marker = L.marker(point).bindPopup(
-      `<strong>${escapeHtml(camera.name)}</strong><br>${escapeHtml(camera.site ?? "")}<br>${escapeHtml(camera.recordingServerName ?? "")}`
+      `<strong>${escapeHtml(camera.name)}</strong><br>` +
+      `${escapeHtml(camera.model ?? "Unknown model")}${camera.firmware ? ` · ${escapeHtml(camera.firmware)}` : ""}<br>` +
+      `${escapeHtml((camera.labels ?? []).join(", ") || camera.site || "")}<br>` +
+      `${escapeHtml(camera.recordingServerName ?? "")}`
     );
     state.cluster.addLayer(marker);
     bounds.push(point);
@@ -512,6 +629,21 @@ function updatePlaceHint() {
   const camera = state.cameras.find((item) => item.id === state.placingCameraId);
   placeHint.textContent = `Click the map to place ${camera?.name ?? "the selected camera"}.`;
   map.classList.add("placing");
+}
+
+function formatYesNo(value) {
+  if (value == null) {
+    return null;
+  }
+  return value ? "Yes" : "No";
+}
+
+function formatDate(value) {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 function formatLocation(camera) {

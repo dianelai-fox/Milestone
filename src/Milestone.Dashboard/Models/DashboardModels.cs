@@ -6,13 +6,37 @@ public sealed class CameraInfo
 {
     public required string Id { get; init; }
     public required string Name { get; init; }
+    public string? ShortName { get; init; }
     public string? Description { get; init; }
     public bool Enabled { get; init; }
+    public int? Channel { get; init; }
     public string? HardwareId { get; init; }
     public string? HardwareName { get; init; }
     public string? HardwareAddress { get; init; }
+    public string? HardwareUserName { get; init; }
+    public bool? HardwareEnabled { get; init; }
+    public string? HardwareDriver { get; init; }
+    public string? Model { get; init; }
+    public string? Firmware { get; init; }
+    public string? SerialNumber { get; init; }
+    public string? MacAddress { get; init; }
     public string? RecordingServerId { get; init; }
     public string? RecordingServerName { get; init; }
+    public string? RecordingStorageId { get; init; }
+    public string? RecordingStorageName { get; set; }
+    public string? FailoverSetting { get; init; }
+    public bool? RecordingEnabled { get; init; }
+    public bool? EdgeStorageEnabled { get; init; }
+    public bool? EdgeStoragePlaybackEnabled { get; init; }
+    public bool? PrebufferEnabled { get; init; }
+    public int? PrebufferSeconds { get; init; }
+    public bool? PtzEnabled { get; init; }
+    public DateTimeOffset? CreatedDate { get; init; }
+    public DateTimeOffset? LastModified { get; init; }
+    public DateTimeOffset? PasswordLastModified { get; init; }
+    public IReadOnlyList<string> Labels { get; init; } = [];
+    public IReadOnlyDictionary<string, string> CustomProperties { get; init; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     public string? Site { get; set; }
     public CameraLocation? Location { get; set; }
     public bool LocationIsOverride { get; set; }

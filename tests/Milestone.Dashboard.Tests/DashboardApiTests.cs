@@ -33,6 +33,10 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.True(document.RootElement.GetProperty("cameras").GetArrayLength() > 0);
+        var camera = document.RootElement.GetProperty("cameras").EnumerateArray().First();
+        Assert.False(string.IsNullOrWhiteSpace(camera.GetProperty("firmware").GetString()));
+        Assert.True(camera.GetProperty("labels").GetArrayLength() > 0);
+        Assert.True(camera.GetProperty("customProperties").GetProperty("Owner").GetString()?.Length > 0);
         Assert.True(document.RootElement.GetProperty("storages").GetArrayLength() > 0);
         Assert.True(document.RootElement.GetProperty("summary").GetProperty("cameraCount").GetInt32() > 0);
         Assert.True(document.RootElement.GetProperty("mapCenter").TryGetProperty("latitude", out _));
@@ -81,6 +85,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("XProtect Operations", html);
         Assert.Contains("Select camera to place", html);
         Assert.Contains("Sites view", html);
+        Assert.Contains("Firmware", html);
+        Assert.Contains("All labels", html);
         Assert.Contains("/lib/leaflet/leaflet.js", html);
     }
 

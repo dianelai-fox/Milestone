@@ -25,49 +25,141 @@ public sealed class MilestoneApiClient : IVmsClient
 
     public async Task<DashboardSnapshot> GetSnapshotAsync(CancellationToken cancellationToken)
     {
-        var cameras = await GetPagedAsync("cameras", cancellationToken);
-        var hardware = (await GetPagedAsync("hardware", cancellationToken))
-            .ToDictionary(item => ReadString(item, "id"), item => item, StringComparer.OrdinalIgnoreCase);
+        var cameras = await GetPagedAsync("cameras", cancellationToken, "includeChildren=customProperties");
+        var hardwareItems = await GetPagedAsync("hardware", cancellationToken);
         var recordingServers = await GetPagedAsync("recordingServers", cancellationToken);
         var sites = await GetPagedAsync("sites", cancellationToken);
         var mapLocations = await GetChildArrayAsync("gisMapLocations", cancellationToken);
-        var siteName = sites.Count > 0 ? ReadString(sites[0], "displayName") : null;
+        var cameraGroups = await GetOptionalPagedAsync("cameraGroups", cancellationToken, "includeChildren=cameras");
+        var hardwareDrivers = await GetOptionalPagedAsync("hardwareDrivers", cancellationToken);
+        var driverSettings = await GetOptionalPagedAsync("hardwareDriverSettings", cancellationToken);
+        var siteName = sites.Count > 0
+            ? JsonElementReader.ReadOptionalString(sites[0], "displayName")
+            : null;
+        var groupLabels = CameraGroupIndex.Build(cameraGroups);
 
-        var hardwareLookup = hardware.ToDictionary(
-            pair => pair.Key,
-            pair => new
+        var driverNames = hardwareDrivers.ToDictionary(
+            item => JsonElementReader.ReadString(item, "id"),
+            item => JsonElementReader.ReadOptionalString(item, "displayName")
+                    ?? JsonElementReader.ReadOptionalString(item, "name")
+                    ?? "Driver",
+            StringComparer.OrdinalIgnoreCase);
+
+        var settingsByHardware = new Dictionary<string, HardwareDeviceDetails>(StringComparer.OrdinalIgnoreCase);
+        foreach (var settings in driverSettings)
+        {
+            var hardwareId = HardwareSettingsReader.ReadParentHardwareId(settings)
+                             ?? JsonElementReader.ReadOptionalString(settings, "id");
+            if (string.IsNullOrWhiteSpace(hardwareId))
             {
-                Name = ReadString(pair.Value, "displayName") ?? ReadString(pair.Value, "name"),
-                Address = ReadString(pair.Value, "address"),
-                RecordingServerId = ReadRelationId(pair.Value, "parent"),
-                Location = GisPointParser.FromElement(pair.Value)
+                continue;
+            }
+
+            var details = HardwareSettingsReader.Read(settings);
+            settingsByHardware[hardwareId] = settingsByHardware.TryGetValue(hardwareId, out var existing)
+                ? HardwareSettingsReader.Merge(existing, details)
+                : details;
+        }
+
+        var hardwareLookup = hardwareItems.ToDictionary(
+            item => JsonElementReader.ReadString(item, "id"),
+            item =>
+            {
+                var id = JsonElementReader.ReadString(item, "id");
+                settingsByHardware.TryGetValue(id, out var fromSettings);
+                var fromHardware = HardwareSettingsReader.Read(item);
+                var details = HardwareSettingsReader.Merge(fromSettings ?? new HardwareDeviceDetails(null, null, null, null), fromHardware);
+                var driverId = JsonElementReader.ReadPathId(item, "hardwareDriverPath");
+                return new
+                {
+                    Name = JsonElementReader.ReadOptionalString(item, "displayName")
+                           ?? JsonElementReader.ReadOptionalString(item, "name"),
+                    Address = JsonElementReader.ReadOptionalString(item, "address"),
+                    UserName = JsonElementReader.ReadOptionalString(item, "userName"),
+                    Enabled = JsonElementReader.ReadOptionalBool(item, "enabled"),
+                    Model = details.Model
+                            ?? JsonElementReader.ReadOptionalString(item, "model"),
+                    Firmware = details.Firmware,
+                    SerialNumber = details.SerialNumber,
+                    MacAddress = details.MacAddress,
+                    Driver = driverId is not null && driverNames.TryGetValue(driverId, out var driverName)
+                        ? driverName
+                        : null,
+                    RecordingServerId = JsonElementReader.ReadRelationId(item, "parent"),
+                    Location = GisPointParser.FromElement(item),
+                    PasswordLastModified = JsonElementReader.ReadDate(item, "passwordLastModified"),
+                    LastModified = JsonElementReader.ReadDate(item, "lastModified"),
+                    CustomProperties = CustomPropertyReader.Read(item)
+                };
             },
             StringComparer.OrdinalIgnoreCase);
 
         var serverLookup = recordingServers.ToDictionary(
-            item => ReadString(item, "id"),
-            item => ReadString(item, "displayName") ?? ReadString(item, "name") ?? "Recording server",
+            item => JsonElementReader.ReadString(item, "id"),
+            item => JsonElementReader.ReadOptionalString(item, "displayName")
+                    ?? JsonElementReader.ReadOptionalString(item, "name")
+                    ?? "Recording server",
             StringComparer.OrdinalIgnoreCase);
 
         var cameraModels = cameras.Select(item =>
         {
-            var id = ReadString(item, "id");
-            var hardwareId = ReadRelationId(item, "parent");
+            var id = JsonElementReader.ReadString(item, "id");
+            var hardwareId = JsonElementReader.ReadRelationId(item, "parent");
             hardwareLookup.TryGetValue(hardwareId ?? string.Empty, out var hw);
             var recordingServerId = hw?.RecordingServerId;
+            var cameraProperties = CustomPropertyReader.Read(item);
+            var mergedProperties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (hw?.CustomProperties is not null)
+            {
+                foreach (var pair in hw.CustomProperties)
+                {
+                    mergedProperties[pair.Key] = pair.Value;
+                }
+            }
+
+            foreach (var pair in cameraProperties)
+            {
+                mergedProperties[pair.Key] = pair.Value;
+            }
+
+            groupLabels.TryGetValue(id, out var labels);
             return new CameraInfo
             {
                 Id = id,
-                Name = ReadString(item, "displayName") ?? ReadString(item, "name") ?? id,
-                Description = ReadString(item, "description"),
-                Enabled = ReadBool(item, "enabled"),
+                Name = JsonElementReader.ReadOptionalString(item, "displayName")
+                       ?? JsonElementReader.ReadOptionalString(item, "name")
+                       ?? id,
+                ShortName = JsonElementReader.ReadOptionalString(item, "shortName"),
+                Description = JsonElementReader.ReadOptionalString(item, "description"),
+                Enabled = JsonElementReader.ReadBool(item, "enabled"),
+                Channel = JsonElementReader.ReadOptionalInt(item, "channel"),
                 HardwareId = hardwareId,
                 HardwareName = hw?.Name,
                 HardwareAddress = hw?.Address,
+                HardwareUserName = hw?.UserName,
+                HardwareEnabled = hw?.Enabled,
+                HardwareDriver = hw?.Driver,
+                Model = hw?.Model,
+                Firmware = hw?.Firmware,
+                SerialNumber = hw?.SerialNumber,
+                MacAddress = hw?.MacAddress,
                 RecordingServerId = recordingServerId,
                 RecordingServerName = recordingServerId is not null && serverLookup.TryGetValue(recordingServerId, out var recName)
                     ? recName
                     : null,
+                RecordingStorageId = JsonElementReader.ReadPathId(item, "recordingStorage"),
+                FailoverSetting = JsonElementReader.ReadOptionalString(item, "failoverSetting"),
+                RecordingEnabled = JsonElementReader.ReadOptionalBool(item, "recordingEnabled"),
+                EdgeStorageEnabled = JsonElementReader.ReadOptionalBool(item, "edgeStorageEnabled"),
+                EdgeStoragePlaybackEnabled = JsonElementReader.ReadOptionalBool(item, "edgeStoragePlaybackEnabled"),
+                PrebufferEnabled = JsonElementReader.ReadOptionalBool(item, "prebufferEnabled"),
+                PrebufferSeconds = JsonElementReader.ReadOptionalInt(item, "prebufferSeconds"),
+                PtzEnabled = JsonElementReader.ReadOptionalBool(item, "ptzEnabled"),
+                CreatedDate = JsonElementReader.ReadDate(item, "createdDate"),
+                LastModified = JsonElementReader.ReadDate(item, "lastModified") ?? hw?.LastModified,
+                PasswordLastModified = hw?.PasswordLastModified,
+                Labels = labels ?? [],
+                CustomProperties = mergedProperties,
                 Site = siteName,
                 Location = GisPointParser.FromElement(item) ?? hw?.Location
             };
@@ -76,13 +168,13 @@ public sealed class MilestoneApiClient : IVmsClient
         var storages = new List<StorageVolume>();
         foreach (var server in recordingServers)
         {
-            var serverId = ReadString(server, "id");
+            var serverId = JsonElementReader.ReadString(server, "id");
             var serverName = serverLookup.GetValueOrDefault(serverId, serverId);
             var serverStorages = await GetChildArrayAsync($"recordingServers/{serverId}/storages", cancellationToken);
             foreach (var storage in serverStorages)
             {
                 storages.Add(await MapStorageAsync(storage, serverId, serverName, "Recording", cancellationToken));
-                var storageId = ReadString(storage, "id");
+                var storageId = JsonElementReader.ReadString(storage, "id");
                 var archives = await GetChildArrayAsync($"storages/{storageId}/archiveStorages", cancellationToken);
                 foreach (var archive in archives)
                 {
@@ -91,15 +183,26 @@ public sealed class MilestoneApiClient : IVmsClient
             }
         }
 
+        var storageNames = storages.ToDictionary(item => item.Id, item => item.Name, StringComparer.OrdinalIgnoreCase);
+        foreach (var camera in cameraModels)
+        {
+            if (!string.IsNullOrWhiteSpace(camera.RecordingStorageId)
+                && storageNames.TryGetValue(camera.RecordingStorageId, out var storageName))
+            {
+                camera.RecordingStorageName = storageName;
+            }
+        }
+
         var servers = recordingServers.Select(item =>
         {
-            var id = ReadString(item, "id");
+            var id = JsonElementReader.ReadString(item, "id");
             return new RecordingServerInfo
             {
                 Id = id,
                 Name = serverLookup.GetValueOrDefault(id, id),
-                HostName = ReadString(item, "hostName") ?? ReadString(item, "webServerUri"),
-                Enabled = ReadBool(item, "enabled", true),
+                HostName = JsonElementReader.ReadOptionalString(item, "hostName")
+                           ?? JsonElementReader.ReadOptionalString(item, "webServerUri"),
+                Enabled = JsonElementReader.ReadBool(item, "enabled", true),
                 CameraCount = cameraModels.Count(c => c.RecordingServerId == id),
                 UsedSpaceMb = storages.Where(s => s.RecordingServerId == id).Sum(s => s.UsedSpaceMb),
                 MaxSizeMb = storages.Where(s => s.RecordingServerId == id).Sum(s => s.MaxSizeMb)
@@ -126,24 +229,26 @@ public sealed class MilestoneApiClient : IVmsClient
         string kind,
         CancellationToken cancellationToken)
     {
-        var id = ReadString(item, "id");
+        var id = JsonElementReader.ReadString(item, "id");
         var info = await TryGetStorageInformationAsync(id, cancellationToken);
         return new StorageVolume
         {
             Id = id,
-            Name = ReadString(item, "displayName") ?? ReadString(item, "name") ?? id,
+            Name = JsonElementReader.ReadOptionalString(item, "displayName")
+                   ?? JsonElementReader.ReadOptionalString(item, "name")
+                   ?? id,
             RecordingServerId = recordingServerId,
             RecordingServerName = recordingServerName,
-            DiskPath = ReadString(item, "diskPath"),
+            DiskPath = JsonElementReader.ReadOptionalString(item, "diskPath"),
             Kind = kind,
-            MaxSizeMb = ReadLong(item, "maxSize"),
-            UsedSpaceMb = info is null ? 0 : ReadLong(info.Value, "usedSpace"),
-            LockedUsedSpaceMb = info is null ? 0 : ReadLong(info.Value, "lockedUsedSpace"),
-            RetainMinutes = (int)ReadLong(item, "retainMinutes"),
-            IsDefault = ReadBool(item, "isDefault"),
-            IsAvailable = info is null || ReadBool(info.Value, "isAvailable", true),
-            IsMounted = info is null || ReadBool(info.Value, "isMounted", true),
-            EncryptionMethod = ReadString(item, "encryptionMethod")
+            MaxSizeMb = JsonElementReader.ReadLong(item, "maxSize"),
+            UsedSpaceMb = info is null ? 0 : JsonElementReader.ReadLong(info.Value, "usedSpace"),
+            LockedUsedSpaceMb = info is null ? 0 : JsonElementReader.ReadLong(info.Value, "lockedUsedSpace"),
+            RetainMinutes = (int)JsonElementReader.ReadLong(item, "retainMinutes"),
+            IsDefault = JsonElementReader.ReadBool(item, "isDefault"),
+            IsAvailable = info is null || JsonElementReader.ReadBool(info.Value, "isAvailable", true),
+            IsMounted = info is null || JsonElementReader.ReadBool(info.Value, "isMounted", true),
+            EncryptionMethod = JsonElementReader.ReadOptionalString(item, "encryptionMethod")
         };
     }
 
@@ -166,14 +271,55 @@ public sealed class MilestoneApiClient : IVmsClient
         }
     }
 
-    private async Task<List<JsonElement>> GetPagedAsync(string resource, CancellationToken cancellationToken)
+    private async Task<List<JsonElement>> GetOptionalPagedAsync(
+        string resource,
+        CancellationToken cancellationToken,
+        string? extraQuery = null)
+    {
+        try
+        {
+            return await GetPagedAsync(resource, cancellationToken, extraQuery);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogDebug(ex, "Optional collection {Resource} was not available", resource);
+            return [];
+        }
+    }
+
+    private async Task<List<JsonElement>> GetPagedAsync(
+        string resource,
+        CancellationToken cancellationToken,
+        string? extraQuery = null)
+    {
+        try
+        {
+            return await GetPagedCoreAsync(resource, cancellationToken, extraQuery);
+        }
+        catch (HttpRequestException ex) when (!string.IsNullOrWhiteSpace(extraQuery))
+        {
+            _logger.LogDebug(ex, "Optional children for {Resource} were not available. Retrying without includeChildren.", resource);
+            return await GetPagedCoreAsync(resource, cancellationToken, null);
+        }
+    }
+
+    private async Task<List<JsonElement>> GetPagedCoreAsync(
+        string resource,
+        CancellationToken cancellationToken,
+        string? extraQuery)
     {
         var items = new List<JsonElement>();
         var page = 0;
         while (true)
         {
-            using var document = await SendJsonAsync($"{resource}?page={page}&size={_options.PageSize}", cancellationToken);
-            var pageItems = ReadArray(document.RootElement);
+            var path = $"{resource}?page={page}&size={_options.PageSize}";
+            if (!string.IsNullOrWhiteSpace(extraQuery))
+            {
+                path += $"&{extraQuery.TrimStart('&')}";
+            }
+
+            using var document = await SendJsonAsync(path, cancellationToken);
+            var pageItems = JsonElementReader.ReadArray(document.RootElement);
             if (pageItems.Count == 0)
             {
                 break;
@@ -196,7 +342,7 @@ public sealed class MilestoneApiClient : IVmsClient
         try
         {
             using var document = await SendJsonAsync(path, cancellationToken);
-            return ReadArray(document.RootElement).Select(GisPointParser.Unwrap).ToList();
+            return JsonElementReader.ReadArray(document.RootElement).Select(GisPointParser.Unwrap).ToList();
         }
         catch (HttpRequestException ex)
         {
@@ -252,73 +398,5 @@ public sealed class MilestoneApiClient : IVmsClient
         {
             _tokenLock.Release();
         }
-    }
-
-    private static List<JsonElement> ReadArray(JsonElement root)
-    {
-        if (root.ValueKind == JsonValueKind.Array)
-        {
-            return root.EnumerateArray().Select(item => item.Clone()).ToList();
-        }
-
-        if (root.TryGetProperty("array", out var array) && array.ValueKind == JsonValueKind.Array)
-        {
-            return array.EnumerateArray().Select(item => item.Clone()).ToList();
-        }
-
-        return [];
-    }
-
-    private static string ReadString(JsonElement element, string name)
-    {
-        return element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString() ?? string.Empty
-            : string.Empty;
-    }
-
-    private static bool ReadBool(JsonElement element, string name, bool fallback = false)
-    {
-        if (!element.TryGetProperty(name, out var value))
-        {
-            return fallback;
-        }
-
-        return value.ValueKind switch
-        {
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            JsonValueKind.String => bool.TryParse(value.GetString(), out var parsed) && parsed,
-            _ => fallback
-        };
-    }
-
-    private static long ReadLong(JsonElement element, string name)
-    {
-        if (!element.TryGetProperty(name, out var value))
-        {
-            return 0;
-        }
-
-        return value.ValueKind switch
-        {
-            JsonValueKind.Number when value.TryGetInt64(out var number) => number,
-            JsonValueKind.String when long.TryParse(value.GetString(), out var parsed) => parsed,
-            _ => 0
-        };
-    }
-
-    private static string? ReadRelationId(JsonElement element, string relationName)
-    {
-        if (!element.TryGetProperty("relations", out var relations))
-        {
-            return null;
-        }
-
-        if (!relations.TryGetProperty(relationName, out var relation))
-        {
-            return null;
-        }
-
-        return relation.TryGetProperty("id", out var id) ? id.GetString() : null;
     }
 }
