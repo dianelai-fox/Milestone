@@ -409,7 +409,8 @@ async function importCsv(event) {
 
   const extra = payload.unmatched?.length ? ` Unmatched: ${payload.unmatched.slice(0, 8).join(", ")}` : "";
   const skipped = payload.skipped ? ` Skipped ${payload.skipped} rows without coordinates.` : "";
-  placeHint.textContent = `Imported ${payload.saved} camera location(s).${skipped}${extra}`;
+  const invalid = payload.invalid?.length ? ` Fixed or skipped invalid coordinates (${payload.invalid.length}).` : "";
+  placeHint.textContent = `Imported ${payload.saved} camera location(s).${skipped}${invalid}${extra}`;
   await loadDashboard();
 }
 

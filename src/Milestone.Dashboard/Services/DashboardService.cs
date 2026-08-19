@@ -57,8 +57,10 @@ public sealed class DashboardService
         CancellationToken cancellationToken)
     {
         var pending = items.ToList();
-        var skipped = pending.Count(item => item.Latitude is null || item.Longitude is null);
-        pending = pending.Where(item => item.Latitude is not null && item.Longitude is not null).ToList();
+        var skipped = 0;
+        var unmatched = new List<string>();
+        var invalid = new List<string>();
+        var overrides = new List<LocationOverrideRequest>();
 
         IReadOnlyList<CameraInfo> cameras = [];
         if (pending.Any(item => string.IsNullOrWhiteSpace(item.CameraId)))
@@ -66,11 +68,22 @@ public sealed class DashboardService
             cameras = (await GetSnapshotAsync(cancellationToken)).Cameras;
         }
 
-        var unmatched = new List<string>();
-        var overrides = new List<LocationOverrideRequest>();
-
         foreach (var item in pending)
         {
+            if (!GeoCoordinate.TryNormalize(item.Latitude, item.Longitude, out var latitude, out var longitude))
+            {
+                if (item.Latitude is null || item.Longitude is null)
+                {
+                    skipped++;
+                }
+                else
+                {
+                    invalid.Add(item.Name ?? item.CameraId ?? "(unknown camera)");
+                }
+
+                continue;
+            }
+
             var cameraId = item.CameraId;
             if (string.IsNullOrWhiteSpace(cameraId))
             {
@@ -89,8 +102,8 @@ public sealed class DashboardService
             overrides.Add(new LocationOverrideRequest
             {
                 CameraId = cameraId,
-                Latitude = item.Latitude!.Value,
-                Longitude = item.Longitude!.Value,
+                Latitude = latitude,
+                Longitude = longitude,
                 Site = item.Site
             });
         }
@@ -104,7 +117,8 @@ public sealed class DashboardService
         {
             Saved = overrides.Count,
             Skipped = skipped,
-            Unmatched = unmatched
+            Unmatched = unmatched,
+            Invalid = invalid
         };
     }
 

@@ -111,6 +111,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
             cameraId,name,latitude,longitude,site
             c10,Server Room,34.054244,-118.414072,FOXUSWDMSAP663
             unknown,Missing Camera,,,
+            stl,SPORTS-STL-C1201,38.627827,-90189505,FOXUSWDMSAP663
             """;
         content.Add(new StringContent(csv), "file", "camera-locations.csv");
 
@@ -118,7 +119,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         response.EnsureSuccessStatusCode();
 
         using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal(1, result.RootElement.GetProperty("saved").GetInt32());
+        Assert.Equal(2, result.RootElement.GetProperty("saved").GetInt32());
 
         using var dashboard = JsonDocument.Parse(await _client.GetStringAsync("/api/dashboard"));
         var camera = dashboard.RootElement.GetProperty("cameras").EnumerateArray()

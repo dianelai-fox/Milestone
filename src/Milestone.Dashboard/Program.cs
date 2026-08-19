@@ -207,14 +207,6 @@ static async Task<IResult> ImportLocationsAsync(
         return Results.BadRequest(new { error = "No location rows with latitude and longitude were found. Leave those two columns filled; empty rows are skipped." });
     }
 
-    var invalid = items.Where(item =>
-        item.Latitude is not null && item.Longitude is not null &&
-        (item.Latitude is < -90 or > 90 || item.Longitude is < -180 or > 180)).ToList();
-    if (invalid.Count > 0)
-    {
-        return Results.BadRequest(new { error = "One or more rows have coordinates that are out of range." });
-    }
-
     var result = await dashboard.ImportOverridesAsync(items, cancellationToken);
     return Results.Ok(result);
 }
