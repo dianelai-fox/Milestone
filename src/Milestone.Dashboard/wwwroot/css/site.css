@@ -125,6 +125,11 @@ main { padding: 20px 24px 40px; }
 .bottom-row { grid-template-columns: 1fr 1.3fr; }
 
 .summary-card, .card { padding: 18px 20px; }
+.summary-card.clickable, .device-item.clickable { cursor: pointer; }
+.summary-card.clickable:hover, .device-item.clickable:hover {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 1px var(--teal);
+}
 
 .summary-card h3 {
   margin: 0 0 8px;

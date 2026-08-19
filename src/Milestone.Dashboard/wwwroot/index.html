@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260819h" />
+  <link rel="stylesheet" href="/css/site.css?v=20260819i" />
 </head>
 <body>
   <aside class="sidebar">
     <button class="nav-btn active" data-scroll="overview" title="Dashboard">▦</button>
     <button class="nav-btn" data-scroll="sites-view" title="Map">◎</button>
-    <button class="nav-btn" data-scroll="cameras-panel" title="Cameras">◉</button>
+    <button class="nav-btn" data-scroll="inventory-panel" title="Cameras">◉</button>
     <button class="nav-btn" data-scroll="storage-status" title="Storage">▣</button>
   </aside>
 
@@ -81,13 +81,13 @@
         </article>
       </section>
 
-      <section class="card" id="cameras-panel">
+      <section class="card" id="inventory-panel">
         <div class="panel-head table-head">
           <div>
-            <h2>Cameras</h2>
-            <p class="muted">Device inventory, firmware lifecycle, NDAA, and password age from XProtect plus the device catalog.</p>
+            <h2 id="inventory-title">Cameras</h2>
+            <p class="muted" id="inventory-copy">Device inventory, firmware lifecycle, NDAA, and password age from XProtect plus the device catalog.</p>
           </div>
-          <div class="filters">
+          <div class="filters" id="camera-filters">
             <input id="search" type="search" placeholder="Search name, firmware, label, serial" />
             <select id="server-filter">
               <option value="">All recording servers</option>
@@ -102,7 +102,23 @@
             </select>
           </div>
         </div>
-        <div class="table-wrap">
+        <div class="table-wrap" id="servers-wrap" hidden>
+          <table>
+            <thead>
+              <tr>
+                <th>Recording server</th>
+                <th>Host</th>
+                <th>Status</th>
+                <th>Cameras</th>
+                <th>Used storage</th>
+                <th>Capacity</th>
+                <th>Usage</th>
+              </tr>
+            </thead>
+            <tbody id="server-body"></tbody>
+          </table>
+        </div>
+        <div class="table-wrap" id="cameras-wrap">
           <table>
             <thead>
               <tr>
@@ -154,6 +170,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260819h"></script>
+  <script src="/js/dashboard.js?v=20260819i"></script>
 </body>
 </html>

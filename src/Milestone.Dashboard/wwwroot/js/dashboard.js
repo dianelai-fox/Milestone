@@ -11,7 +11,8 @@ const state = {
   placingCameraId: "",
   expandedCameraId: "",
   selectedCameraIds: new Set(),
-  sourceLabel: "Milestone"
+  sourceLabel: "Milestone",
+  inventoryView: "cameras"
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -28,7 +29,10 @@ const selectAll = document.getElementById("select-all");
 
 refreshButton.addEventListener("click", () => loadDashboard());
 searchInput.addEventListener("input", renderCameras);
-serverFilter.addEventListener("change", renderCameras);
+serverFilter.addEventListener("change", () => {
+  state.inventoryView = "cameras";
+  renderInventory();
+});
 locationFilter.addEventListener("change", renderCameras);
 labelFilter.addEventListener("change", renderCameras);
 placeCamera.addEventListener("change", () => {
@@ -88,7 +92,7 @@ async function loadDashboard() {
     fillServerFilter(state.recordingServers);
     fillLabelFilter(state.cameras);
     fillPlaceCamera();
-    renderCameras();
+    renderInventory();
     try {
       renderMap(state.cameras);
     } catch (mapError) {
@@ -147,7 +151,7 @@ function renderOverview() {
         <span><i class="dot orange"></i>${data.unmapped} cameras unmapped</span>
       </div>
     </article>
-    <article class="summary-card">
+    <article class="summary-card clickable" data-open="cameras" title="Show all cameras">
       <h3>Managed cameras</h3>
       <div class="value">${formatCount(data.cameras)}</div>
       <div class="legend">
@@ -156,7 +160,7 @@ function renderOverview() {
         <span><i class="dot orange"></i>${data.unmapped} Unmapped</span>
       </div>
     </article>
-    <article class="summary-card">
+    <article class="summary-card clickable" data-open="servers" title="Show all recording servers">
       <h3>Recording servers</h3>
       <div class="value">${data.servers}</div>
       <div class="legend">
@@ -165,6 +169,7 @@ function renderOverview() {
       </div>
     </article>
   `;
+  bindInventoryOpeners();
 }
 
 function renderDeviceTypes() {
@@ -177,12 +182,16 @@ function renderDeviceTypes() {
     [data.mapped, "Mapped"],
     [data.unmapped, "Unmapped"]
   ];
-  document.getElementById("device-types").innerHTML = items.map(([count, label]) => `
-    <div class="device-item">
+  document.getElementById("device-types").innerHTML = items.map(([count, label]) => {
+    const open = label === "Recording Server" ? "servers" : label === "Camera" ? "cameras" : "";
+    return `
+    <div class="device-item ${open ? "clickable" : ""}" ${open ? `data-open="${open}"` : ""}>
       <div class="count">${formatCount(count)}</div>
       <div class="label">${label}</div>
     </div>
-  `).join("");
+  `;
+  }).join("");
+  bindInventoryOpeners();
 }
 
 function renderOperational() {
@@ -251,6 +260,89 @@ function renderStorage(storages) {
       </section>
     `;
   }).join("") || `<p class="muted">No storage volumes were returned.</p>`;
+}
+
+function bindInventoryOpeners() {
+  document.querySelectorAll("[data-open]").forEach((item) => {
+    item.addEventListener("click", () => {
+      if (item.dataset.open === "servers") {
+        showRecordingServers();
+      } else if (item.dataset.open === "cameras") {
+        showAllCameras();
+      }
+    });
+  });
+}
+
+function showRecordingServers() {
+  state.inventoryView = "servers";
+  serverFilter.value = "";
+  renderInventory();
+  document.getElementById("inventory-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showAllCameras() {
+  state.inventoryView = "cameras";
+  serverFilter.value = "";
+  renderInventory();
+  document.getElementById("inventory-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showCamerasForServer(serverId) {
+  state.inventoryView = "cameras";
+  serverFilter.value = serverId;
+  renderInventory();
+  document.getElementById("inventory-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderInventory() {
+  const serversWrap = document.getElementById("servers-wrap");
+  const camerasWrap = document.getElementById("cameras-wrap");
+  const filters = document.getElementById("camera-filters");
+  const title = document.getElementById("inventory-title");
+  const copy = document.getElementById("inventory-copy");
+  const showingServers = state.inventoryView === "servers";
+  serversWrap.hidden = !showingServers;
+  camerasWrap.hidden = showingServers;
+  filters.hidden = showingServers;
+
+  if (showingServers) {
+    title.textContent = "Recording servers";
+    copy.innerHTML = `${state.recordingServers.length} recording servers from XProtect. Click a server name to see its cameras.`;
+    renderServers();
+    return;
+  }
+
+  const selected = state.recordingServers.find((server) => server.id === serverFilter.value);
+  title.textContent = selected ? `Cameras on ${selected.name}` : "Cameras";
+  copy.innerHTML = selected
+    ? `${visibleCameras().length} cameras on this recording server. <button class="link-btn" type="button" id="back-to-servers">Back to servers</button> · <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
+    : "Device inventory, firmware lifecycle, NDAA, and password age from XProtect plus the device catalog.";
+  renderCameras();
+  document.getElementById("back-to-servers")?.addEventListener("click", showRecordingServers);
+  document.getElementById("show-all-cameras")?.addEventListener("click", showAllCameras);
+}
+
+function renderServers() {
+  const rows = [...state.recordingServers].sort((left, right) => left.name.localeCompare(right.name));
+  document.getElementById("server-body").innerHTML = rows.map((server) => {
+    const usage = server.maxSizeMb > 0 ? (server.usedSpaceMb * 100) / server.maxSizeMb : 0;
+    return `
+    <tr>
+      <td><button class="link-btn" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button></td>
+      <td>${escapeHtml(server.hostName ?? "—")}</td>
+      <td><span class="status ${server.enabled === false ? "off" : "on"}">${server.enabled === false ? "Offline" : "Online"}</span></td>
+      <td>${server.cameraCount ?? 0}</td>
+      <td>${escapeHtml(formatMb(server.usedSpaceMb))}</td>
+      <td>${escapeHtml(formatMb(server.maxSizeMb))}</td>
+      <td>${formatPercent(usage)}</td>
+    </tr>
+  `;
+  }).join("") || `<tr><td colspan="7">No recording servers were returned.</td></tr>`;
+
+  document.querySelectorAll("[data-server]").forEach((button) => {
+    button.addEventListener("click", () => showCamerasForServer(button.getAttribute("data-server") ?? ""));
+  });
 }
 
 function fillServerFilter(servers) {
