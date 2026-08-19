@@ -72,14 +72,15 @@ public sealed class LocationImportItem
 {
     public string? CameraId { get; init; }
     public string? Name { get; init; }
-    public double Latitude { get; init; }
-    public double Longitude { get; init; }
+    public double? Latitude { get; init; }
+    public double? Longitude { get; init; }
     public string? Site { get; init; }
 }
 
 public sealed class LocationImportResult
 {
     public int Saved { get; init; }
+    public int Skipped { get; init; }
     public IReadOnlyList<string> Unmatched { get; init; } = [];
 }
 

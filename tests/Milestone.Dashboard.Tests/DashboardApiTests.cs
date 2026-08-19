@@ -102,4 +102,27 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.True(camera.GetProperty("locationIsOverride").GetBoolean());
         Assert.Equal("Imported", camera.GetProperty("site").GetString());
     }
+
+    [Fact]
+    public async Task Location_csv_import_saves_rows_with_camera_ids()
+    {
+        using var content = new MultipartFormDataContent();
+        const string csv = """
+            cameraId,name,latitude,longitude,site
+            c10,Server Room,34.054244,-118.414072,FOXUSWDMSAP663
+            unknown,Missing Camera,,,
+            """;
+        content.Add(new StringContent(csv), "file", "camera-locations.csv");
+
+        var response = await _client.PostAsync("/api/locations/import-csv", content);
+        response.EnsureSuccessStatusCode();
+
+        using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(1, result.RootElement.GetProperty("saved").GetInt32());
+
+        using var dashboard = JsonDocument.Parse(await _client.GetStringAsync("/api/dashboard"));
+        var camera = dashboard.RootElement.GetProperty("cameras").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetString() == "c10");
+        Assert.Equal(34.054244, camera.GetProperty("location").GetProperty("latitude").GetDouble(), 5);
+    }
 }

@@ -56,35 +56,56 @@ public sealed class DashboardService
         IEnumerable<LocationImportItem> items,
         CancellationToken cancellationToken)
     {
-        var snapshot = await GetSnapshotAsync(cancellationToken);
-        var unmatched = new List<string>();
-        var saved = 0;
+        var pending = items.ToList();
+        var skipped = pending.Count(item => item.Latitude is null || item.Longitude is null);
+        pending = pending.Where(item => item.Latitude is not null && item.Longitude is not null).ToList();
 
-        foreach (var item in items)
+        IReadOnlyList<CameraInfo> cameras = [];
+        if (pending.Any(item => string.IsNullOrWhiteSpace(item.CameraId)))
         {
-            var camera = snapshot.Cameras.FirstOrDefault(candidate =>
-                (!string.IsNullOrWhiteSpace(item.CameraId)
-                 && candidate.Id.Equals(item.CameraId, StringComparison.OrdinalIgnoreCase))
-                || (!string.IsNullOrWhiteSpace(item.Name)
-                    && candidate.Name.Equals(item.Name, StringComparison.OrdinalIgnoreCase)));
+            cameras = (await GetSnapshotAsync(cancellationToken)).Cameras;
+        }
 
-            if (camera is null)
+        var unmatched = new List<string>();
+        var overrides = new List<LocationOverrideRequest>();
+
+        foreach (var item in pending)
+        {
+            var cameraId = item.CameraId;
+            if (string.IsNullOrWhiteSpace(cameraId))
             {
-                unmatched.Add(item.CameraId ?? item.Name ?? "(blank row)");
+                var camera = cameras.FirstOrDefault(candidate =>
+                    !string.IsNullOrWhiteSpace(item.Name)
+                    && candidate.Name.Equals(item.Name, StringComparison.OrdinalIgnoreCase));
+                cameraId = camera?.Id;
+            }
+
+            if (string.IsNullOrWhiteSpace(cameraId))
+            {
+                unmatched.Add(item.Name ?? "(blank row)");
                 continue;
             }
 
-            await SaveOverrideAsync(new LocationOverrideRequest
+            overrides.Add(new LocationOverrideRequest
             {
-                CameraId = camera.Id,
-                Latitude = item.Latitude,
-                Longitude = item.Longitude,
+                CameraId = cameraId,
+                Latitude = item.Latitude!.Value,
+                Longitude = item.Longitude!.Value,
                 Site = item.Site
-            }, cancellationToken);
-            saved++;
+            });
         }
 
-        return new LocationImportResult { Saved = saved, Unmatched = unmatched };
+        if (overrides.Count > 0)
+        {
+            await _overrides.SaveManyAsync(overrides, cancellationToken);
+        }
+
+        return new LocationImportResult
+        {
+            Saved = overrides.Count,
+            Skipped = skipped,
+            Unmatched = unmatched
+        };
     }
 
     internal static void ApplyOverrides(

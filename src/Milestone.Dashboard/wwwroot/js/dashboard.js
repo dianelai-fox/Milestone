@@ -393,27 +393,23 @@ async function importCsv(event) {
     return;
   }
 
-  const text = await file.text();
-  const rows = parseCsv(text);
-  if (rows.length === 0) {
-    placeHint.textContent = "The CSV had no location rows.";
-    return;
-  }
-
-  const response = await fetch("/api/locations/import", {
+  placeHint.textContent = "Importing camera locations…";
+  const form = new FormData();
+  form.append("file", file, file.name);
+  const response = await fetch("/api/locations/import-csv", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(rows)
+    body: form
   });
 
+  const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    placeHint.textContent = "CSV import failed. Use cameraId or name, latitude, and longitude columns.";
+    placeHint.textContent = payload.error || "CSV import failed. The file needs cameraId, latitude, and longitude columns.";
     return;
   }
 
-  const result = await response.json();
-  const extra = result.unmatched?.length ? ` Unmatched: ${result.unmatched.join(", ")}` : "";
-  placeHint.textContent = `Imported ${result.saved} camera location(s).${extra}`;
+  const extra = payload.unmatched?.length ? ` Unmatched: ${payload.unmatched.slice(0, 8).join(", ")}` : "";
+  const skipped = payload.skipped ? ` Skipped ${payload.skipped} rows without coordinates.` : "";
+  placeHint.textContent = `Imported ${payload.saved} camera location(s).${skipped}${extra}`;
   await loadDashboard();
 }
 

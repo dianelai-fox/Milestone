@@ -174,12 +174,42 @@ app.MapGet("/api/locations/template", async (DashboardService dashboard, Cancell
 
 app.MapPost("/api/locations/import", async (List<LocationImportItem> items, DashboardService dashboard, CancellationToken cancellationToken) =>
 {
-    if (items.Count == 0)
+    return await ImportLocationsAsync(items, dashboard, cancellationToken);
+});
+
+app.MapPost("/api/locations/import-csv", async (HttpRequest request, DashboardService dashboard, CancellationToken cancellationToken) =>
+{
+    if (!request.HasFormContentType)
     {
-        return Results.BadRequest(new { error = "No location rows were provided." });
+        return Results.BadRequest(new { error = "Upload a CSV file." });
     }
 
-    var invalid = items.Where(item => item.Latitude is < -90 or > 90 || item.Longitude is < -180 or > 180).ToList();
+    var form = await request.ReadFormAsync(cancellationToken);
+    var file = form.Files.GetFile("file") ?? form.Files.FirstOrDefault();
+    if (file is null || file.Length == 0)
+    {
+        return Results.BadRequest(new { error = "Choose a CSV file to import." });
+    }
+
+    using var reader = new StreamReader(file.OpenReadStream());
+    var text = await reader.ReadToEndAsync(cancellationToken);
+    var items = CsvLocationParser.Parse(text);
+    return await ImportLocationsAsync(items, dashboard, cancellationToken);
+});
+
+static async Task<IResult> ImportLocationsAsync(
+    List<LocationImportItem> items,
+    DashboardService dashboard,
+    CancellationToken cancellationToken)
+{
+    if (items.Count == 0)
+    {
+        return Results.BadRequest(new { error = "No location rows with latitude and longitude were found. Leave those two columns filled; empty rows are skipped." });
+    }
+
+    var invalid = items.Where(item =>
+        item.Latitude is not null && item.Longitude is not null &&
+        (item.Latitude is < -90 or > 90 || item.Longitude is < -180 or > 180)).ToList();
     if (invalid.Count > 0)
     {
         return Results.BadRequest(new { error = "One or more rows have coordinates that are out of range." });
@@ -187,7 +217,7 @@ app.MapPost("/api/locations/import", async (List<LocationImportItem> items, Dash
 
     var result = await dashboard.ImportOverridesAsync(items, cancellationToken);
     return Results.Ok(result);
-});
+}
 
 app.MapPost("/api/locations", async (LocationOverrideRequest request, DashboardService dashboard, CancellationToken cancellationToken) =>
 {

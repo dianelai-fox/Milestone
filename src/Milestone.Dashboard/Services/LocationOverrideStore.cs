@@ -36,12 +36,21 @@ public sealed class LocationOverrideStore
 
     public async Task SaveAsync(LocationOverrideRequest request, CancellationToken cancellationToken)
     {
+        await SaveManyAsync([request], cancellationToken);
+    }
+
+    public async Task SaveManyAsync(IEnumerable<LocationOverrideRequest> requests, CancellationToken cancellationToken)
+    {
         await _lock.WaitAsync(cancellationToken);
         try
         {
             var current = await ReadUnlockedAsync(cancellationToken);
             var mutable = current.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
-            mutable[request.CameraId] = request;
+            foreach (var request in requests)
+            {
+                mutable[request.CameraId] = request;
+            }
+
             await using var stream = File.Create(_path);
             await JsonSerializer.SerializeAsync(stream, mutable.Values, JsonOptions, cancellationToken);
         }
