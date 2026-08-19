@@ -134,6 +134,7 @@ public sealed class DashboardService
             camera.DeviceSource ??= source;
             camera.Vendor ??= CameraIdentity.Vendor(camera.Model, camera.HardwareDriver);
             camera.IpAddress ??= CameraIdentity.Host(camera.HardwareAddress);
+            camera.Intelligence = DeviceIntelligenceCatalog.Evaluate(camera);
         }
     }
 

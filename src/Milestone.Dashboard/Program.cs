@@ -158,6 +158,7 @@ app.MapGet("/api/dashboard", async (DashboardService dashboard, CancellationToke
             camera.CreatedDate,
             camera.LastModified,
             camera.PasswordLastModified,
+            camera.Intelligence,
             camera.Labels,
             camera.CustomProperties,
             camera.Site,

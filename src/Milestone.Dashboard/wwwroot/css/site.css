@@ -416,6 +416,27 @@ th {
   font-size: 12px;
   white-space: nowrap;
 }
+
+.severity { font-weight: 600; }
+.severity.warn { color: #d9822b; }
+.severity.bad { color: var(--red); }
+.severity.ok { color: var(--teal); }
+
+.life {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.life i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gray);
+}
+.life.ok i { background: #27ae60; }
+.life.warn i { background: #f0a202; }
+.life.bad i { background: var(--red); }
+.life.na { color: var(--muted); }
 .detail-row td {
   background: #f7fafb;
   white-space: normal;

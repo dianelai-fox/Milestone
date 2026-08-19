@@ -7,7 +7,7 @@ A web dashboard for Milestone XProtect that shows camera locations on a map and 
 - Map of cameras that have GIS coordinates in XProtect (`gisPoint`)
 - Local location overrides for cameras that are not mapped yet
 - Storage usage for recording and archive volumes
-- Camera inventory with firmware, labels/groups, model, serial, custom properties, recording server, and hardware details
+- Camera inventory in a device table: status, labels, vendor, model, IP, firmware, lifecycle/EOS, NDAA, password age, and notes
 - Optional SQL Server cache so the last snapshot still shows if the management server is briefly unavailable
 
 The dashboard does **not** query the XProtect `Surveillance` database. Milestone stores configuration there, but that schema is unsupported for integrations. Live data comes from the [MIP VMS RESTful Configuration API](https://doc.developer.milestonesys.com/mipvmsapi/api/config-rest/v1/) through the API Gateway.

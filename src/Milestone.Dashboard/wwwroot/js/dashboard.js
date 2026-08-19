@@ -300,6 +300,10 @@ function visibleCameras() {
       camera.vendor,
       camera.ipAddress,
       camera.deviceSource,
+      camera.intelligence?.lifecycleStatus,
+      camera.intelligence?.ndaaStatus,
+      camera.intelligence?.replacementModel,
+      camera.intelligence?.suggestedFirmware,
       ...(camera.labels ?? []),
       ...Object.entries(camera.customProperties ?? {}).flatMap(([key, value]) => [key, value])
     ].filter(Boolean).join(" ").toLowerCase();
@@ -327,6 +331,7 @@ function renderCameras() {
     const app = camera.enabled;
     const edge = Boolean(camera.edgeStorageEnabled);
     const credentials = Boolean(camera.hardwareUserName);
+    const intel = camera.intelligence ?? {};
     return `
     <tr class="camera-row ${expanded ? "active" : ""} ${selected ? "selected" : ""}" data-toggle="${escapeHtml(camera.id)}">
       <td class="check-col"><input type="checkbox" data-select="${escapeHtml(camera.id)}" ${selected ? "checked" : ""} /></td>
@@ -360,10 +365,25 @@ function renderCameras() {
       <td>${escapeHtml(camera.ipAddress ?? "—")}</td>
       <td>${escapeHtml(formatLastSeen(camera.lastModified))}</td>
       <td>${escapeHtml(camera.firmware ?? "—")}</td>
+      <td>${severityCell(intel.vulnerabilitySeverity)}</td>
+      <td>${escapeHtml(intel.patchedFirmware ?? camera.firmware ?? "—")}</td>
+      <td>${escapeHtml(intel.suggestedFirmware ?? "—")}</td>
+      <td>${escapeHtml(formatLastSeen(intel.lastFirmwareUpgrade))}</td>
+      <td>${lifecycleCell(intel.lifecycleStatus)}</td>
+      <td>${escapeHtml(formatDateOnly(intel.eosDate))}</td>
+      <td class="notes-cell" title="${escapeHtml(intel.replacementModel ?? "")}">${escapeHtml(intel.replacementModel ?? "—")}</td>
+      <td>${dotLabel(intel.warrantyStatus, "na")}</td>
+      <td>${escapeHtml(formatDateOnly(intel.warrantyDate))}</td>
+      <td>${dotLabel(intel.ndaaStatus, ndaaTone(intel.ndaaStatus))}</td>
+      <td>${dotLabel(intel.passwordExpiryStatus, passwordTone(intel.passwordExpiryStatus))}</td>
+      <td>${escapeHtml(formatExpiry(intel.passwordExpiryDate, intel.passwordExpiryStatus))}</td>
+      <td>${dotLabel(intel.sslExpiryStatus, "na")}</td>
+      <td>${escapeHtml(formatDateOnly(intel.sslExpiryDate))}</td>
+      <td>${escapeHtml(intel.lastSslCertificate ?? "—")}</td>
     </tr>
     ${expanded ? renderCameraDetails(camera) : ""}
   `;
-  }).join("") || `<tr><td colspan="15">No cameras match the current filters.</td></tr>`;
+  }).join("") || `<tr><td colspan="30">No cameras match the current filters.</td></tr>`;
 
   document.querySelectorAll("[data-select]").forEach((box) => {
     box.addEventListener("click", (event) => event.stopPropagation());
@@ -415,6 +435,65 @@ function displayModel(camera) {
   return model || "—";
 }
 
+function severityCell(value) {
+  if (!value) {
+    return `<span class="muted">N/A</span>`;
+  }
+  const tone = value === "High" ? "bad" : value === "Medium" ? "warn" : "ok";
+  return `<span class="severity ${tone}" title="From product support status, not a live CVE scan">${escapeHtml(value)}</span>`;
+}
+
+function lifecycleCell(value) {
+  return dotLabel(value, value === "EOS" ? "bad" : value === "EOL" ? "warn" : value === "Active" ? "ok" : "na");
+}
+
+function ndaaTone(value) {
+  if (value === "Compliant") {
+    return "ok";
+  }
+  return value === "Restricted" ? "bad" : "na";
+}
+
+function passwordTone(value) {
+  if (value === "Up To Date") {
+    return "ok";
+  }
+  if (value === "Due Soon") {
+    return "warn";
+  }
+  return value === "Overdue" ? "bad" : "na";
+}
+
+function dotLabel(value, tone) {
+  if (!value) {
+    return `<span class="life na"><i></i>N/A</span>`;
+  }
+  return `<span class="life ${tone}"><i></i>${escapeHtml(value)}</span>`;
+}
+
+function formatDateOnly(value) {
+  if (!value) {
+    return "N/A";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "N/A";
+  }
+  const pad = (number) => String(number).padStart(2, "0");
+  return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}/${date.getFullYear()}`;
+}
+
+function formatExpiry(value, status) {
+  if (!value) {
+    return "N/A";
+  }
+  const stamp = formatLastSeen(value);
+  if (status === "Up To Date") {
+    return `${stamp} | Within policy`;
+  }
+  return stamp;
+}
+
 function formatLastSeen(value) {
   if (!value) {
     return "—";
@@ -463,6 +542,12 @@ function renderCameraDetails(camera) {
     ["IP address", camera.ipAddress],
     ["Device source", camera.deviceSource],
     ["Firmware", camera.firmware],
+    ["Suggested FW", camera.intelligence?.suggestedFirmware],
+    ["Lifecycle", camera.intelligence?.lifecycleStatus],
+    ["EOS date", formatDateOnly(camera.intelligence?.eosDate)],
+    ["Replacement", camera.intelligence?.replacementModel],
+    ["NDAA", camera.intelligence?.ndaaStatus],
+    ["Password policy", camera.intelligence?.passwordExpiryStatus],
     ["Serial number", camera.serialNumber],
     ["MAC address", camera.macAddress],
     ["Hardware", camera.hardwareName],
@@ -486,7 +571,7 @@ function renderCameraDetails(camera) {
 
   return `
     <tr class="detail-row">
-      <td colspan="15">
+      <td colspan="30">
         <div class="detail-grid">
           ${fields.filter(([, value]) => value !== null && value !== undefined && value !== "").map(([label, value]) => `
             <div class="detail-item">

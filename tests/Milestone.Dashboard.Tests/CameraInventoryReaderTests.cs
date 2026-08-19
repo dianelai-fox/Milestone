@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Milestone.Dashboard.Models;
 using Milestone.Dashboard.Services;
 
 namespace Milestone.Dashboard.Tests;
@@ -101,5 +102,45 @@ public class CameraInventoryReaderTests
     public void Identity_reads_the_device_ip_from_the_hardware_address(string address, string expected)
     {
         Assert.Equal(expected, CameraIdentity.Host(address));
+    }
+
+    [Fact]
+    public void Intelligence_marks_unsupported_axis_models_eos()
+    {
+        var camera = new CameraInfo
+        {
+            Id = "c1",
+            Name = "Lobby",
+            Vendor = "Axis",
+            Model = "AXIS P3225-LV Mk II",
+            Firmware = "8.40.31",
+            PasswordLastModified = new DateTimeOffset(2026, 1, 15, 9, 0, 0, TimeSpan.Zero)
+        };
+
+        var intel = DeviceIntelligenceCatalog.Evaluate(camera, new DateTimeOffset(2026, 8, 19, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal("EOS", intel.LifecycleStatus);
+        Assert.Equal("High", intel.VulnerabilitySeverity);
+        Assert.Equal("Compliant", intel.NdaaStatus);
+        Assert.Equal("8.40", intel.SuggestedFirmware);
+        Assert.Contains("P3275", intel.ReplacementModel);
+        Assert.Equal("Up To Date", intel.PasswordExpiryStatus);
+    }
+
+    [Fact]
+    public void Intelligence_marks_hikvision_ndaa_restricted()
+    {
+        var camera = new CameraInfo
+        {
+            Id = "c2",
+            Name = "Dock",
+            Vendor = "Hikvision",
+            Model = "Hikvision DS-2CD2686G2"
+        };
+
+        var intel = DeviceIntelligenceCatalog.Evaluate(camera, new DateTimeOffset(2026, 8, 19, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal("Restricted", intel.NdaaStatus);
+        Assert.Null(intel.SslExpiryStatus);
     }
 }

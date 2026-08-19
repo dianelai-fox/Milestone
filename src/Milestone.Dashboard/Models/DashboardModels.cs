@@ -40,9 +40,29 @@ public sealed class CameraInfo
     public IReadOnlyList<string> Labels { get; init; } = [];
     public IReadOnlyDictionary<string, string> CustomProperties { get; init; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    public DeviceIntelligence Intelligence { get; set; } = new();
     public string? Site { get; set; }
     public CameraLocation? Location { get; set; }
     public bool LocationIsOverride { get; set; }
+}
+
+public sealed class DeviceIntelligence
+{
+    public string? VulnerabilitySeverity { get; init; }
+    public string? PatchedFirmware { get; init; }
+    public string? SuggestedFirmware { get; init; }
+    public DateTimeOffset? LastFirmwareUpgrade { get; init; }
+    public string? LifecycleStatus { get; init; }
+    public DateTimeOffset? EosDate { get; init; }
+    public string? ReplacementModel { get; init; }
+    public string? WarrantyStatus { get; init; }
+    public DateTimeOffset? WarrantyDate { get; init; }
+    public string? NdaaStatus { get; init; }
+    public string? PasswordExpiryStatus { get; init; }
+    public DateTimeOffset? PasswordExpiryDate { get; init; }
+    public string? SslExpiryStatus { get; init; }
+    public DateTimeOffset? SslExpiryDate { get; init; }
+    public string? LastSslCertificate { get; init; }
 }
 
 public sealed class StorageVolume
