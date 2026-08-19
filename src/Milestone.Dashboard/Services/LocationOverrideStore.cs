@@ -14,11 +14,39 @@ public sealed class LocationOverrideStore
     private readonly string _path;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
-    public LocationOverrideStore(IWebHostEnvironment environment)
+    public LocationOverrideStore(IWebHostEnvironment environment, ILogger<LocationOverrideStore> logger)
     {
-        var folder = Path.Combine(environment.ContentRootPath, "App_Data");
-        Directory.CreateDirectory(folder);
-        _path = Path.Combine(folder, "location-overrides.json");
+        _path = ResolvePath(environment, logger);
+    }
+
+    private static string ResolvePath(IWebHostEnvironment environment, ILogger logger)
+    {
+        var candidates = new[]
+        {
+            Path.Combine(environment.ContentRootPath, "App_Data"),
+            Path.Combine(environment.WebRootPath ?? environment.ContentRootPath, "..", "App_Data"),
+            Path.Combine(Path.GetTempPath(), "MilestoneDashboard")
+        };
+
+        foreach (var folder in candidates)
+        {
+            try
+            {
+                var fullFolder = Path.GetFullPath(folder);
+                Directory.CreateDirectory(fullFolder);
+                var probe = Path.Combine(fullFolder, ".write-test");
+                File.WriteAllText(probe, "ok");
+                File.Delete(probe);
+                return Path.Combine(fullFolder, "location-overrides.json");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not use location folder {Folder}", folder);
+            }
+        }
+
+        throw new InvalidOperationException(
+            "IIS cannot write camera locations. Grant Modify on C:\\inetpub\\xprotect-dashboard\\App_Data to IIS AppPool\\XProtectDashboard.");
     }
 
     public async Task<IReadOnlyDictionary<string, LocationOverrideRequest>> GetAllAsync(CancellationToken cancellationToken)

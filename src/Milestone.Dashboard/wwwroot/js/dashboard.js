@@ -394,22 +394,41 @@ async function importCsv(event) {
   }
 
   placeHint.textContent = "Importing camera locations…";
-  const form = new FormData();
-  form.append("file", file, file.name);
-  const response = await fetch("/api/locations/import-csv", {
+  const text = await file.text();
+  const rows = parseCsv(text);
+  if (rows.length === 0) {
+    placeHint.textContent = "No usable coordinates were found. The CSV needs cameraId, latitude, and longitude, with numbers filled in.";
+    return;
+  }
+
+  let response = await fetch("/api/locations/import", {
     method: "POST",
-    body: form
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(rows)
   });
 
-  const payload = await response.json().catch(() => ({}));
+  if (response.status === 404 || response.status === 405) {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    response = await fetch("/api/locations/import-csv", { method: "POST", body: form });
+  }
+
+  const raw = await response.text();
+  let payload = {};
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    payload = { error: raw ? raw.replace(/<[^>]+>/g, " ").trim().slice(0, 180) : `HTTP ${response.status}` };
+  }
+
   if (!response.ok) {
-    placeHint.textContent = payload.error || "CSV import failed. The file needs cameraId, latitude, and longitude columns.";
+    placeHint.textContent = payload.error || `CSV import failed (HTTP ${response.status}).`;
     return;
   }
 
   const extra = payload.unmatched?.length ? ` Unmatched: ${payload.unmatched.slice(0, 8).join(", ")}` : "";
   const skipped = payload.skipped ? ` Skipped ${payload.skipped} rows without coordinates.` : "";
-  const invalid = payload.invalid?.length ? ` Fixed or skipped invalid coordinates (${payload.invalid.length}).` : "";
+  const invalid = payload.invalid?.length ? ` Skipped ${payload.invalid.length} invalid coordinate row(s).` : "";
   placeHint.textContent = `Imported ${payload.saved} camera location(s).${skipped}${invalid}${extra}`;
   await loadDashboard();
 }
@@ -420,18 +439,46 @@ function parseCsv(text) {
     return [];
   }
 
-  const headers = splitCsvLine(lines[0]).map((header) => header.toLowerCase());
+  const headers = splitCsvLine(lines[0]).map((header) => header.replace(/^\uFEFF/, "").toLowerCase());
   const index = (name) => headers.indexOf(name);
   return lines.slice(1).map((line) => {
     const cells = splitCsvLine(line);
+    const latitude = repairCoord(Number(cells[index("latitude")]), -90, 90);
+    const longitude = repairCoord(Number(cells[index("longitude")]), -180, 180);
+    if (latitude == null || longitude == null) {
+      return null;
+    }
+
     return {
       cameraId: cells[index("cameraid")] || "",
       name: cells[index("name")] || "",
-      latitude: Number(cells[index("latitude")]),
-      longitude: Number(cells[index("longitude")]),
+      latitude,
+      longitude,
       site: cells[index("site")] || ""
     };
-  }).filter((row) => Number.isFinite(row.latitude) && Number.isFinite(row.longitude));
+  }).filter(Boolean);
+}
+
+function repairCoord(value, min, max) {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  if (value >= min && value <= max) {
+    return value;
+  }
+
+  const sign = value < 0 ? -1 : 1;
+  const digits = String(Math.abs(Math.trunc(value)));
+  for (const whole of [2, 3, 1]) {
+    if (digits.length - whole < 4) {
+      continue;
+    }
+    const repaired = sign * Number(`${digits.slice(0, whole)}.${digits.slice(whole)}`);
+    if (repaired >= min && repaired <= max) {
+      return repaired;
+    }
+  }
+  return null;
 }
 
 function splitCsvLine(line) {

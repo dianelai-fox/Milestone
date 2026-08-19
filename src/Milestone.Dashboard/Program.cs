@@ -15,6 +15,11 @@ builder.Services.AddSingleton<LocationOverrideStore>();
 builder.Services.AddSingleton<SnapshotCache>();
 builder.Services.AddSingleton<DemoVmsClient>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 50_000_000;
+    options.ValueLengthLimit = 50_000_000;
+});
 builder.Services.AddHttpClient("geocode", client =>
 {
     client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
@@ -70,6 +75,18 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     await db.Database.EnsureCreatedAsync();
 }
 
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            error = "The server could not save camera locations. Grant Modify permission on C:\\inetpub\\xprotect-dashboard\\App_Data to IIS AppPool\\XProtectDashboard."
+        });
+    });
+});
 app.UseDefaultFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -179,22 +196,34 @@ app.MapPost("/api/locations/import", async (List<LocationImportItem> items, Dash
 
 app.MapPost("/api/locations/import-csv", async (HttpRequest request, DashboardService dashboard, CancellationToken cancellationToken) =>
 {
-    if (!request.HasFormContentType)
+    try
     {
-        return Results.BadRequest(new { error = "Upload a CSV file." });
-    }
+        string text;
+        if (request.HasFormContentType)
+        {
+            var form = await request.ReadFormAsync(cancellationToken);
+            var file = form.Files.GetFile("file") ?? form.Files.FirstOrDefault();
+            if (file is null || file.Length == 0)
+            {
+                return Results.BadRequest(new { error = "Choose a CSV file to import." });
+            }
 
-    var form = await request.ReadFormAsync(cancellationToken);
-    var file = form.Files.GetFile("file") ?? form.Files.FirstOrDefault();
-    if (file is null || file.Length == 0)
+            using var reader = new StreamReader(file.OpenReadStream());
+            text = await reader.ReadToEndAsync(cancellationToken);
+        }
+        else
+        {
+            using var reader = new StreamReader(request.Body);
+            text = await reader.ReadToEndAsync(cancellationToken);
+        }
+
+        var items = CsvLocationParser.Parse(text);
+        return await ImportLocationsAsync(items, dashboard, cancellationToken);
+    }
+    catch (Exception ex)
     {
-        return Results.BadRequest(new { error = "Choose a CSV file to import." });
+        return Results.Json(new { error = $"CSV import failed: {ex.Message}" }, statusCode: 500);
     }
-
-    using var reader = new StreamReader(file.OpenReadStream());
-    var text = await reader.ReadToEndAsync(cancellationToken);
-    var items = CsvLocationParser.Parse(text);
-    return await ImportLocationsAsync(items, dashboard, cancellationToken);
 });
 
 static async Task<IResult> ImportLocationsAsync(
