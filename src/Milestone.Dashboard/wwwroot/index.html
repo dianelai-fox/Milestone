@@ -27,8 +27,21 @@
       <article class="panel map-panel">
         <div class="panel-head">
           <h2>Camera locations</h2>
-          <p class="muted">Mapped cameras use XProtect GIS points or a local override.</p>
+          <p class="muted">XProtect did not send GIS points for these cameras. Search a place, choose a camera, then click the map to pin it.</p>
         </div>
+        <div class="map-toolbar">
+          <input id="address-search" type="search" placeholder="Search address or site" />
+          <button id="address-search-btn" type="button">Find</button>
+          <select id="place-camera">
+            <option value="">Select camera to place</option>
+          </select>
+          <label class="file-btn">
+            Import CSV
+            <input id="csv-import" type="file" accept=".csv,text/csv" hidden />
+          </label>
+          <a id="csv-template" href="/api/locations/template" download="camera-locations.csv">Download CSV</a>
+        </div>
+        <p id="place-hint" class="muted">Select a camera, then click the map.</p>
         <div id="map"></div>
       </article>
 
@@ -69,6 +82,7 @@
               <th>Address</th>
               <th>Status</th>
               <th>Location</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="camera-body"></tbody>

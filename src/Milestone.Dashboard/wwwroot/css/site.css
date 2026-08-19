@@ -107,6 +107,41 @@ button { cursor: pointer; }
   flex-wrap: wrap;
 }
 
+.map-toolbar, .filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.map-toolbar { margin-bottom: 10px; }
+.map-toolbar input, .map-toolbar select { min-width: 180px; flex: 1; }
+#place-hint { margin: 0 0 10px; }
+#map.placing { cursor: crosshair; }
+
+.file-btn, a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.file-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  cursor: pointer;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+  cursor: pointer;
+}
+
 #map {
   height: 460px;
   border-radius: 14px;

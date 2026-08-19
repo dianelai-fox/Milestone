@@ -52,6 +52,41 @@ public sealed class DashboardService
         await _overrides.SaveAsync(request, cancellationToken);
     }
 
+    public async Task<LocationImportResult> ImportOverridesAsync(
+        IEnumerable<LocationImportItem> items,
+        CancellationToken cancellationToken)
+    {
+        var snapshot = await GetSnapshotAsync(cancellationToken);
+        var unmatched = new List<string>();
+        var saved = 0;
+
+        foreach (var item in items)
+        {
+            var camera = snapshot.Cameras.FirstOrDefault(candidate =>
+                (!string.IsNullOrWhiteSpace(item.CameraId)
+                 && candidate.Id.Equals(item.CameraId, StringComparison.OrdinalIgnoreCase))
+                || (!string.IsNullOrWhiteSpace(item.Name)
+                    && candidate.Name.Equals(item.Name, StringComparison.OrdinalIgnoreCase)));
+
+            if (camera is null)
+            {
+                unmatched.Add(item.CameraId ?? item.Name ?? "(blank row)");
+                continue;
+            }
+
+            await SaveOverrideAsync(new LocationOverrideRequest
+            {
+                CameraId = camera.Id,
+                Latitude = item.Latitude,
+                Longitude = item.Longitude,
+                Site = item.Site
+            }, cancellationToken);
+            saved++;
+        }
+
+        return new LocationImportResult { Saved = saved, Unmatched = unmatched };
+    }
+
     internal static void ApplyOverrides(
         DashboardSnapshot snapshot,
         IReadOnlyDictionary<string, LocationOverrideRequest> overrides)

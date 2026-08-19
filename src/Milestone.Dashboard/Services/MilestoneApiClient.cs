@@ -30,6 +30,7 @@ public sealed class MilestoneApiClient : IVmsClient
             .ToDictionary(item => ReadString(item, "id"), item => item, StringComparer.OrdinalIgnoreCase);
         var recordingServers = await GetPagedAsync("recordingServers", cancellationToken);
         var sites = await GetPagedAsync("sites", cancellationToken);
+        var mapLocations = await GetChildArrayAsync("gisMapLocations", cancellationToken);
         var siteName = sites.Count > 0 ? ReadString(sites[0], "displayName") : null;
 
         var hardwareLookup = hardware.ToDictionary(
@@ -38,7 +39,8 @@ public sealed class MilestoneApiClient : IVmsClient
             {
                 Name = ReadString(pair.Value, "displayName") ?? ReadString(pair.Value, "name"),
                 Address = ReadString(pair.Value, "address"),
-                RecordingServerId = ReadRelationId(pair.Value, "parent")
+                RecordingServerId = ReadRelationId(pair.Value, "parent"),
+                Location = GisPointParser.FromElement(pair.Value)
             },
             StringComparer.OrdinalIgnoreCase);
 
@@ -67,7 +69,7 @@ public sealed class MilestoneApiClient : IVmsClient
                     ? recName
                     : null,
                 Site = siteName,
-                Location = GisPointParser.Parse(ReadString(item, "gisPoint"))
+                Location = GisPointParser.FromElement(item) ?? hw?.Location
             };
         }).ToList();
 
@@ -110,7 +112,10 @@ public sealed class MilestoneApiClient : IVmsClient
             SiteName = siteName,
             Cameras = cameraModels,
             Storages = storages,
-            RecordingServers = servers
+            RecordingServers = servers,
+            SuggestedMapCenter = mapLocations
+                .Select(GisPointParser.FromElement)
+                .FirstOrDefault(location => location is not null)
         };
     }
 
@@ -174,7 +179,7 @@ public sealed class MilestoneApiClient : IVmsClient
                 break;
             }
 
-            items.AddRange(pageItems);
+            items.AddRange(pageItems.Select(GisPointParser.Unwrap));
             if (pageItems.Count < _options.PageSize)
             {
                 break;
@@ -191,7 +196,7 @@ public sealed class MilestoneApiClient : IVmsClient
         try
         {
             using var document = await SendJsonAsync(path, cancellationToken);
-            return ReadArray(document.RootElement);
+            return ReadArray(document.RootElement).Select(GisPointParser.Unwrap).ToList();
         }
         catch (HttpRequestException ex)
         {

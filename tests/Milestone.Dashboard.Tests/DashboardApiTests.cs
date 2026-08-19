@@ -35,6 +35,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.True(document.RootElement.GetProperty("cameras").GetArrayLength() > 0);
         Assert.True(document.RootElement.GetProperty("storages").GetArrayLength() > 0);
         Assert.True(document.RootElement.GetProperty("summary").GetProperty("cameraCount").GetInt32() > 0);
+        Assert.True(document.RootElement.GetProperty("mapCenter").TryGetProperty("latitude", out _));
     }
 
     [Fact]
@@ -78,5 +79,25 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         response.EnsureSuccessStatusCode();
         var html = await response.Content.ReadAsStringAsync();
         Assert.Contains("Camera location and storage", html);
+        Assert.Contains("Select camera to place", html);
+    }
+
+    [Fact]
+    public async Task Location_import_matches_cameras_by_name()
+    {
+        var response = await _client.PostAsJsonAsync("/api/locations/import", new[]
+        {
+            new { name = "Archive Vault", latitude = 34.1234, longitude = -118.4321, site = "Imported" }
+        });
+        response.EnsureSuccessStatusCode();
+
+        using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(1, result.RootElement.GetProperty("saved").GetInt32());
+
+        using var dashboard = JsonDocument.Parse(await _client.GetStringAsync("/api/dashboard"));
+        var camera = dashboard.RootElement.GetProperty("cameras").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetString() == "c20");
+        Assert.True(camera.GetProperty("locationIsOverride").GetBoolean());
+        Assert.Equal("Imported", camera.GetProperty("site").GetString());
     }
 }

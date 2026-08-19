@@ -20,6 +20,12 @@ public sealed class MilestoneOptions
 
     public int PageSize { get; set; } = 200;
 
+    public double DefaultLatitude { get; set; } = 34.0522;
+
+    public double DefaultLongitude { get; set; } = -118.2437;
+
+    public int DefaultZoom { get; set; } = 13;
+
     public string ResolvedTokenUrl()
     {
         if (!string.IsNullOrWhiteSpace(TokenUrl))

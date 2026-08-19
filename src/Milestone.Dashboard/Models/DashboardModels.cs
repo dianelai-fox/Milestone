@@ -57,8 +57,30 @@ public sealed class DashboardSnapshot
     public IReadOnlyList<CameraInfo> Cameras { get; init; } = [];
     public IReadOnlyList<StorageVolume> Storages { get; init; } = [];
     public IReadOnlyList<RecordingServerInfo> RecordingServers { get; init; } = [];
+    public CameraLocation? SuggestedMapCenter { get; set; }
 
     public DashboardSummary Summary => DashboardSummary.From(this);
+
+    public CameraLocation? ResolveMapCenter()
+    {
+        var mapped = Cameras.FirstOrDefault(camera => camera.Location is not null)?.Location;
+        return mapped ?? SuggestedMapCenter;
+    }
+}
+
+public sealed class LocationImportItem
+{
+    public string? CameraId { get; init; }
+    public string? Name { get; init; }
+    public double Latitude { get; init; }
+    public double Longitude { get; init; }
+    public string? Site { get; init; }
+}
+
+public sealed class LocationImportResult
+{
+    public int Saved { get; init; }
+    public IReadOnlyList<string> Unmatched { get; init; } = [];
 }
 
 public sealed class DashboardSummary

@@ -88,6 +88,16 @@ src/Milestone.Dashboard/     ASP.NET Core 8 site (IIS-ready)
 tests/Milestone.Dashboard.Tests/
 ```
 
-## Camera coordinates in XProtect
+## Put cameras on the map
 
-In Management Client, camera GIS position is stored as `POINT (LONGITUDE LATITUDE)` on the camera object. That value is what the map uses. Cameras without a point appear in the table as **Not mapped** until you set them in XProtect or save an override.
+Most XProtect systems do not store GIS coordinates on cameras, so the dashboard shows **Not mapped**. You can place them in the dashboard without changing XProtect:
+
+1. Search an address or site name above the map, then click **Find**.
+2. Choose a camera in **Select camera to place**, or click **Place on map** in the table.
+3. Click the map. The pin is saved in `App_Data/location-overrides.json` on the web server.
+
+For many cameras, click **Download CSV**, fill `latitude` and `longitude`, then **Import CSV**.
+
+If you later set a camera GIS point in Management Client (`POINT (LONGITUDE LATITUDE)`), the dashboard uses that value unless a local override exists.
+
+To change the starting map view when nothing is mapped yet, set `Milestone:DefaultLatitude`, `DefaultLongitude`, and `DefaultZoom` in `appsettings.json`.
