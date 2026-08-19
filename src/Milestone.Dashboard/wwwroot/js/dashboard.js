@@ -47,6 +47,17 @@ addressSearch.addEventListener("keydown", (event) => {
   }
 });
 csvImport.addEventListener("change", importCsv);
+document.addEventListener("click", (event) => {
+  const opener = event.target.closest("[data-open]");
+  if (!opener) {
+    return;
+  }
+  if (opener.dataset.open === "servers") {
+    showRecordingServers();
+  } else if (opener.dataset.open === "cameras") {
+    showAllCameras();
+  }
+});
 selectAll.addEventListener("change", () => {
   const rows = visibleCameras();
   if (selectAll.checked) {
@@ -160,16 +171,16 @@ function renderOverview() {
         <span><i class="dot orange"></i>${data.unmapped} Unmapped</span>
       </div>
     </article>
-    <article class="summary-card clickable" data-open="servers" title="Show all recording servers">
+    <article class="summary-card clickable ${state.inventoryView === "servers" ? "selected" : ""}" data-open="servers" title="Show all recording servers">
       <h3>Recording servers</h3>
       <div class="value">${data.servers}</div>
       <div class="legend">
         <span><i class="dot teal"></i>${data.serversOnline} Online</span>
         <span><i class="dot gray"></i>${data.storage} storage volumes</span>
       </div>
+      <div class="card-action">View all ${data.servers} servers →</div>
     </article>
   `;
-  bindInventoryOpeners();
 }
 
 function renderDeviceTypes() {
@@ -191,7 +202,6 @@ function renderDeviceTypes() {
     </div>
   `;
   }).join("");
-  bindInventoryOpeners();
 }
 
 function renderOperational() {
@@ -262,21 +272,10 @@ function renderStorage(storages) {
   }).join("") || `<p class="muted">No storage volumes were returned.</p>`;
 }
 
-function bindInventoryOpeners() {
-  document.querySelectorAll("[data-open]").forEach((item) => {
-    item.addEventListener("click", () => {
-      if (item.dataset.open === "servers") {
-        showRecordingServers();
-      } else if (item.dataset.open === "cameras") {
-        showAllCameras();
-      }
-    });
-  });
-}
-
 function showRecordingServers() {
   state.inventoryView = "servers";
   serverFilter.value = "";
+  renderOverview();
   renderInventory();
   document.getElementById("inventory-panel").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -284,6 +283,7 @@ function showRecordingServers() {
 function showAllCameras() {
   state.inventoryView = "cameras";
   serverFilter.value = "";
+  renderOverview();
   renderInventory();
   document.getElementById("inventory-panel").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -291,6 +291,7 @@ function showAllCameras() {
 function showCamerasForServer(serverId) {
   state.inventoryView = "cameras";
   serverFilter.value = serverId;
+  renderOverview();
   renderInventory();
   document.getElementById("inventory-panel").scrollIntoView({ behavior: "smooth", block: "start" });
 }

@@ -126,9 +126,16 @@ main { padding: 20px 24px 40px; }
 
 .summary-card, .card { padding: 18px 20px; }
 .summary-card.clickable, .device-item.clickable { cursor: pointer; }
-.summary-card.clickable:hover, .device-item.clickable:hover {
+.summary-card.clickable:hover, .device-item.clickable:hover,
+.summary-card.selected {
   border-color: var(--teal);
   box-shadow: 0 0 0 1px var(--teal);
+}
+.card-action {
+  margin-top: 12px;
+  color: var(--teal);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .summary-card h3 {

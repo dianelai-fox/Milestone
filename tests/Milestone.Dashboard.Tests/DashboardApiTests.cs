@@ -100,6 +100,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Recording Status", html);
         Assert.Contains("Storage Server", html);
         Assert.Contains("SD Status", html);
+        Assert.Contains("id=\"inventory-panel\"", html);
         Assert.Contains("server-body", html);
         Assert.Contains("Recording server", html);
         Assert.Contains("All labels", html);

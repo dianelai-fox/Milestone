@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260819i" />
+  <link rel="stylesheet" href="/css/site.css?v=20260819j" />
 </head>
 <body>
   <aside class="sidebar">
@@ -34,52 +34,6 @@
       <section id="overview" class="summary-row"></section>
 
       <section id="device-types" class="device-row"></section>
-
-      <section class="middle-row">
-        <article class="card">
-          <h2>Operational status</h2>
-          <div id="alert-list" class="stat-list"></div>
-        </article>
-        <article class="card donut-card">
-          <h2>Camera mapping</h2>
-          <div id="donut" class="donut"></div>
-        </article>
-        <article class="card">
-          <h2>Storage attention</h2>
-          <div id="maintenance-list" class="stat-list"></div>
-        </article>
-      </section>
-
-      <section class="bottom-row">
-        <article class="card" id="storage-status">
-          <h2>Storage status</h2>
-          <p class="muted">Used space by recording and archive volume.</p>
-          <div id="storage-list" class="storage-list"></div>
-        </article>
-
-        <article class="card sites-card" id="sites-view">
-          <div class="panel-head">
-            <div>
-              <h2>Sites view</h2>
-              <p class="muted" id="map-copy">Search a place, choose a camera, then click the map to pin it.</p>
-            </div>
-          </div>
-          <div class="map-toolbar">
-            <input id="address-search" type="search" placeholder="Search address or site" />
-            <button id="address-search-btn" type="button">Find</button>
-            <select id="place-camera">
-              <option value="">Select camera to place</option>
-            </select>
-            <label class="file-btn">
-              Import CSV
-              <input id="csv-import" type="file" accept=".csv,text/csv" hidden />
-            </label>
-            <a id="csv-template" href="/api/locations/template" download="camera-locations.csv">Download CSV</a>
-          </div>
-          <p id="place-hint" class="muted">Select a camera, then click the map.</p>
-          <div id="map"></div>
-        </article>
-      </section>
 
       <section class="card" id="inventory-panel">
         <div class="panel-head table-head">
@@ -166,10 +120,56 @@
           </table>
         </div>
       </section>
+
+      <section class="middle-row">
+        <article class="card">
+          <h2>Operational status</h2>
+          <div id="alert-list" class="stat-list"></div>
+        </article>
+        <article class="card donut-card">
+          <h2>Camera mapping</h2>
+          <div id="donut" class="donut"></div>
+        </article>
+        <article class="card">
+          <h2>Storage attention</h2>
+          <div id="maintenance-list" class="stat-list"></div>
+        </article>
+      </section>
+
+      <section class="bottom-row">
+        <article class="card" id="storage-status">
+          <h2>Storage status</h2>
+          <p class="muted">Used space by recording and archive volume.</p>
+          <div id="storage-list" class="storage-list"></div>
+        </article>
+
+        <article class="card sites-card" id="sites-view">
+          <div class="panel-head">
+            <div>
+              <h2>Sites view</h2>
+              <p class="muted" id="map-copy">Search a place, choose a camera, then click the map to pin it.</p>
+            </div>
+          </div>
+          <div class="map-toolbar">
+            <input id="address-search" type="search" placeholder="Search address or site" />
+            <button id="address-search-btn" type="button">Find</button>
+            <select id="place-camera">
+              <option value="">Select camera to place</option>
+            </select>
+            <label class="file-btn">
+              Import CSV
+              <input id="csv-import" type="file" accept=".csv,text/csv" hidden />
+            </label>
+            <a id="csv-template" href="/api/locations/template" download="camera-locations.csv">Download CSV</a>
+          </div>
+          <p id="place-hint" class="muted">Select a camera, then click the map.</p>
+          <div id="map"></div>
+        </article>
+      </section>
     </main>
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260819i"></script>
+  <script src="/js/dashboard.js?v=20260819j"></script>
 </body>
 </html>
