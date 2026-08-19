@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260819e" />
+  <link rel="stylesheet" href="/css/site.css?v=20260819f" />
 </head>
 <body>
   <aside class="sidebar">
@@ -85,7 +85,7 @@
         <div class="panel-head table-head">
           <div>
             <h2>Cameras</h2>
-            <p class="muted">Firmware, labels, hardware, and recording details from XProtect.</p>
+            <p class="muted">Device inventory from XProtect: status, labels, vendor, model, IP, and firmware.</p>
           </div>
           <div class="filters">
             <input id="search" type="search" placeholder="Search name, firmware, label, serial" />
@@ -106,15 +106,21 @@
           <table>
             <thead>
               <tr>
-                <th>Camera</th>
+                <th class="check-col"><input id="select-all" type="checkbox" /></th>
+                <th>Device Status</th>
+                <th>Device Name</th>
+                <th>Credentials Status</th>
+                <th>Device Type</th>
+                <th>Supported Operations</th>
+                <th>Site(s)</th>
+                <th>Device Source</th>
                 <th>Labels</th>
+                <th>Notes</th>
+                <th>Vendor</th>
                 <th>Model</th>
+                <th>IP Address</th>
+                <th>Last Seen</th>
                 <th>Firmware</th>
-                <th>Site</th>
-                <th>Recording server</th>
-                <th>Status</th>
-                <th>Location</th>
-                <th></th>
               </tr>
             </thead>
             <tbody id="camera-body"></tbody>
@@ -125,6 +131,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260819e"></script>
+  <script src="/js/dashboard.js?v=20260819f"></script>
 </body>
 </html>

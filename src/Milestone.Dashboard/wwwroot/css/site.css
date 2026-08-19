@@ -305,8 +305,12 @@ th, td {
   text-align: left;
   padding: 10px 8px;
   border-bottom: 1px solid var(--line);
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
+}
+th {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .status {
@@ -320,12 +324,93 @@ th, td {
 .status.off { background: #fdecec; color: var(--red); }
 
 .camera-row { cursor: pointer; }
-.camera-row.active { background: #f3fbfa; }
-.camera-row td:first-child { white-space: normal; min-width: 180px; }
-.chips { display: flex; flex-wrap: wrap; gap: 4px; max-width: 240px; }
+.camera-row.active, .camera-row.selected { background: #f3fbfa; }
+.check-col { width: 36px; }
+.name-cell { font-weight: 600; max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+.notes-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+
+.device-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--teal);
+  flex: 0 0 auto;
+}
+.status-dot.off { background: var(--red); }
+
+.conn-tag {
+  background: #d9f3ef;
+  color: #178f83;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.conn-tag.off {
+  background: #eef1f4;
+  color: #9aa6b2;
+}
+
+.cred {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+.cred.ok { background: #27ae60; color: #fff; }
+.cred.off { background: #f0a202; color: #fff; }
+
+.type-cam {
+  display: inline-block;
+  width: 20px;
+  height: 14px;
+  border: 2px solid #5b8def;
+  border-radius: 3px;
+  position: relative;
+  vertical-align: middle;
+}
+.type-cam::after {
+  content: "";
+  position: absolute;
+  right: -5px;
+  top: 2px;
+  width: 4px;
+  height: 6px;
+  background: #5b8def;
+  border-radius: 0 2px 2px 0;
+}
+
+.ops { display: flex; gap: 4px; }
+.op-btn {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 4px;
+  background: #e8f1fb;
+  color: #3d7bd6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.op-btn.off { opacity: 0.35; }
+.op-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 4px; max-width: 220px; }
 .chip {
-  background: #eef6f5;
-  color: #2a6b64;
+  background: #e8f1fb;
+  color: #2b6cb0;
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 12px;

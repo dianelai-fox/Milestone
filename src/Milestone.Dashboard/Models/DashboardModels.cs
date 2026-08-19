@@ -16,7 +16,10 @@ public sealed class CameraInfo
     public string? HardwareUserName { get; init; }
     public bool? HardwareEnabled { get; init; }
     public string? HardwareDriver { get; init; }
+    public string? Vendor { get; set; }
     public string? Model { get; init; }
+    public string? IpAddress { get; set; }
+    public string? DeviceSource { get; set; }
     public string? Firmware { get; init; }
     public string? SerialNumber { get; init; }
     public string? MacAddress { get; init; }

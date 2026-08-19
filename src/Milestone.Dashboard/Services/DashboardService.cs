@@ -29,6 +29,7 @@ public sealed class DashboardService
         {
             var snapshot = await _vmsClient.GetSnapshotAsync(cancellationToken);
             ApplyOverrides(snapshot, await _overrides.GetAllAsync(cancellationToken));
+            AnnotateCameras(snapshot);
             await _cache.SaveAsync(snapshot, cancellationToken);
             return snapshot;
         }
@@ -43,6 +44,7 @@ public sealed class DashboardService
 
             ApplyOverrides(cached, await _overrides.GetAllAsync(cancellationToken));
             cached.Source = $"{cached.Source}-cached";
+            AnnotateCameras(cached);
             return cached;
         }
     }
@@ -120,6 +122,19 @@ public sealed class DashboardService
             Unmatched = unmatched,
             Invalid = invalid
         };
+    }
+
+    internal static void AnnotateCameras(DashboardSnapshot snapshot)
+    {
+        var source = snapshot.Source.StartsWith("demo", StringComparison.OrdinalIgnoreCase)
+            ? "Demo"
+            : "Milestone Production";
+        foreach (var camera in snapshot.Cameras)
+        {
+            camera.DeviceSource ??= source;
+            camera.Vendor ??= CameraIdentity.Vendor(camera.Model, camera.HardwareDriver);
+            camera.IpAddress ??= CameraIdentity.Host(camera.HardwareAddress);
+        }
     }
 
     internal static void ApplyOverrides(

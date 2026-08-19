@@ -83,4 +83,23 @@ public class CameraInventoryReaderTests
         Assert.Equal("Studio", properties["Zone"]);
         Assert.Equal("Restricted", properties["Badge"]);
     }
+
+    [Theory]
+    [InlineData("AXIS P3245-LVE", "AXIS P32 Series", "Axis", "P3245-LVE")]
+    [InlineData("Hanwha PNV-A6081R", "Hanwha Wisenet", "Hanwha", "PNV-A6081R")]
+    [InlineData("Bosch FLEXIDOME 5100i", null, "Bosch", "FLEXIDOME 5100i")]
+    public void Identity_reads_vendor_and_strips_it_from_the_model(string model, string? driver, string vendor, string display)
+    {
+        Assert.Equal(vendor, CameraIdentity.Vendor(model, driver));
+        Assert.Equal(display, CameraIdentity.DisplayModel(model, vendor));
+    }
+
+    [Theory]
+    [InlineData("http://10.208.5.119/", "10.208.5.119")]
+    [InlineData("http://10.208.5.94:80/onvif", "10.208.5.94")]
+    [InlineData("10.10.1.11", "10.10.1.11")]
+    public void Identity_reads_the_device_ip_from_the_hardware_address(string address, string expected)
+    {
+        Assert.Equal(expected, CameraIdentity.Host(address));
+    }
 }

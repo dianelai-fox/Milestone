@@ -9,7 +9,9 @@ const state = {
   markers: [],
   mapCenter: { latitude: 34.0522, longitude: -118.2437, zoom: 13 },
   placingCameraId: "",
-  expandedCameraId: ""
+  expandedCameraId: "",
+  selectedCameraIds: new Set(),
+  sourceLabel: "Milestone"
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -22,6 +24,7 @@ const placeHint = document.getElementById("place-hint");
 const addressSearch = document.getElementById("address-search");
 const addressSearchButton = document.getElementById("address-search-btn");
 const csvImport = document.getElementById("csv-import");
+const selectAll = document.getElementById("select-all");
 
 refreshButton.addEventListener("click", () => loadDashboard());
 searchInput.addEventListener("input", renderCameras);
@@ -40,6 +43,15 @@ addressSearch.addEventListener("keydown", (event) => {
   }
 });
 csvImport.addEventListener("change", importCsv);
+selectAll.addEventListener("change", () => {
+  const rows = visibleCameras();
+  if (selectAll.checked) {
+    rows.forEach((camera) => state.selectedCameraIds.add(camera.id));
+  } else {
+    rows.forEach((camera) => state.selectedCameraIds.delete(camera.id));
+  }
+  renderCameras();
+});
 
 document.querySelectorAll(".nav-btn").forEach((button) => {
   button.addEventListener("click", () => {
@@ -96,6 +108,7 @@ function renderSource(data) {
   const source = data.source ?? "unknown";
   badge.textContent = source === "demo" ? "Demo data" : "Live";
   badge.className = `badge ${source === "demo" ? "demo" : "live"}`;
+  state.sourceLabel = source === "demo" ? "Demo" : "Milestone Production";
   document.getElementById("generated-at").textContent = data.generatedAt
     ? new Date(data.generatedAt).toLocaleString()
     : "";
@@ -268,9 +281,9 @@ function fillPlaceCamera() {
   updatePlaceHint();
 }
 
-function renderCameras() {
+function visibleCameras() {
   const query = searchInput.value.trim().toLowerCase();
-  const rows = state.cameras.filter((camera) => {
+  return state.cameras.filter((camera) => {
     const haystack = [
       camera.name,
       camera.shortName,
@@ -284,6 +297,9 @@ function renderCameras() {
       camera.macAddress,
       camera.hardwareDriver,
       camera.hardwareUserName,
+      camera.vendor,
+      camera.ipAddress,
+      camera.deviceSource,
       ...(camera.labels ?? []),
       ...Object.entries(camera.customProperties ?? {}).flatMap(([key, value]) => [key, value])
     ].filter(Boolean).join(" ").toLowerCase();
@@ -296,30 +312,72 @@ function renderCameras() {
       || (locationFilter.value === "unmapped" && !mapped);
     return matchesQuery && matchesServer && matchesLabel && matchesLocation;
   });
+}
+
+function renderCameras() {
+  const rows = visibleCameras();
+  const selectedVisible = rows.filter((camera) => state.selectedCameraIds.has(camera.id)).length;
+  selectAll.checked = rows.length > 0 && selectedVisible === rows.length;
+  selectAll.indeterminate = selectedVisible > 0 && selectedVisible < rows.length;
 
   document.getElementById("camera-body").innerHTML = rows.map((camera) => {
     const expanded = camera.id === state.expandedCameraId;
+    const selected = state.selectedCameraIds.has(camera.id);
+    const mgmt = camera.hardwareEnabled !== false && camera.enabled;
+    const app = camera.enabled;
+    const edge = Boolean(camera.edgeStorageEnabled);
+    const credentials = Boolean(camera.hardwareUserName);
     return `
-    <tr class="camera-row ${expanded ? "active" : ""}" data-toggle="${escapeHtml(camera.id)}">
+    <tr class="camera-row ${expanded ? "active" : ""} ${selected ? "selected" : ""}" data-toggle="${escapeHtml(camera.id)}">
+      <td class="check-col"><input type="checkbox" data-select="${escapeHtml(camera.id)}" ${selected ? "checked" : ""} /></td>
       <td>
-        <strong>${escapeHtml(camera.name)}</strong>
-        <div class="muted">${escapeHtml(camera.hardwareAddress ?? camera.description ?? "")}</div>
+        <div class="device-status">
+          <span class="status-dot ${camera.enabled ? "ok" : "off"}" title="${camera.enabled ? "Enabled" : "Disabled"}"></span>
+          <span class="conn-tag ${mgmt ? "on" : "off"}" title="Hardware reachable in XProtect">MGMT</span>
+          <span class="conn-tag ${app ? "on" : "off"}" title="Camera enabled in XProtect">APP</span>
+          <span class="conn-tag ${edge ? "on" : "off"}" title="Edge storage">EDGE</span>
+        </div>
       </td>
-      <td>${renderChips(camera.labels)}</td>
-      <td>${escapeHtml(camera.model ?? "—")}</td>
-      <td>${escapeHtml(camera.firmware ?? "—")}</td>
+      <td class="name-cell">${escapeHtml(camera.name)}</td>
+      <td>
+        <span class="cred ${credentials ? "ok" : "off"}" title="${credentials ? `User ${camera.hardwareUserName}` : "No hardware user"}">${credentials ? "✓" : "!"}</span>
+      </td>
+      <td><span class="type-cam" title="Camera"></span></td>
+      <td>
+        <div class="ops">
+          <button class="op-btn" type="button" data-toggle="${escapeHtml(camera.id)}" title="${credentials ? "Credentials configured" : "Credentials not reported"}">${iconLock()}</button>
+          <button class="op-btn ${camera.firmware ? "" : "off"}" type="button" data-toggle="${escapeHtml(camera.id)}" title="${camera.firmware ? `Firmware ${camera.firmware}` : "Firmware not reported"}">${iconChip()}</button>
+          <button class="op-btn" type="button" data-place="${escapeHtml(camera.id)}" title="Place on map">${iconPin()}</button>
+          <button class="op-btn ${camera.recordingEnabled === false ? "off" : ""}" type="button" data-toggle="${escapeHtml(camera.id)}" title="${camera.recordingEnabled === false ? "Recording disabled" : "Recording enabled"}">${iconShield()}</button>
+        </div>
+      </td>
       <td>${escapeHtml(camera.site ?? "—")}</td>
-      <td>${escapeHtml(camera.recordingServerName ?? "—")}</td>
-      <td><span class="status ${camera.enabled ? "on" : "off"}">${camera.enabled ? "Enabled" : "Disabled"}</span></td>
-      <td>${formatLocation(camera)}</td>
-      <td>
-        <button class="link-btn" type="button" data-place="${escapeHtml(camera.id)}">Place</button>
-        <button class="link-btn" type="button" data-toggle="${escapeHtml(camera.id)}">${expanded ? "Hide" : "Details"}</button>
-      </td>
+      <td>${escapeHtml(camera.deviceSource ?? state.sourceLabel ?? "Milestone")}</td>
+      <td>${renderChips(shortLabels(camera.labels))}</td>
+      <td class="notes-cell">${escapeHtml(camera.description || "—")}</td>
+      <td>${escapeHtml(camera.vendor ?? "—")}</td>
+      <td>${escapeHtml(displayModel(camera))}</td>
+      <td>${escapeHtml(camera.ipAddress ?? "—")}</td>
+      <td>${escapeHtml(formatLastSeen(camera.lastModified))}</td>
+      <td>${escapeHtml(camera.firmware ?? "—")}</td>
     </tr>
     ${expanded ? renderCameraDetails(camera) : ""}
   `;
-  }).join("") || `<tr><td colspan="9">No cameras match the current filters.</td></tr>`;
+  }).join("") || `<tr><td colspan="15">No cameras match the current filters.</td></tr>`;
+
+  document.querySelectorAll("[data-select]").forEach((box) => {
+    box.addEventListener("click", (event) => event.stopPropagation());
+    box.addEventListener("change", (event) => {
+      event.stopPropagation();
+      const cameraId = box.getAttribute("data-select") ?? "";
+      if (box.checked) {
+        state.selectedCameraIds.add(cameraId);
+      } else {
+        state.selectedCameraIds.delete(cameraId);
+      }
+      renderCameras();
+    });
+  });
 
   document.querySelectorAll("[data-place]").forEach((button) => {
     button.addEventListener("click", (event) => {
@@ -341,6 +399,50 @@ function renderCameras() {
   });
 }
 
+function shortLabels(values) {
+  return (values ?? []).map((value) => {
+    const parts = String(value).split(" / ").map((part) => part.trim()).filter(Boolean);
+    return parts.at(-1) ?? value;
+  });
+}
+
+function displayModel(camera) {
+  const model = camera.model ?? "";
+  const vendor = camera.vendor ?? "";
+  if (vendor && model.toLowerCase().startsWith(vendor.toLowerCase())) {
+    return model.slice(vendor.length).replace(/^[\s-]+/, "") || model;
+  }
+  return model || "—";
+}
+
+function formatLastSeen(value) {
+  if (!value) {
+    return "—";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+  const pad = (number) => String(number).padStart(2, "0");
+  return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}/${String(date.getFullYear()).slice(-2)} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+function iconLock() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0v2h1.5A1.5 1.5 0 0 1 20 11.5v8A1.5 1.5 0 0 1 18.5 21h-13A1.5 1.5 0 0 1 4 19.5v-8A1.5 1.5 0 0 1 5.5 10H7zm2 0h6V8a3 3 0 0 0-6 0v2z"/></svg>`;
+}
+
+function iconChip() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h2v3h2V3h2v3h3v3h3v2h-3v2h3v2h-3v3h-3v3h-2v-3h-2v3H9v-3H6v-3H3v-2h3v-2H3V9h3V6h3V3zm1 7v4h4v-4h-4z"/></svg>`;
+}
+
+function iconPin() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 1 7 7c0 5.25-7 13-7 13S5 14.25 5 9a7 7 0 0 1 7-7zm0 4.5A2.5 2.5 0 1 0 12 11a2.5 2.5 0 0 0 0-4.5z"/></svg>`;
+}
+
+function iconShield() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 20 6v6c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-4z"/></svg>`;
+}
+
 function renderChips(values) {
   if (!values?.length) {
     return "—";
@@ -356,7 +458,10 @@ function renderCameraDetails(camera) {
     ["Short name", camera.shortName],
     ["Description", camera.description],
     ["Channel", camera.channel],
+    ["Vendor", camera.vendor],
     ["Model", camera.model],
+    ["IP address", camera.ipAddress],
+    ["Device source", camera.deviceSource],
     ["Firmware", camera.firmware],
     ["Serial number", camera.serialNumber],
     ["MAC address", camera.macAddress],
@@ -381,7 +486,7 @@ function renderCameraDetails(camera) {
 
   return `
     <tr class="detail-row">
-      <td colspan="9">
+      <td colspan="15">
         <div class="detail-grid">
           ${fields.filter(([, value]) => value !== null && value !== undefined && value !== "").map(([label, value]) => `
             <div class="detail-item">
