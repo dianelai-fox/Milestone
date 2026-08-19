@@ -12,7 +12,9 @@ const state = {
   expandedCameraId: "",
   selectedCameraIds: new Set(),
   sourceLabel: "Milestone",
-  inventoryView: "cameras"
+  inventoryView: "cameras",
+  page: 1,
+  pageSize: 100
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -20,6 +22,11 @@ const searchInput = document.getElementById("search");
 const serverFilter = document.getElementById("server-filter");
 const locationFilter = document.getElementById("location-filter");
 const labelFilter = document.getElementById("label-filter");
+const siteFilter = document.getElementById("site-filter");
+const vendorFilter = document.getElementById("vendor-filter");
+const pageSizeSelect = document.getElementById("page-size");
+const exportCameras = document.getElementById("export-cameras");
+const clearFilters = document.getElementById("clear-filters");
 const placeCamera = document.getElementById("place-camera");
 const placeHint = document.getElementById("place-hint");
 const addressSearch = document.getElementById("address-search");
@@ -28,13 +35,32 @@ const csvImport = document.getElementById("csv-import");
 const selectAll = document.getElementById("select-all");
 
 refreshButton.addEventListener("click", () => loadDashboard());
-searchInput.addEventListener("input", renderCameras);
+searchInput.addEventListener("input", () => resetPageAndRender());
 serverFilter.addEventListener("change", () => {
   state.inventoryView = "cameras";
+  state.page = 1;
   renderInventory();
 });
-locationFilter.addEventListener("change", renderCameras);
-labelFilter.addEventListener("change", renderCameras);
+locationFilter.addEventListener("change", () => resetPageAndRender());
+labelFilter.addEventListener("change", () => resetPageAndRender());
+siteFilter.addEventListener("change", () => resetPageAndRender());
+vendorFilter.addEventListener("change", () => resetPageAndRender());
+pageSizeSelect.addEventListener("change", () => {
+  state.pageSize = Number(pageSizeSelect.value) || 100;
+  state.page = 1;
+  renderCameras();
+});
+exportCameras.addEventListener("click", downloadCameraCsv);
+clearFilters.addEventListener("click", () => {
+  searchInput.value = "";
+  serverFilter.value = "";
+  labelFilter.value = "";
+  locationFilter.value = "";
+  siteFilter.value = "";
+  vendorFilter.value = "";
+  state.page = 1;
+  renderInventory();
+});
 placeCamera.addEventListener("change", () => {
   state.placingCameraId = placeCamera.value;
   updatePlaceHint();
@@ -59,11 +85,11 @@ document.addEventListener("click", (event) => {
   }
 });
 selectAll.addEventListener("change", () => {
-  const rows = visibleCameras();
+  const { pageRows } = pagedCameras();
   if (selectAll.checked) {
-    rows.forEach((camera) => state.selectedCameraIds.add(camera.id));
+    pageRows.forEach((camera) => state.selectedCameraIds.add(camera.id));
   } else {
-    rows.forEach((camera) => state.selectedCameraIds.delete(camera.id));
+    pageRows.forEach((camera) => state.selectedCameraIds.delete(camera.id));
   }
   renderCameras();
 });
@@ -102,6 +128,8 @@ async function loadDashboard() {
     renderStorage(state.storages);
     fillServerFilter(state.recordingServers);
     fillLabelFilter(state.cameras);
+    fillChoiceFilter(siteFilter, state.cameras.map((camera) => camera.site), "Site");
+    fillChoiceFilter(vendorFilter, state.cameras.map((camera) => camera.vendor), "Vendor");
     fillPlaceCamera();
     renderInventory();
     try {
@@ -310,15 +338,21 @@ function renderInventory() {
   if (showingServers) {
     title.textContent = "Recording servers";
     copy.innerHTML = `${state.recordingServers.length} recording servers from XProtect. Click a server name to see its cameras.`;
+    document.getElementById("tab-cameras").classList.remove("active");
+    document.getElementById("tab-servers").classList.add("active");
+    document.getElementById("camera-footer").hidden = true;
     renderServers();
     return;
   }
 
   const selected = state.recordingServers.find((server) => server.id === serverFilter.value);
-  title.textContent = selected ? `Cameras on ${selected.name}` : "Cameras";
+  title.textContent = "Device Management";
   copy.innerHTML = selected
-    ? `${visibleCameras().length} cameras on this recording server. <button class="link-btn" type="button" id="back-to-servers">Back to servers</button> · <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
-    : "Device inventory, firmware lifecycle, NDAA, and password age from XProtect plus the device catalog.";
+    ? `${visibleCameras().length} cameras on ${escapeHtml(selected.name)}. <button class="link-btn" type="button" id="back-to-servers">Back to servers</button> · <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
+    : "All cameras from XProtect.";
+  document.getElementById("tab-cameras").classList.add("active");
+  document.getElementById("tab-servers").classList.remove("active");
+  document.getElementById("camera-footer").hidden = false;
   renderCameras();
   document.getElementById("back-to-servers")?.addEventListener("click", showRecordingServers);
   document.getElementById("show-all-cameras")?.addEventListener("click", showAllCameras);
@@ -348,7 +382,7 @@ function renderServers() {
 
 function fillServerFilter(servers) {
   const current = serverFilter.value;
-  serverFilter.innerHTML = `<option value="">All recording servers</option>` +
+  serverFilter.innerHTML = `<option value="">Storage Server</option>` +
     servers.map((server) => `<option value="${escapeHtml(server.id)}">${escapeHtml(server.name)}</option>`).join("");
   serverFilter.value = current;
 }
@@ -357,9 +391,22 @@ function fillLabelFilter(cameras) {
   const current = labelFilter.value;
   const labels = [...new Set(cameras.flatMap((camera) => camera.labels ?? []))].sort((left, right) =>
     left.localeCompare(right));
-  labelFilter.innerHTML = `<option value="">All labels</option>` +
+  labelFilter.innerHTML = `<option value="">Group</option>` +
     labels.map((label) => `<option value="${escapeHtml(label)}">${escapeHtml(label)}</option>`).join("");
   labelFilter.value = labels.includes(current) ? current : "";
+}
+
+function fillChoiceFilter(select, values, placeholder) {
+  const current = select.value;
+  const options = [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right));
+  select.innerHTML = `<option value="">${placeholder}</option>` +
+    options.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+  select.value = options.includes(current) ? current : "";
+}
+
+function resetPageAndRender() {
+  state.page = 1;
+  renderCameras();
 }
 
 function fillPlaceCamera() {
@@ -406,21 +453,46 @@ function visibleCameras() {
     const matchesQuery = !query || haystack.includes(query);
     const matchesServer = !serverFilter.value || camera.recordingServerId === serverFilter.value;
     const matchesLabel = !labelFilter.value || (camera.labels ?? []).includes(labelFilter.value);
+    const matchesSite = !siteFilter.value || camera.site === siteFilter.value;
+    const matchesVendor = !vendorFilter.value || camera.vendor === vendorFilter.value;
     const mapped = Boolean(camera.location);
     const matchesLocation = !locationFilter.value
       || (locationFilter.value === "mapped" && mapped)
       || (locationFilter.value === "unmapped" && !mapped);
-    return matchesQuery && matchesServer && matchesLabel && matchesLocation;
+    return matchesQuery && matchesServer && matchesLabel && matchesSite && matchesVendor && matchesLocation;
   });
 }
 
-function renderCameras() {
+function pagedCameras() {
   const rows = visibleCameras();
-  const selectedVisible = rows.filter((camera) => state.selectedCameraIds.has(camera.id)).length;
-  selectAll.checked = rows.length > 0 && selectedVisible === rows.length;
-  selectAll.indeterminate = selectedVisible > 0 && selectedVisible < rows.length;
+  const pageSize = state.pageSize || 100;
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  state.page = Math.min(Math.max(state.page, 1), pageCount);
+  const start = (state.page - 1) * pageSize;
+  return {
+    rows,
+    pageRows: rows.slice(start, start + pageSize),
+    start,
+    pageCount,
+    pageSize
+  };
+}
 
-  document.getElementById("camera-body").innerHTML = rows.map((camera) => {
+function renderCameras() {
+  const { rows, pageRows, start, pageCount, pageSize } = pagedCameras();
+  const selectedTotal = rows.filter((camera) => state.selectedCameraIds.has(camera.id)).length;
+  const selectedOnPage = pageRows.filter((camera) => state.selectedCameraIds.has(camera.id)).length;
+  selectAll.checked = pageRows.length > 0 && selectedOnPage === pageRows.length;
+  selectAll.indeterminate = selectedOnPage > 0 && selectedOnPage < pageRows.length;
+  document.getElementById("selection-summary").textContent =
+    `${state.selectedCameraIds.size} selected out of ${rows.length.toLocaleString()} items`;
+  const first = rows.length === 0 ? 0 : start + 1;
+  const last = Math.min(start + pageSize, rows.length);
+  document.getElementById("page-range").textContent =
+    `${first}-${last} of ${rows.length.toLocaleString()} items`;
+  renderPager(pageCount);
+
+  document.getElementById("camera-body").innerHTML = pageRows.map((camera) => {
     const expanded = camera.id === state.expandedCameraId;
     const selected = state.selectedCameraIds.has(camera.id);
     const mgmt = camera.hardwareEnabled !== false && camera.enabled;
@@ -521,6 +593,64 @@ function renderCameras() {
       renderCameras();
     });
   });
+}
+
+function renderPager(pageCount) {
+  const pages = [];
+  const current = state.page;
+  const push = (page, label = String(page), active = false) => {
+    pages.push(`<button type="button" class="page-btn ${active ? "active" : ""}" data-page="${page}">${label}</button>`);
+  };
+  push(Math.max(1, current - 1), "‹");
+  const windowStart = Math.max(1, Math.min(current - 2, pageCount - 4));
+  const windowEnd = Math.min(pageCount, windowStart + 4);
+  if (windowStart > 1) {
+    push(1);
+    if (windowStart > 2) {
+      pages.push(`<span class="page-gap">…</span>`);
+    }
+  }
+  for (let page = windowStart; page <= windowEnd; page += 1) {
+    push(page, String(page), page === current);
+  }
+  if (windowEnd < pageCount) {
+    if (windowEnd < pageCount - 1) {
+      pages.push(`<span class="page-gap">…</span>`);
+    }
+    push(pageCount);
+  }
+  push(Math.min(pageCount, current + 1), "›");
+  document.getElementById("page-nav").innerHTML = pages.join("");
+  document.querySelectorAll("[data-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.page = Number(button.getAttribute("data-page")) || 1;
+      renderCameras();
+    });
+  });
+}
+
+function downloadCameraCsv() {
+  const rows = visibleCameras();
+  const header = ["cameraId", "name", "site", "vendor", "model", "ipAddress", "firmware", "recordingServer", "labels", "enabled"];
+  const lines = [header.join(",")].concat(rows.map((camera) => [
+    camera.id,
+    camera.name,
+    camera.site ?? "",
+    camera.vendor ?? "",
+    camera.model ?? "",
+    camera.ipAddress ?? "",
+    camera.firmware ?? "",
+    camera.recordingServerName ?? "",
+    (camera.labels ?? []).join("|"),
+    camera.enabled
+  ].map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`).join(",")));
+  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "cameras.csv";
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function shortLabels(values) {

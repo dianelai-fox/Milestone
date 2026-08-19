@@ -103,7 +103,12 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"inventory-panel\"", html);
         Assert.Contains("server-body", html);
         Assert.Contains("Recording server", html);
-        Assert.Contains("All labels", html);
+        Assert.Contains("Device Management", html);
+        Assert.Contains("All Devices", html);
+        Assert.Contains("selection-summary", html);
+        Assert.Contains("page-nav", html);
+        Assert.Contains("100", html);
+        Assert.Contains("Group", html);
         Assert.Contains("/lib/leaflet/leaflet.js", html);
     }
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260819j" />
+  <link rel="stylesheet" href="/css/site.css?v=20260819k" />
 </head>
 <body>
   <aside class="sidebar">
@@ -35,26 +35,32 @@
 
       <section id="device-types" class="device-row"></section>
 
-      <section class="card" id="inventory-panel">
-        <div class="panel-head table-head">
+      <section class="card device-page" id="inventory-panel">
+        <div class="device-head">
           <div>
-            <h2 id="inventory-title">Cameras</h2>
-            <p class="muted" id="inventory-copy">Device inventory, firmware lifecycle, NDAA, and password age from XProtect plus the device catalog.</p>
+            <h2 id="inventory-title">Device Management</h2>
+            <div class="tabs">
+              <button class="tab active" type="button" data-open="cameras" id="tab-cameras">All Devices</button>
+              <button class="tab" type="button" data-open="servers" id="tab-servers">Recording servers</button>
+            </div>
+            <p class="muted" id="inventory-copy">All cameras from XProtect.</p>
           </div>
-          <div class="filters" id="camera-filters">
-            <input id="search" type="search" placeholder="Search name, firmware, label, serial" />
-            <select id="server-filter">
-              <option value="">All recording servers</option>
-            </select>
-            <select id="label-filter">
-              <option value="">All labels</option>
-            </select>
-            <select id="location-filter">
-              <option value="">All locations</option>
-              <option value="mapped">Mapped</option>
-              <option value="unmapped">Unmapped</option>
-            </select>
+          <div class="device-actions">
+            <button id="export-cameras" type="button">Export CSV</button>
           </div>
+        </div>
+        <div class="filter-bar" id="camera-filters">
+          <select id="site-filter"><option value="">Site</option></select>
+          <select id="label-filter"><option value="">Group</option></select>
+          <select id="server-filter"><option value="">Storage Server</option></select>
+          <select id="vendor-filter"><option value="">Vendor</option></select>
+          <input id="search" type="search" placeholder="Device Name" />
+          <select id="location-filter">
+            <option value="">Location</option>
+            <option value="mapped">Mapped</option>
+            <option value="unmapped">Unmapped</option>
+          </select>
+          <button class="link-btn" id="clear-filters" type="button">Clear all</button>
         </div>
         <div class="table-wrap" id="servers-wrap" hidden>
           <table>
@@ -72,7 +78,7 @@
             <tbody id="server-body"></tbody>
           </table>
         </div>
-        <div class="table-wrap" id="cameras-wrap">
+        <div class="table-wrap table-scroll" id="cameras-wrap">
           <table>
             <thead>
               <tr>
@@ -119,6 +125,18 @@
             <tbody id="camera-body"></tbody>
           </table>
         </div>
+        <footer class="table-footer" id="camera-footer">
+          <span id="selection-summary">0 selected out of 0 items</span>
+          <div class="pager">
+            <select id="page-size">
+              <option value="50">50</option>
+              <option value="100" selected>100</option>
+              <option value="200">200</option>
+            </select>
+            <span id="page-range">0 of 0 items</span>
+            <nav id="page-nav" aria-label="Camera pages"></nav>
+          </div>
+        </footer>
       </section>
 
       <section class="middle-row">
@@ -170,6 +188,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260819j"></script>
+  <script src="/js/dashboard.js?v=20260819k"></script>
 </body>
 </html>
