@@ -62,7 +62,7 @@ body {
   border: 0;
   border-radius: 10px;
   background: transparent;
-  color: #d5dbe3;
+  color: #fff;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -104,7 +104,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.01em;
   line-height: 1.2;
-  color: #f4f7fa;
+  color: #fff;
   transform: translateX(-8px);
   transition: opacity 0.16s ease, transform 0.16s ease;
 }

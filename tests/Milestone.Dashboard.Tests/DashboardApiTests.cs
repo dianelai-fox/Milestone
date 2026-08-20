@@ -131,6 +131,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         var css = await response.Content.ReadAsStringAsync();
         Assert.Contains(".nav-label", css);
         Assert.Contains("Calibri", css);
+        Assert.Contains("color: #fff", css);
     }
 
     [Fact]
