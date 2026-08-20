@@ -36,6 +36,37 @@ public class DashboardServiceTests
         Assert.Equal(34.06, dock.Latitude);
         Assert.True(snapshot.Cameras[1].LocationIsOverride);
     }
+
+    [Fact]
+    public void ApplyOverrides_uses_site_name_and_address_from_import()
+    {
+        var snapshot = new DashboardSnapshot
+        {
+            Cameras =
+            [
+                new CameraInfo { Id = "c01", Name = "Lobby", Site = "Building A" }
+            ]
+        };
+
+        DashboardService.ApplyOverrides(snapshot, new Dictionary<string, LocationOverrideRequest>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["c01"] = new()
+            {
+                CameraId = "c01",
+                Latitude = 34.05,
+                Longitude = -118.25,
+                Site = "FOXUSWDMSAP663",
+                Address = "10201 W Pico Blvd, Los Angeles, CA 90064, USA",
+                SiteName = "Fox Studio Lot"
+            }
+        });
+
+        var camera = snapshot.Cameras[0];
+        Assert.Equal("Fox Studio Lot", camera.Site);
+        Assert.Equal("10201 W Pico Blvd, Los Angeles, CA 90064, USA", camera.Address);
+        Assert.Equal("FOXUSWDMSAP663", camera.CustomProperties["SiteCode"]);
+        Assert.Contains("FOXUSWDMSAP663", camera.Labels);
+    }
 }
 
 public class DemoVmsClientTests

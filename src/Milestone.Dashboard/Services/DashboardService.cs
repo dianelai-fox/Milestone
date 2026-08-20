@@ -106,7 +106,9 @@ public sealed class DashboardService
                 CameraId = cameraId,
                 Latitude = latitude,
                 Longitude = longitude,
-                Site = item.Site
+                Site = item.Site,
+                Address = item.Address,
+                SiteName = item.SiteName
             });
         }
 
@@ -153,10 +155,39 @@ public sealed class DashboardService
 
             camera.Location = new CameraLocation(location.Longitude, location.Latitude);
             camera.LocationIsOverride = true;
+            if (!string.IsNullOrWhiteSpace(location.SiteName))
+            {
+                camera.Site = location.SiteName.Trim();
+            }
+            else if (!string.IsNullOrWhiteSpace(location.Site))
+            {
+                camera.Site = location.Site.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(location.Address))
+            {
+                camera.Address = location.Address.Trim();
+            }
+
+            var properties = new Dictionary<string, string>(camera.CustomProperties, StringComparer.OrdinalIgnoreCase);
+            if (!string.IsNullOrWhiteSpace(location.Address))
+            {
+                properties["Address"] = location.Address.Trim();
+            }
+
             if (!string.IsNullOrWhiteSpace(location.Site))
             {
-                camera.Site = location.Site;
+                properties["SiteCode"] = location.Site.Trim();
+                var labels = camera.Labels.ToList();
+                if (!labels.Any(label => label.Equals(location.Site.Trim(), StringComparison.OrdinalIgnoreCase)))
+                {
+                    labels.Add(location.Site.Trim());
+                }
+
+                camera.Labels = labels;
             }
+
+            camera.CustomProperties = properties;
         }
     }
 }

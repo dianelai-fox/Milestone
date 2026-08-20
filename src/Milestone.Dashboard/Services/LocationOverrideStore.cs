@@ -76,7 +76,9 @@ public sealed class LocationOverrideStore
             var mutable = current.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
             foreach (var request in requests)
             {
-                mutable[request.CameraId] = request;
+                mutable[request.CameraId] = mutable.TryGetValue(request.CameraId, out var existing)
+                    ? Merge(existing, request)
+                    : request;
             }
 
             await using var stream = File.Create(_path);
@@ -100,4 +102,18 @@ public sealed class LocationOverrideStore
                     ?? [];
         return items.ToDictionary(item => item.CameraId, item => item, StringComparer.OrdinalIgnoreCase);
     }
+
+    private static LocationOverrideRequest Merge(LocationOverrideRequest existing, LocationOverrideRequest incoming) =>
+        new()
+        {
+            CameraId = incoming.CameraId,
+            Latitude = incoming.Latitude,
+            Longitude = incoming.Longitude,
+            Site = First(incoming.Site, existing.Site),
+            Address = First(incoming.Address, existing.Address),
+            SiteName = First(incoming.SiteName, existing.SiteName)
+        };
+
+    private static string? First(string? preferred, string? fallback) =>
+        string.IsNullOrWhiteSpace(preferred) ? fallback : preferred;
 }

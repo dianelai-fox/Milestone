@@ -37,11 +37,12 @@ public sealed class CameraInfo
     public DateTimeOffset? CreatedDate { get; init; }
     public DateTimeOffset? LastModified { get; init; }
     public DateTimeOffset? PasswordLastModified { get; init; }
-    public IReadOnlyList<string> Labels { get; init; } = [];
-    public IReadOnlyDictionary<string, string> CustomProperties { get; init; } =
+    public IReadOnlyList<string> Labels { get; set; } = [];
+    public IReadOnlyDictionary<string, string> CustomProperties { get; set; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     public DeviceIntelligence Intelligence { get; set; } = new();
     public string? Site { get; set; }
+    public string? Address { get; set; }
     public CameraLocation? Location { get; set; }
     public bool LocationIsOverride { get; set; }
 }
@@ -153,6 +154,8 @@ public sealed class LocationImportItem
     public double? Latitude { get; init; }
     public double? Longitude { get; init; }
     public string? Site { get; init; }
+    public string? Address { get; init; }
+    public string? SiteName { get; init; }
 }
 
 public sealed class LocationImportResult
@@ -252,6 +255,8 @@ public sealed class LocationOverrideRequest
     public required double Latitude { get; init; }
     public required double Longitude { get; init; }
     public string? Site { get; init; }
+    public string? Address { get; init; }
+    public string? SiteName { get; init; }
 }
 
 public sealed class HealthStatus

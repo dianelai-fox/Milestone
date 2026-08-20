@@ -162,6 +162,7 @@ app.MapGet("/api/dashboard", async (DashboardService dashboard, CancellationToke
             camera.Labels,
             camera.CustomProperties,
             camera.Site,
+            camera.Address,
             camera.Location,
             camera.LocationIsOverride
         }),
@@ -225,9 +226,21 @@ app.MapGet("/api/geocode", async (string q, IHttpClientFactory httpFactory, Canc
 app.MapGet("/api/locations/template", async (DashboardService dashboard, CancellationToken cancellationToken) =>
 {
     var snapshot = await dashboard.GetSnapshotAsync(cancellationToken);
-    var lines = new List<string> { "cameraId,name,latitude,longitude,site" };
+    var lines = new List<string> { "cameraId,name,latitude,longitude,site,address,Site_Name" };
     lines.AddRange(snapshot.Cameras.Select(camera =>
-        $"{camera.Id},\"{camera.Name.Replace("\"", "\"\"")}\",{camera.Location?.Latitude},{camera.Location?.Longitude},{camera.Site}"));
+    {
+        var siteCode = camera.CustomProperties.TryGetValue("SiteCode", out var code) ? code : "";
+        var address = camera.Address
+                      ?? (camera.CustomProperties.TryGetValue("Address", out var value) ? value : "");
+        return string.Join(',',
+            camera.Id,
+            Csv(camera.Name),
+            camera.Location?.Latitude,
+            camera.Location?.Longitude,
+            Csv(siteCode),
+            Csv(address),
+            Csv(camera.Site));
+    }));
     return Results.Text(string.Join('\n', lines) + "\n", "text/csv");
 });
 
@@ -301,5 +314,15 @@ app.MapPost("/api/locations", async (LocationOverrideRequest request, DashboardS
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+static string Csv(string? value)
+{
+    if (string.IsNullOrEmpty(value))
+    {
+        return "";
+    }
+
+    return $"\"{value.Replace("\"", "\"\"")}\"";
+}
 
 public partial class Program;

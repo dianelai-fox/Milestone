@@ -1319,6 +1319,16 @@ function parseCsv(text) {
 
   const headers = splitCsvLine(lines[0]).map((header) => header.replace(/^\uFEFF/, "").toLowerCase());
   const index = (name) => headers.indexOf(name);
+  const headerIndex = (names, ...aliases) => {
+    const keys = [names, ...aliases];
+    for (const key of keys) {
+      const found = headers.indexOf(key);
+      if (found >= 0) {
+        return found;
+      }
+    }
+    return -1;
+  };
   return lines.slice(1).map((line) => {
     const cells = splitCsvLine(line);
     const latitude = repairCoord(Number(cells[index("latitude")]), -90, 90);
@@ -1332,7 +1342,9 @@ function parseCsv(text) {
       name: cells[index("name")] || "",
       latitude,
       longitude,
-      site: cells[index("site")] || ""
+      site: cells[index("site")] || "",
+      address: cells[headerIndex(headers, "address")] || "",
+      siteName: cells[headerIndex(headers, "site_name", "sitename")] || ""
     };
   }).filter(Boolean);
 }

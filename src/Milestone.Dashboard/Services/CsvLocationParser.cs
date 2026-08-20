@@ -16,13 +16,27 @@ public static class CsvLocationParser
         }
 
         var headers = Split(lines[0]).Select(header => header.Trim().TrimStart('\uFEFF').ToLowerInvariant()).ToList();
-        int Index(string name) => headers.IndexOf(name);
+        int Index(params string[] names)
+        {
+            foreach (var name in names)
+            {
+                var index = headers.IndexOf(name);
+                if (index >= 0)
+                {
+                    return index;
+                }
+            }
+
+            return -1;
+        }
 
         var idIndex = Index("cameraid");
         var nameIndex = Index("name");
         var latIndex = Index("latitude");
         var lonIndex = Index("longitude");
         var siteIndex = Index("site");
+        var addressIndex = Index("address");
+        var siteNameIndex = Index("site_name", "sitename");
 
         foreach (var line in lines.Skip(1))
         {
@@ -40,7 +54,9 @@ public static class CsvLocationParser
                 Name = Read(cells, nameIndex),
                 Latitude = latitude,
                 Longitude = longitude,
-                Site = Read(cells, siteIndex)
+                Site = Read(cells, siteIndex),
+                Address = Read(cells, addressIndex),
+                SiteName = Read(cells, siteNameIndex)
             });
         }
 

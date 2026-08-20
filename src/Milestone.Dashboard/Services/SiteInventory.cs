@@ -41,6 +41,7 @@ public static class SiteInventory
             Name = group.Key,
             Description = cameras
                 .Select(camera => FirstNonEmpty(
+                    camera.Address,
                     GetProperty(camera, "Address"),
                     GetProperty(camera, "Location"),
                     camera.Description,

@@ -158,10 +158,10 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
     {
         using var content = new MultipartFormDataContent();
         const string csv = """
-            cameraId,name,latitude,longitude,site
-            c10,Server Room,34.054244,-118.414072,FOXUSWDMSAP663
+            cameraId,name,latitude,longitude,site,address,Site_Name
+            c10,Server Room,34.054244,-118.414072,FOXUSWDMSAP663,"10201 W Pico Blvd, Los Angeles, CA 90064, USA",Fox Studio Lot
             unknown,Missing Camera,,,
-            stl,SPORTS-STL-C1201,38.627827,-90189505,FOXUSWDMSAP663
+            stl,SPORTS-STL-C1201,38.627827,-90189505,FOXUSWDMSAP663,"1 Cardinal Way, St. Louis, MO",Sports STL
             """;
         content.Add(new StringContent(csv), "file", "camera-locations.csv");
 
@@ -175,5 +175,19 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         var camera = dashboard.RootElement.GetProperty("cameras").EnumerateArray()
             .Single(item => item.GetProperty("id").GetString() == "c10");
         Assert.Equal(34.054244, camera.GetProperty("location").GetProperty("latitude").GetDouble(), 5);
+        Assert.Equal("Fox Studio Lot", camera.GetProperty("site").GetString());
+        Assert.Equal("10201 W Pico Blvd, Los Angeles, CA 90064, USA", camera.GetProperty("address").GetString());
+        var site = dashboard.RootElement.GetProperty("sites").EnumerateArray()
+            .Single(item => item.GetProperty("name").GetString() == "Fox Studio Lot");
+        Assert.Contains("Pico", site.GetProperty("description").GetString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Location_template_includes_address_and_site_name_columns()
+    {
+        var response = await _client.GetAsync("/api/locations/template");
+        response.EnsureSuccessStatusCode();
+        var csv = await response.Content.ReadAsStringAsync();
+        Assert.StartsWith("cameraId,name,latitude,longitude,site,address,Site_Name", csv);
     }
 }
