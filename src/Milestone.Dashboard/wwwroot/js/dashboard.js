@@ -1,11 +1,14 @@
 const state = {
   cameras: [],
+  sites: [],
   storages: [],
   recordingServers: [],
   summary: {},
   siteName: "",
   map: null,
   cluster: null,
+  manageMap: null,
+  manageCluster: null,
   markers: [],
   mapCenter: { latitude: 34.0522, longitude: -118.2437, zoom: 13 },
   placingCameraId: "",
@@ -13,8 +16,11 @@ const state = {
   selectedCameraIds: new Set(),
   sourceLabel: "Milestone",
   inventoryView: "cameras",
+  manageMode: "table",
   page: 1,
-  pageSize: 100
+  pageSize: 100,
+  managePage: 1,
+  managePageSize: 100
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -33,6 +39,12 @@ const addressSearch = document.getElementById("address-search");
 const addressSearchButton = document.getElementById("address-search-btn");
 const csvImport = document.getElementById("csv-import");
 const selectAll = document.getElementById("select-all");
+const manageSiteFilter = document.getElementById("manage-site-filter");
+const manageStatusFilter = document.getElementById("manage-status-filter");
+const manageLabelFilter = document.getElementById("manage-label-filter");
+const managePageSizeSelect = document.getElementById("manage-page-size");
+const exportSites = document.getElementById("export-sites");
+const manageClearFilters = document.getElementById("manage-clear-filters");
 
 refreshButton.addEventListener("click", () => loadDashboard());
 searchInput.addEventListener("input", () => resetPageAndRender());
@@ -73,6 +85,34 @@ addressSearch.addEventListener("keydown", (event) => {
   }
 });
 csvImport.addEventListener("change", importCsv);
+manageSiteFilter.addEventListener("change", () => {
+  state.managePage = 1;
+  renderSites();
+});
+manageStatusFilter.addEventListener("change", () => {
+  state.managePage = 1;
+  renderSites();
+});
+manageLabelFilter.addEventListener("change", () => {
+  state.managePage = 1;
+  renderSites();
+});
+managePageSizeSelect.addEventListener("change", () => {
+  state.managePageSize = Number(managePageSizeSelect.value) || 100;
+  state.managePage = 1;
+  renderSites();
+});
+exportSites.addEventListener("click", downloadSiteCsv);
+manageClearFilters.addEventListener("click", () => {
+  manageSiteFilter.value = "";
+  manageStatusFilter.value = "";
+  manageLabelFilter.value = "";
+  state.managePage = 1;
+  renderSites();
+});
+document.querySelectorAll("[data-manage-mode]").forEach((button) => {
+  button.addEventListener("click", () => setManageMode(button.dataset.manageMode));
+});
 document.addEventListener("click", (event) => {
   const opener = event.target.closest("[data-open]");
   if (!opener) {
@@ -82,6 +122,8 @@ document.addEventListener("click", (event) => {
     showRecordingServers();
   } else if (opener.dataset.open === "cameras") {
     showAllCameras();
+  } else if (opener.dataset.open === "manage") {
+    showView("manage");
   }
 });
 selectAll.addEventListener("change", () => {
@@ -113,6 +155,12 @@ function showView(name, options = {}) {
   if (name === "dashboard") {
     setTimeout(() => state.map?.invalidateSize(), 80);
   }
+  if (name === "manage") {
+    setTimeout(() => {
+      renderSites();
+      state.manageMap?.invalidateSize();
+    }, 80);
+  }
   if (options.focus) {
     document.getElementById(options.focus)?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
@@ -132,6 +180,7 @@ async function loadDashboard() {
 
     const data = await response.json();
     state.cameras = data.cameras ?? [];
+    state.sites = data.sites ?? [];
     state.storages = data.storages ?? [];
     state.recordingServers = data.recordingServers ?? [];
     state.summary = data.summary ?? {};
@@ -149,7 +198,9 @@ async function loadDashboard() {
     fillChoiceFilter(siteFilter, state.cameras.map((camera) => camera.site), "Site");
     fillChoiceFilter(vendorFilter, state.cameras.map((camera) => camera.vendor), "Vendor");
     fillPlaceCamera();
+    fillManageFilters();
     renderInventory();
+    renderSites();
     try {
       renderMap(state.cameras);
     } catch (mapError) {
@@ -200,13 +251,14 @@ function renderOverview() {
   const data = counts();
   const siteLabel = state.siteName || "XProtect site";
   document.getElementById("overview").innerHTML = `
-    <article class="summary-card">
+    <article class="summary-card clickable" data-open="manage" title="Open Sites View">
       <h3>Managed sites</h3>
-      <div class="value">1</div>
+      <div class="value">${state.sites.length || 1}</div>
       <div class="legend">
         <span><i class="dot teal"></i>${escapeHtml(siteLabel)}</span>
         <span><i class="dot orange"></i>${data.unmapped} cameras unmapped</span>
       </div>
+      <div class="card-action">View all ${state.sites.length || 1} sites →</div>
     </article>
     <article class="summary-card clickable" data-open="cameras" title="Show all cameras">
       <h3>Managed cameras</h3>
@@ -329,6 +381,7 @@ function showRecordingServers() {
 function showAllCameras() {
   state.inventoryView = "cameras";
   serverFilter.value = "";
+  siteFilter.value = "";
   renderOverview();
   renderInventory();
   showView("devices");
@@ -337,6 +390,16 @@ function showAllCameras() {
 function showCamerasForServer(serverId) {
   state.inventoryView = "cameras";
   serverFilter.value = serverId;
+  renderOverview();
+  renderInventory();
+  showView("devices");
+}
+
+function showCamerasForSite(siteName) {
+  state.inventoryView = "cameras";
+  serverFilter.value = "";
+  siteFilter.value = siteName;
+  state.page = 1;
   renderOverview();
   renderInventory();
   showView("devices");
@@ -364,10 +427,13 @@ function renderInventory() {
   }
 
   const selected = state.recordingServers.find((server) => server.id === serverFilter.value);
+  const selectedSite = siteFilter.value;
   title.textContent = "Device Management";
   copy.innerHTML = selected
     ? `${visibleCameras().length} cameras on ${escapeHtml(selected.name)}. <button class="link-btn" type="button" id="back-to-servers">Back to servers</button> · <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
-    : "All cameras from XProtect.";
+    : selectedSite
+      ? `${visibleCameras().length} cameras at ${escapeHtml(selectedSite)}. <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
+      : "All cameras from XProtect.";
   document.getElementById("tab-cameras").classList.add("active");
   document.getElementById("tab-servers").classList.remove("active");
   document.getElementById("camera-footer").hidden = false;
@@ -669,6 +735,255 @@ function downloadCameraCsv() {
   link.download = "cameras.csv";
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function fillManageFilters() {
+  fillChoiceFilter(manageSiteFilter, state.sites.map((site) => site.name), "Site Name");
+  const currentLabel = manageLabelFilter.value;
+  const labels = [...new Set(state.sites.flatMap((site) => site.labels ?? []))].sort((left, right) =>
+    left.localeCompare(right));
+  manageLabelFilter.innerHTML = `<option value="">Labels</option>` +
+    labels.map((label) => `<option value="${escapeHtml(label)}">${escapeHtml(label)}</option>`).join("");
+  manageLabelFilter.value = labels.includes(currentLabel) ? currentLabel : "";
+}
+
+function setManageMode(mode) {
+  state.manageMode = mode === "map" ? "map" : "table";
+  document.getElementById("manage-map-btn").classList.toggle("active", state.manageMode === "map");
+  document.getElementById("manage-table-btn").classList.toggle("active", state.manageMode === "table");
+  document.getElementById("manage-table-wrap").hidden = state.manageMode !== "table";
+  document.getElementById("manage-map-wrap").hidden = state.manageMode !== "map";
+  document.getElementById("manage-footer").hidden = state.manageMode !== "table";
+  if (state.manageMode === "map") {
+    renderManageMap(visibleSites());
+  }
+}
+
+function siteStatusLabel(status) {
+  return status === "Partial" ? "Partially Connected" : status || "N/A";
+}
+
+function siteStatusClass(status) {
+  if (status === "Connected") {
+    return "ok";
+  }
+  if (status === "Disconnected") {
+    return "off";
+  }
+  return status === "Partial" ? "partial" : "na";
+}
+
+function visibleSites() {
+  return state.sites.filter((site) => {
+    const matchesName = !manageSiteFilter.value || site.name === manageSiteFilter.value;
+    const matchesStatus = !manageStatusFilter.value || site.status === manageStatusFilter.value;
+    const matchesLabel = !manageLabelFilter.value || (site.labels ?? []).includes(manageLabelFilter.value);
+    return matchesName && matchesStatus && matchesLabel;
+  });
+}
+
+function pagedSites() {
+  const rows = visibleSites();
+  const pageSize = state.managePageSize || 100;
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  state.managePage = Math.min(Math.max(state.managePage, 1), pageCount);
+  const start = (state.managePage - 1) * pageSize;
+  return {
+    rows,
+    pageRows: rows.slice(start, start + pageSize),
+    start,
+    pageCount,
+    pageSize
+  };
+}
+
+function renderSites() {
+  const connected = state.sites.filter((site) => site.status === "Connected").length;
+  const disconnected = state.sites.filter((site) => site.status === "Disconnected").length;
+  const partial = state.sites.filter((site) => site.status === "Partial").length;
+  const unknown = state.sites.filter((site) => site.status === "N/A").length;
+  document.getElementById("site-summary").innerHTML = `
+    <strong>${state.sites.length} Managed Sites</strong>
+    <span class="legend-item"><i class="dot green"></i>Connected (${connected})</span>
+    <span class="legend-item"><i class="dot red"></i>Disconnected (${disconnected})</span>
+    <span class="legend-item"><i class="dot orange"></i>Partially Connected (${partial})</span>
+    <span class="legend-item"><i class="dot gray"></i>N/A (${unknown})</span>
+  `;
+
+  const { rows, pageRows, start, pageCount, pageSize } = pagedSites();
+  const first = rows.length === 0 ? 0 : start + 1;
+  const last = Math.min(start + pageSize, rows.length);
+  document.getElementById("manage-page-range").textContent =
+    `${first}-${last} of ${rows.length.toLocaleString()} items`;
+  renderManagePager(pageCount);
+
+  document.getElementById("site-body").innerHTML = pageRows.map((site) => `
+    <tr>
+      <td><span class="status-dot ${siteStatusClass(site.status)}" title="${escapeHtml(siteStatusLabel(site.status))}"></span></td>
+      <td><button class="site-name" type="button" data-site="${escapeHtml(site.name)}">${escapeHtml(site.name)}</button></td>
+      <td class="notes-cell">${escapeHtml(site.description || "—")}</td>
+      <td>${site.managedCount ?? 0}</td>
+      <td>${renderMiniCounts(site)}</td>
+      <td>${renderSegmentBar([
+        ["ok", site.okVulnCount],
+        ["warn", site.mediumVulnCount],
+        ["bad", site.highVulnCount]
+      ], site.managedCount)}</td>
+      <td>${renderSegmentBar([
+        ["ok", site.currentFirmwareCount],
+        ["na", site.unknownFirmwareCount],
+        ["bad", site.outdatedFirmwareCount]
+      ], site.managedCount)}</td>
+      <td>${renderSegmentBar([
+        ["ok", site.activeLifecycleCount],
+        ["warn", site.eolCount],
+        ["bad", site.eosCount]
+      ], site.managedCount)}</td>
+      <td>${renderChips(site.labels)}</td>
+      <td>${escapeHtml(formatDms(site.location))}</td>
+      <td><button class="more-btn" type="button" data-site="${escapeHtml(site.name)}" title="Open cameras">${iconSpark()}</button></td>
+    </tr>
+  `).join("") || `<tr><td colspan="11">No sites match the current filters.</td></tr>`;
+
+  document.querySelectorAll("[data-site]").forEach((button) => {
+    button.addEventListener("click", () => showCamerasForSite(button.getAttribute("data-site") ?? ""));
+  });
+
+  setManageMode(state.manageMode);
+}
+
+function renderMiniCounts(site) {
+  return `
+    <div class="mini-counts">
+      <span><i class="dot green"></i>${site.enabledCount ?? 0}</span>
+      <span><i class="dot red"></i>${site.disabledCount ?? 0}</span>
+      <span><i class="dot orange"></i>${site.unmappedCount ?? 0}</span>
+      <span><i class="dot gray"></i>${site.unknownFirmwareCount ?? 0}</span>
+    </div>
+  `;
+}
+
+function renderSegmentBar(parts, total) {
+  const max = Math.max(Number(total) || 0, parts.reduce((sum, [, count]) => sum + (Number(count) || 0), 0), 1);
+  const segments = parts
+    .filter(([, count]) => Number(count) > 0)
+    .map(([tone, count]) => `<span class="${tone}" style="width:${(Number(count) / max) * 100}%"></span>`)
+    .join("");
+  const title = parts.map(([tone, count]) => `${tone}: ${count ?? 0}`).join(" · ");
+  return `<div class="seg-bar" title="${escapeHtml(title)}">${segments}</div>`;
+}
+
+function renderManagePager(pageCount) {
+  const pages = [];
+  const current = state.managePage;
+  const push = (page, label = String(page), active = false) => {
+    pages.push(`<button type="button" class="page-btn ${active ? "active" : ""}" data-site-page="${page}">${label}</button>`);
+  };
+  push(Math.max(1, current - 1), "‹");
+  push(Math.min(pageCount, current + 1), "›");
+  document.getElementById("manage-page-nav").innerHTML = pages.join("");
+  document.querySelectorAll("[data-site-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.managePage = Number(button.getAttribute("data-site-page")) || 1;
+      renderSites();
+    });
+  });
+}
+
+function downloadSiteCsv() {
+  const rows = visibleSites();
+  const header = [
+    "siteName", "status", "description", "managed", "enabled", "disabled", "unmapped",
+    "highVuln", "mediumVuln", "okVuln", "currentFirmware", "outdatedFirmware",
+    "activeLifecycle", "eol", "eos", "labels", "latitude", "longitude"
+  ];
+  const lines = [header.join(",")].concat(rows.map((site) => [
+    site.name,
+    siteStatusLabel(site.status),
+    site.description ?? "",
+    site.managedCount ?? 0,
+    site.enabledCount ?? 0,
+    site.disabledCount ?? 0,
+    site.unmappedCount ?? 0,
+    site.highVulnCount ?? 0,
+    site.mediumVulnCount ?? 0,
+    site.okVulnCount ?? 0,
+    site.currentFirmwareCount ?? 0,
+    site.outdatedFirmwareCount ?? 0,
+    site.activeLifecycleCount ?? 0,
+    site.eolCount ?? 0,
+    site.eosCount ?? 0,
+    (site.labels ?? []).join("|"),
+    site.location?.latitude ?? "",
+    site.location?.longitude ?? ""
+  ].map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`).join(",")));
+  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "sites.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function formatDms(location) {
+  if (!location || location.latitude == null || location.longitude == null) {
+    return "—";
+  }
+  return `${toDms(location.latitude, "N", "S")}, ${toDms(location.longitude, "E", "W")}`;
+}
+
+function toDms(value, positive, negative) {
+  const abs = Math.abs(value);
+  const degrees = Math.floor(abs);
+  const minutesFloat = (abs - degrees) * 60;
+  const minutes = Math.floor(minutesFloat);
+  const seconds = ((minutesFloat - minutes) * 60).toFixed(2);
+  return `${degrees}°${minutes}'${seconds}"${value >= 0 ? positive : negative}`;
+}
+
+function iconSpark() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h2v4H3v-4zm4-6h2v10H7V11zm4-4h2v14h-2V7zm4 7h2v7h-2v-7zm4-9h2v16h-2V5z"/></svg>`;
+}
+
+function renderManageMap(sites) {
+  if (typeof L === "undefined") {
+    return;
+  }
+
+  const mapped = sites.filter((site) => site.location);
+  const center = [state.mapCenter.latitude, state.mapCenter.longitude];
+  if (!state.manageMap) {
+    state.manageMap = L.map("manage-map", { zoomControl: true }).setView(center, state.mapCenter.zoom ?? 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(state.manageMap);
+    state.manageCluster = L.layerGroup().addTo(state.manageMap);
+  }
+
+  state.manageCluster.clearLayers();
+  const bounds = [];
+  mapped.forEach((site) => {
+    const point = [site.location.latitude, site.location.longitude];
+    const marker = L.marker(point).bindPopup(
+      `<strong>${escapeHtml(site.name)}</strong><br>` +
+      `${site.managedCount ?? 0} managed cameras<br>` +
+      `${escapeHtml(siteStatusLabel(site.status))}`
+    );
+    marker.on("click", () => {
+      marker.openPopup();
+    });
+    state.manageCluster.addLayer(marker);
+    bounds.push(point);
+  });
+
+  if (bounds.length > 0) {
+    state.manageMap.fitBounds(bounds, { padding: [28, 28], maxZoom: 16 });
+  } else {
+    state.manageMap.setView(center, state.mapCenter.zoom ?? 13);
+  }
+  setTimeout(() => state.manageMap.invalidateSize(), 80);
 }
 
 function shortLabels(values) {

@@ -104,12 +104,35 @@ public sealed class RecordingServerInfo
     public long MaxSizeMb { get; init; }
 }
 
+public sealed class SiteInfo
+{
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public string Status { get; init; } = "Connected";
+    public int ManagedCount { get; init; }
+    public int EnabledCount { get; init; }
+    public int DisabledCount { get; init; }
+    public int UnmappedCount { get; init; }
+    public int HighVulnCount { get; init; }
+    public int MediumVulnCount { get; init; }
+    public int OkVulnCount { get; init; }
+    public int CurrentFirmwareCount { get; init; }
+    public int OutdatedFirmwareCount { get; init; }
+    public int UnknownFirmwareCount { get; init; }
+    public int ActiveLifecycleCount { get; init; }
+    public int EolCount { get; init; }
+    public int EosCount { get; init; }
+    public IReadOnlyList<string> Labels { get; init; } = [];
+    public CameraLocation? Location { get; init; }
+}
+
 public sealed class DashboardSnapshot
 {
     public DateTimeOffset GeneratedAt { get; init; } = DateTimeOffset.UtcNow;
     public string Source { get; set; } = "demo";
     public string? SiteName { get; init; }
     public IReadOnlyList<CameraInfo> Cameras { get; init; } = [];
+    public IReadOnlyList<SiteInfo> Sites { get; set; } = [];
     public IReadOnlyList<StorageVolume> Storages { get; init; } = [];
     public IReadOnlyList<RecordingServerInfo> RecordingServers { get; init; } = [];
     public CameraLocation? SuggestedMapCenter { get; set; }

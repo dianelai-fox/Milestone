@@ -5,12 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260819l" />
+  <link rel="stylesheet" href="/css/site.css?v=20260820a" />
 </head>
 <body>
   <aside class="sidebar">
     <button class="nav-btn active" data-view="dashboard" title="Dashboard">▦</button>
     <button class="nav-btn" data-view="dashboard" data-focus="sites-view" title="Map">◎</button>
+    <button class="nav-btn" data-view="manage" title="Manage sites">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 1 7 7c0 5.25-7 13-7 13S5 14.25 5 9a7 7 0 0 1 7-7zm0 4.5A2.5 2.5 0 1 0 12 11a2.5 2.5 0 0 0 0-4.5z"/></svg>
+    </button>
     <button class="nav-btn" data-view="devices" title="Cameras">◉</button>
     <button class="nav-btn" data-view="storage" title="Storage">▣</button>
   </aside>
@@ -166,6 +169,77 @@
       </section>
       </div>
 
+      <div id="view-manage" class="view" hidden>
+      <section class="card manage-page">
+        <div class="manage-head">
+          <div>
+            <h1>Sites View</h1>
+            <div class="site-summary" id="site-summary"></div>
+          </div>
+          <div class="view-toggles">
+            <button type="button" class="toggle-btn" id="manage-map-btn" data-manage-mode="map">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 1 7 7c0 5.25-7 13-7 13S5 14.25 5 9a7 7 0 0 1 7-7zm0 4.5A2.5 2.5 0 1 0 12 11a2.5 2.5 0 0 0 0-4.5z"/></svg>
+              Map
+            </button>
+            <button type="button" class="toggle-btn active" id="manage-table-btn" data-manage-mode="table">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/></svg>
+              Table
+            </button>
+          </div>
+        </div>
+        <div class="filter-bar manage-filters">
+          <select id="manage-site-filter"><option value="">Site Name</option></select>
+          <select id="manage-status-filter">
+            <option value="">Status</option>
+            <option value="Connected">Connected</option>
+            <option value="Disconnected">Disconnected</option>
+            <option value="Partial">Partially Connected</option>
+            <option value="N/A">N/A</option>
+          </select>
+          <select id="manage-label-filter"><option value="">Labels</option></select>
+          <button class="link-btn" id="manage-clear-filters" type="button">Clear all</button>
+          <button class="link-btn export-link" id="export-sites" type="button">Export CSV</button>
+        </div>
+        <div class="table-wrap table-scroll sites-table-wrap" id="manage-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Site Name</th>
+                <th>Description</th>
+                <th>Managed</th>
+                <th>Device Status</th>
+                <th>Firmware Vulnerabilities</th>
+                <th>Outdated Firmware</th>
+                <th>Device Lifecycle</th>
+                <th>Labels</th>
+                <th>Coordinates</th>
+                <th>More</th>
+              </tr>
+            </thead>
+            <tbody id="site-body"></tbody>
+          </table>
+        </div>
+        <div id="manage-map-wrap" hidden>
+          <div id="manage-map"></div>
+        </div>
+        <footer class="table-footer" id="manage-footer">
+          <span></span>
+          <div class="pager">
+            <label class="muted">Rows per page
+              <select id="manage-page-size">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+              </select>
+            </label>
+            <span id="manage-page-range">0 of 0 items</span>
+            <nav id="manage-page-nav" aria-label="Site pages"></nav>
+          </div>
+        </footer>
+      </section>
+      </div>
+
       <div id="view-storage" class="view" hidden>
       <section class="middle-row">
         <article class="card">
@@ -192,6 +266,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260819l"></script>
+  <script src="/js/dashboard.js?v=20260820a"></script>
 </body>
 </html>

@@ -186,6 +186,7 @@ app.MapGet("/api/dashboard", async (DashboardService dashboard, CancellationToke
             maxLabel = StorageMetrics.FormatSize(storage.MaxSizeMb),
             retentionLabel = StorageMetrics.FormatRetention(storage.RetainMinutes)
         }),
+        sites = snapshot.Sites,
         recordingServers = snapshot.RecordingServers,
         mapCenter = new
         {

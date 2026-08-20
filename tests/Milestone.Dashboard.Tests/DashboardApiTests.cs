@@ -46,6 +46,10 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.True(camera.GetProperty("customProperties").GetProperty("Owner").GetString()?.Length > 0);
         Assert.True(document.RootElement.GetProperty("storages").GetArrayLength() > 0);
         Assert.True(document.RootElement.GetProperty("summary").GetProperty("cameraCount").GetInt32() > 0);
+        Assert.True(document.RootElement.GetProperty("sites").GetArrayLength() > 0);
+        var site = document.RootElement.GetProperty("sites").EnumerateArray().First();
+        Assert.False(string.IsNullOrWhiteSpace(site.GetProperty("name").GetString()));
+        Assert.True(site.GetProperty("managedCount").GetInt32() > 0);
         Assert.True(document.RootElement.GetProperty("mapCenter").TryGetProperty("latitude", out _));
     }
 
@@ -102,6 +106,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("SD Status", html);
         Assert.Contains("id=\"view-dashboard\"", html);
         Assert.Contains("id=\"view-devices\"", html);
+        Assert.Contains("id=\"view-manage\"", html);
+        Assert.Contains("Sites View", html);
+        Assert.Contains("Firmware Vulnerabilities", html);
         Assert.Contains("id=\"inventory-panel\"", html);
         Assert.Contains("server-body", html);
         Assert.Contains("Recording server", html);

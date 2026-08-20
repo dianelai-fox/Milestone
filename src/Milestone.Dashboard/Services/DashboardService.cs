@@ -136,6 +136,8 @@ public sealed class DashboardService
             camera.IpAddress ??= CameraIdentity.Host(camera.HardwareAddress);
             camera.Intelligence = DeviceIntelligenceCatalog.Evaluate(camera);
         }
+
+        snapshot.Sites = SiteInventory.FromCameras(snapshot.Cameras);
     }
 
     internal static void ApplyOverrides(
