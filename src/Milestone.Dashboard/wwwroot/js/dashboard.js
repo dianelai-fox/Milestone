@@ -96,11 +96,29 @@ selectAll.addEventListener("change", () => {
 
 document.querySelectorAll(".nav-btn").forEach((button) => {
   button.addEventListener("click", () => {
-    document.querySelectorAll(".nav-btn").forEach((item) => item.classList.remove("active"));
-    button.classList.add("active");
-    document.getElementById(button.dataset.scroll)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    showView(button.dataset.view, { focus: button.dataset.focus });
   });
 });
+
+function showView(name, options = {}) {
+  document.querySelectorAll(".view").forEach((view) => {
+    view.hidden = view.id !== `view-${name}`;
+  });
+  document.querySelectorAll(".nav-btn").forEach((item) => {
+    const mapFocus = name === "dashboard" && options.focus === "sites-view";
+    item.classList.toggle("active", mapFocus
+      ? item.dataset.focus === "sites-view"
+      : item.dataset.view === name && !item.dataset.focus);
+  });
+  if (name === "dashboard") {
+    setTimeout(() => state.map?.invalidateSize(), 80);
+  }
+  if (options.focus) {
+    document.getElementById(options.focus)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
 async function loadDashboard() {
   refreshButton.disabled = true;
@@ -305,7 +323,7 @@ function showRecordingServers() {
   serverFilter.value = "";
   renderOverview();
   renderInventory();
-  document.getElementById("inventory-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  showView("devices");
 }
 
 function showAllCameras() {
@@ -313,7 +331,7 @@ function showAllCameras() {
   serverFilter.value = "";
   renderOverview();
   renderInventory();
-  document.getElementById("inventory-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  showView("devices");
 }
 
 function showCamerasForServer(serverId) {
@@ -321,7 +339,7 @@ function showCamerasForServer(serverId) {
   serverFilter.value = serverId;
   renderOverview();
   renderInventory();
-  document.getElementById("inventory-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  showView("devices");
 }
 
 function renderInventory() {
@@ -581,7 +599,7 @@ function renderCameras() {
       state.placingCameraId = button.getAttribute("data-place") ?? "";
       placeCamera.value = state.placingCameraId;
       updatePlaceHint();
-      document.getElementById("map").scrollIntoView({ behavior: "smooth", block: "center" });
+      showView("dashboard", { focus: "sites-view" });
     });
   });
 
