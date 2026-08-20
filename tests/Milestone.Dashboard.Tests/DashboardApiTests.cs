@@ -124,6 +124,16 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task Sidebar_label_stylesheet_uses_a_readable_font()
+    {
+        var response = await _client.GetAsync("/css/site.css");
+        response.EnsureSuccessStatusCode();
+        var css = await response.Content.ReadAsStringAsync();
+        Assert.Contains(".nav-label", css);
+        Assert.Contains("Calibri", css);
+    }
+
+    [Fact]
     public async Task Location_import_matches_cameras_by_name()
     {
         var response = await _client.PostAsJsonAsync("/api/locations/import", new[]
