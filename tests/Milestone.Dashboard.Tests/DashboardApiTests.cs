@@ -107,6 +107,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"view-dashboard\"", html);
         Assert.Contains("id=\"view-devices\"", html);
         Assert.Contains("id=\"view-manage\"", html);
+        Assert.Contains("class=\"nav-label\"", html);
+        Assert.Contains("Manage sites", html);
         Assert.Contains("Sites View", html);
         Assert.Contains("Firmware Vulnerabilities", html);
         Assert.Contains("id=\"inventory-panel\"", html);

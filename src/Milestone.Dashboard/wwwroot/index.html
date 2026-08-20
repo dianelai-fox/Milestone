@@ -5,18 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260820a" />
+  <link rel="stylesheet" href="/css/site.css?v=20260820b" />
 </head>
 <body>
-  <aside class="sidebar">
-    <button class="nav-btn active" data-view="dashboard" title="Dashboard">▦</button>
-    <button class="nav-btn" data-view="dashboard" data-focus="sites-view" title="Map">◎</button>
-    <button class="nav-btn" data-view="manage" title="Manage sites">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 1 7 7c0 5.25-7 13-7 13S5 14.25 5 9a7 7 0 0 1 7-7zm0 4.5A2.5 2.5 0 1 0 12 11a2.5 2.5 0 0 0 0-4.5z"/></svg>
-    </button>
-    <button class="nav-btn" data-view="devices" title="Cameras">◉</button>
-    <button class="nav-btn" data-view="storage" title="Storage">▣</button>
-  </aside>
+  <div class="sidebar-rail">
+    <aside class="sidebar" aria-label="Main navigation">
+      <button class="nav-btn active" data-view="dashboard" title="Dashboard">
+        <span class="nav-icon">▦</span>
+        <span class="nav-label">Dashboard</span>
+      </button>
+      <button class="nav-btn" data-view="dashboard" data-focus="sites-view" title="Map">
+        <span class="nav-icon">◎</span>
+        <span class="nav-label">Map</span>
+      </button>
+      <button class="nav-btn" data-view="manage" title="Manage sites">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 1 7 7c0 5.25-7 13-7 13S5 14.25 5 9a7 7 0 0 1 7-7zm0 4.5A2.5 2.5 0 1 0 12 11a2.5 2.5 0 0 0 0-4.5z"/></svg>
+        </span>
+        <span class="nav-label">Manage sites</span>
+      </button>
+      <button class="nav-btn" data-view="devices" title="Cameras">
+        <span class="nav-icon">◉</span>
+        <span class="nav-label">Cameras</span>
+      </button>
+      <button class="nav-btn" data-view="storage" title="Storage">
+        <span class="nav-icon">▣</span>
+        <span class="nav-label">Storage</span>
+      </button>
+    </aside>
+  </div>
 
   <div class="shell">
     <header class="topnav">
