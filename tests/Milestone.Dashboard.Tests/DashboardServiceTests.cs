@@ -67,6 +67,31 @@ public class DashboardServiceTests
         Assert.Equal("FOXUSWDMSAP663", camera.CustomProperties["SiteCode"]);
         Assert.Contains("FOXUSWDMSAP663", camera.Labels);
     }
+
+    [Fact]
+    public void ApplyOverrides_accepts_cameras_with_missing_custom_properties()
+    {
+        var snapshot = new DashboardSnapshot
+        {
+            Cameras =
+            [
+                new CameraInfo { Id = "c01", Name = "Lobby", CustomProperties = null!, Labels = null! }
+            ]
+        };
+
+        DashboardService.ApplyOverrides(snapshot, new Dictionary<string, LocationOverrideRequest>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["c01"] = new()
+            {
+                CameraId = "c01",
+                Latitude = 34.05,
+                Longitude = -118.25,
+                Address = "10201 W Pico Blvd"
+            }
+        });
+
+        Assert.Equal("10201 W Pico Blvd", snapshot.Cameras[0].Address);
+    }
 }
 
 public class DemoVmsClientTests

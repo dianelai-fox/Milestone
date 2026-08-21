@@ -169,7 +169,9 @@ public sealed class DashboardService
                 camera.Address = location.Address.Trim();
             }
 
-            var properties = new Dictionary<string, string>(camera.CustomProperties, StringComparer.OrdinalIgnoreCase);
+            var properties = new Dictionary<string, string>(
+                camera.CustomProperties ?? new Dictionary<string, string>(),
+                StringComparer.OrdinalIgnoreCase);
             if (!string.IsNullOrWhiteSpace(location.Address))
             {
                 properties["Address"] = location.Address.Trim();
@@ -178,7 +180,7 @@ public sealed class DashboardService
             if (!string.IsNullOrWhiteSpace(location.Site))
             {
                 properties["SiteCode"] = location.Site.Trim();
-                var labels = camera.Labels.ToList();
+                var labels = (camera.Labels ?? []).ToList();
                 if (!labels.Any(label => label.Equals(location.Site.Trim(), StringComparison.OrdinalIgnoreCase)))
                 {
                     labels.Add(location.Site.Trim());

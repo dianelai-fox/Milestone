@@ -1,5 +1,7 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Milestone.Dashboard.Data;
 using Milestone.Dashboard.Models;
@@ -19,10 +21,18 @@ var milestoneOptions = builder.Configuration.GetSection(MilestoneOptions.Section
 builder.Services.AddSingleton(milestoneOptions);
 
 var keysDirectory = AppSecretProtector.KeysDirectory(builder.Environment.ContentRootPath);
-Directory.CreateDirectory(keysDirectory);
-builder.Services.AddDataProtection()
-    .SetApplicationName("Milestone.Dashboard")
-    .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory));
+try
+{
+    Directory.CreateDirectory(keysDirectory);
+    builder.Services.AddDataProtection()
+        .SetApplicationName("Milestone.Dashboard")
+        .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory));
+}
+catch (Exception)
+{
+    builder.Services.AddDataProtection()
+        .SetApplicationName("Milestone.Dashboard");
+}
 
 builder.Services.AddSingleton<LocationOverrideStore>();
 builder.Services.AddSingleton<SnapshotCache>();
@@ -93,11 +103,12 @@ app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
     {
+        var error = context.Features.Get<IExceptionHandlerPathFeature>()?.Error;
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         context.Response.ContentType = "application/json";
         await context.Response.WriteAsJsonAsync(new
         {
-            error = "The server could not save camera locations. Grant Modify permission on C:\\inetpub\\xprotect-dashboard\\App_Data to IIS AppPool\\XProtectDashboard."
+            error = UserFacingError(error)
         });
     });
 });
@@ -118,7 +129,16 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.MapGet("/api/health", async (DashboardService dashboard, CancellationToken cancellationToken) =>
 {
-    var snapshot = await dashboard.GetSnapshotAsync(cancellationToken);
+    DashboardSnapshot snapshot;
+    try
+    {
+        snapshot = await dashboard.GetSnapshotAsync(cancellationToken);
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { status = "error", error = UserFacingError(ex) }, statusCode: StatusCodes.Status500InternalServerError);
+    }
+
     return Results.Ok(new HealthStatus
     {
         Status = "ok",
@@ -130,7 +150,16 @@ app.MapGet("/api/health", async (DashboardService dashboard, CancellationToken c
 
 app.MapGet("/api/dashboard", async (DashboardService dashboard, CancellationToken cancellationToken) =>
 {
-    var snapshot = await dashboard.GetSnapshotAsync(cancellationToken);
+    DashboardSnapshot snapshot;
+    try
+    {
+        snapshot = await dashboard.GetSnapshotAsync(cancellationToken);
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { error = UserFacingError(ex) }, statusCode: StatusCodes.Status500InternalServerError);
+    }
+
     return Results.Ok(new
     {
         snapshot.GeneratedAt,
@@ -328,6 +357,28 @@ app.MapPost("/api/locations", async (LocationOverrideRequest request, DashboardS
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+static string UserFacingError(Exception? error)
+{
+    var current = error;
+    while (current is not null)
+    {
+        if (current is HttpRequestException)
+        {
+            return "Could not reach XProtect. Check Milestone:GatewayBaseUrl, Username, Password, and whether UseDemoData should be true. " + current.Message;
+        }
+
+        if (current is InvalidOperationException or CryptographicException)
+        {
+            return current.Message;
+        }
+
+        current = current.InnerException;
+    }
+
+    return error?.Message
+           ?? "The dashboard could not load. Check the IIS site log and appsettings.json.";
+}
 
 static void EncryptPasswordCli(string[] args)
 {

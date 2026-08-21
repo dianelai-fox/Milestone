@@ -175,7 +175,16 @@ async function loadDashboard() {
   try {
     const response = await fetch("/api/dashboard", { cache: "no-store" });
     if (!response.ok) {
-      throw new Error(`Dashboard API returned ${response.status}`);
+      let detail = `Dashboard API returned ${response.status}`;
+      try {
+        const payload = await response.json();
+        if (payload.error) {
+          detail = payload.error;
+        }
+      } catch {
+        // Keep the status text when the body is not JSON.
+      }
+      throw new Error(detail);
     }
 
     const data = await response.json();

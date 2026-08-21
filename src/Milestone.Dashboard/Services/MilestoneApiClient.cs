@@ -388,7 +388,11 @@ public sealed class MilestoneApiClient : IVmsClient
                 ["client_id"] = _options.ClientId
             });
             using var response = await _httpClient.PostAsync(_options.ResolvedTokenUrl(), content, cancellationToken);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(
+                    $"XProtect login failed (HTTP {(int)response.StatusCode}). Check Username, Password, GatewayBaseUrl, and that UseDemoData is false only after those values work.");
+            }
             using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
             _accessToken = document.RootElement.GetProperty("access_token").GetString();
             var expiresIn = document.RootElement.TryGetProperty("expires_in", out var expires)

@@ -45,8 +45,9 @@ public sealed class LocationOverrideStore
             }
         }
 
-        throw new InvalidOperationException(
+        logger.LogError(
             "IIS cannot write camera locations. Grant Modify on C:\\inetpub\\xprotect-dashboard\\App_Data to IIS AppPool\\XProtectDashboard.");
+        return Path.Combine(Path.GetTempPath(), "MilestoneDashboard", "location-overrides.json");
     }
 
     public async Task<IReadOnlyDictionary<string, LocationOverrideRequest>> GetAllAsync(CancellationToken cancellationToken)
@@ -97,10 +98,19 @@ public sealed class LocationOverrideStore
             return new Dictionary<string, LocationOverrideRequest>(StringComparer.OrdinalIgnoreCase);
         }
 
-        await using var stream = File.OpenRead(_path);
-        var items = await JsonSerializer.DeserializeAsync<List<LocationOverrideRequest>>(stream, JsonOptions, cancellationToken)
-                    ?? [];
-        return items.ToDictionary(item => item.CameraId, item => item, StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            await using var stream = File.OpenRead(_path);
+            var items = await JsonSerializer.DeserializeAsync<List<LocationOverrideRequest>>(stream, JsonOptions, cancellationToken)
+                        ?? [];
+            return items
+                .Where(item => !string.IsNullOrWhiteSpace(item.CameraId))
+                .ToDictionary(item => item.CameraId, item => item, StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception)
+        {
+            return new Dictionary<string, LocationOverrideRequest>(StringComparer.OrdinalIgnoreCase);
+        }
     }
 
     private static LocationOverrideRequest Merge(LocationOverrideRequest existing, LocationOverrideRequest incoming) =>
