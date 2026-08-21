@@ -819,7 +819,7 @@ function renderSites() {
 
   document.getElementById("site-body").innerHTML = pageRows.map((site) => `
     <tr>
-      <td><span class="status-dot ${siteStatusClass(site.status)}" title="${escapeHtml(siteStatusLabel(site.status))}"></span></td>
+      <td class="site-status"><span class="status-dot ${siteStatusClass(site.status)}" title="${escapeHtml(siteStatusLabel(site.status))}" aria-label="${escapeHtml(siteStatusLabel(site.status))}"></span></td>
       <td><button class="site-name" type="button" data-site="${escapeHtml(site.name)}">${escapeHtml(site.name)}</button></td>
       <td class="notes-cell">${escapeHtml(site.description || "—")}</td>
       <td>${site.managedCount ?? 0}</td>

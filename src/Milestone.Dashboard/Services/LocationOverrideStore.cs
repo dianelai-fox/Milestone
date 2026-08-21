@@ -111,7 +111,7 @@ public sealed class LocationOverrideStore
             Longitude = incoming.Longitude,
             Site = First(incoming.Site, existing.Site),
             Address = First(incoming.Address, existing.Address),
-            SiteName = First(incoming.SiteName, existing.SiteName)
+            SiteName = First(incoming.SiteName, First(incoming.Site, existing.SiteName))
         };
 
     private static string? First(string? preferred, string? fallback) =>

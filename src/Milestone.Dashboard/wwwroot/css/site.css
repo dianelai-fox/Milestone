@@ -457,6 +457,17 @@ button { cursor: pointer; }
 .status-dot.ok { background: #27ae60; }
 .status-dot.partial { background: #f0a202; }
 .status-dot.na { background: #9aa6b2; }
+.site-status {
+  text-align: center;
+}
+.site-status .status-dot {
+  width: 10px;
+  height: 10px;
+}
+.site-status .status-dot.ok {
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.18);
+}
 #manage-map { min-height: 480px; height: min(680px, calc(100vh - 280px)); }
 
 .storage-list { display: grid; gap: 12px; }
@@ -594,6 +605,8 @@ th {
   border-radius: 50%;
   background: var(--teal);
   flex: 0 0 auto;
+  display: inline-block;
+  vertical-align: middle;
 }
 .status-dot.off { background: var(--red); }
 
