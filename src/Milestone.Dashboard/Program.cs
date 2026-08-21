@@ -339,7 +339,9 @@ static void EncryptPasswordCli(string[] args)
     services.AddDataProtection()
         .SetApplicationName("Milestone.Dashboard")
         .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory));
+#pragma warning disable ASP0000
     using var provider = services.BuildServiceProvider();
+#pragma warning restore ASP0000
     var protector = provider.GetRequiredService<IDataProtectionProvider>()
         .CreateProtector(AppSecretProtector.Purpose);
 
