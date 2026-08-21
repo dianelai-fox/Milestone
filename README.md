@@ -81,6 +81,40 @@ Overrides are stored in `App_Data/location-overrides.json` on the web server.
 
 Windows authentication to XProtect is not used. Use an XProtect Basic user, and prefer HTTPS between the web server and the API Gateway.
 
+## Encrypt the password in appsettings.json
+
+The dashboard can store `Milestone:Password` as an encrypted value (`ENC:...`) instead of plain text. Decrypt happens only when the site starts.
+
+Do this **on the IIS web server** after you publish. The encrypted value only works on that same server.
+
+1. Publish the new site (stop IIS first, then `scripts/publish-iis.ps1` or your usual publish).
+2. Open PowerShell **as Administrator** on the web server.
+3. Run:
+
+   ```powershell
+   cd C:\Users\dianela\Milestone
+   powershell -ExecutionPolicy Bypass -File .\scripts\encrypt-password.ps1
+   ```
+
+   If the site folder is not `C:\inetpub\xprotect-dashboard`, pass it:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\scripts\encrypt-password.ps1 -SitePath "C:\inetpub\xprotect-dashboard"
+   ```
+
+4. When asked, type the **current** XProtect password (the same one already in `appsettings.json`).
+5. The script replaces `Password` with a value that starts with `ENC:` and saves a backup as `appsettings.json.bak`.
+6. Recycle the `XProtectDashboard` app pool (or `iisreset`).
+7. Open the dashboard and press **Ctrl+F5**.
+
+Plain text passwords still work until you run the script. After encryption, `appsettings.json` looks like:
+
+```json
+"Password": "ENC:CfDJ8...."
+```
+
+That `ENC:` string is not the real password. Only this website, on this server, can turn it back into the password at startup.
+
 ## Project layout
 
 ```

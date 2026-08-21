@@ -1,15 +1,28 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Milestone.Dashboard.Data;
 using Milestone.Dashboard.Models;
 using Milestone.Dashboard.Options;
 using Milestone.Dashboard.Services;
 
+if (args.Length > 0 && string.Equals(args[0], "encrypt-password", StringComparison.OrdinalIgnoreCase))
+{
+    EncryptPasswordCli(args);
+    return;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 var milestoneOptions = builder.Configuration.GetSection(MilestoneOptions.SectionName).Get<MilestoneOptions>()
                        ?? new MilestoneOptions();
 builder.Services.AddSingleton(milestoneOptions);
+
+var keysDirectory = AppSecretProtector.KeysDirectory(builder.Environment.ContentRootPath);
+Directory.CreateDirectory(keysDirectory);
+builder.Services.AddDataProtection()
+    .SetApplicationName("Milestone.Dashboard")
+    .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory));
 
 builder.Services.AddSingleton<LocationOverrideStore>();
 builder.Services.AddSingleton<SnapshotCache>();
@@ -67,6 +80,7 @@ else
 }
 
 var app = builder.Build();
+UnprotectMilestonePassword(app, milestoneOptions);
 
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
@@ -314,6 +328,56 @@ app.MapPost("/api/locations", async (LocationOverrideRequest request, DashboardS
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+static void EncryptPasswordCli(string[] args)
+{
+    var root = Directory.GetCurrentDirectory();
+    var keysDirectory = AppSecretProtector.KeysDirectory(root);
+    Directory.CreateDirectory(keysDirectory);
+
+    var services = new ServiceCollection();
+    services.AddDataProtection()
+        .SetApplicationName("Milestone.Dashboard")
+        .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory));
+    using var provider = services.BuildServiceProvider();
+    var protector = provider.GetRequiredService<IDataProtectionProvider>()
+        .CreateProtector(AppSecretProtector.Purpose);
+
+    var plain = args.Length > 1
+        ? args[1]
+        : Console.In.ReadToEnd().TrimEnd('\r', '\n');
+    if (string.IsNullOrWhiteSpace(plain))
+    {
+        Console.Error.WriteLine("Password was empty.");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    Console.WriteLine(AppSecretProtector.Protect(protector, plain));
+}
+
+static void UnprotectMilestonePassword(WebApplication app, MilestoneOptions options)
+{
+    if (string.IsNullOrWhiteSpace(options.Password) || !AppSecretProtector.IsProtected(options.Password))
+    {
+        return;
+    }
+
+    try
+    {
+        var protector = app.Services.GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector(AppSecretProtector.Purpose);
+        options.Password = AppSecretProtector.Unprotect(protector, options.Password);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex,
+            "Could not decrypt Milestone:Password. Encrypt the password on this same web server with scripts/encrypt-password.ps1.");
+        throw new InvalidOperationException(
+            "The encrypted password in appsettings.json could not be decrypted. Run scripts/encrypt-password.ps1 on this web server, then recycle the app pool.",
+            ex);
+    }
+}
 
 static string Csv(string? value)
 {
