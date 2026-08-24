@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260821a" />
+  <link rel="stylesheet" href="/css/site.css?v=20260824a" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -258,6 +258,16 @@
       </div>
 
       <div id="view-storage" class="view" hidden>
+      <section class="card" id="storage-pies">
+        <div class="panel-head">
+          <div>
+            <h2 id="storage-pies-title">Storage volumes</h2>
+            <p class="muted" id="storage-pies-copy">One pie chart for each recording and archive volume.</p>
+          </div>
+        </div>
+        <div id="storage-pie-grid" class="storage-pie-grid"></div>
+      </section>
+
       <section class="middle-row">
         <article class="card">
           <h2>Operational status</h2>
@@ -283,6 +293,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260821b"></script>
+  <script src="/js/dashboard.js?v=20260824a"></script>
 </body>
 </html>

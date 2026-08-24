@@ -20,7 +20,8 @@ const state = {
   page: 1,
   pageSize: 100,
   managePage: 1,
-  managePageSize: 100
+  managePageSize: 100,
+  storageFilter: ""
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -124,6 +125,10 @@ document.addEventListener("click", (event) => {
     showAllCameras();
   } else if (opener.dataset.open === "manage") {
     showView("manage");
+  } else if (opener.dataset.open === "storage") {
+    showStoragePies("");
+  } else if (opener.dataset.open === "archives") {
+    showStoragePies("Archive");
   }
 });
 selectAll.addEventListener("change", () => {
@@ -160,6 +165,10 @@ function showView(name, options = {}) {
       renderSites();
       state.manageMap?.invalidateSize();
     }, 80);
+  }
+  if (name === "storage" && !options.focus) {
+    state.storageFilter = "";
+    renderStoragePies();
   }
   if (options.focus) {
     document.getElementById(options.focus)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -202,6 +211,7 @@ async function loadDashboard() {
     renderDonut();
     renderMaintenance();
     renderStorage(state.storages);
+    renderStoragePies();
     fillServerFilter(state.recordingServers);
     fillLabelFilter(state.cameras);
     fillChoiceFilter(siteFilter, state.cameras.map((camera) => camera.site), "Site");
@@ -301,9 +311,13 @@ function renderDeviceTypes() {
     [data.unmapped, "Unmapped"]
   ];
   document.getElementById("device-types").innerHTML = items.map(([count, label]) => {
-    const open = label === "Recording Server" ? "servers" : label === "Camera" ? "cameras" : "";
+    const open = label === "Recording Server" ? "servers"
+      : label === "Camera" ? "cameras"
+      : label === "Storage" ? "storage"
+      : label === "Archive" ? "archives"
+      : "";
     return `
-    <div class="device-item ${open ? "clickable" : ""}" ${open ? `data-open="${open}"` : ""}>
+    <div class="device-item ${open ? "clickable" : ""}" ${open ? `data-open="${open}"` : ""} title="${open ? `Open ${label} details` : ""}">
       <div class="count">${formatCount(count)}</div>
       <div class="label">${label}</div>
     </div>
@@ -357,6 +371,46 @@ function renderMaintenance() {
       <strong>${value}</strong>
     </div>
   `).join("");
+}
+
+function showStoragePies(kind) {
+  state.storageFilter = kind || "";
+  renderStoragePies();
+  showView("storage", { focus: "storage-pies" });
+}
+
+function visibleStorages() {
+  if (state.storageFilter === "Archive") {
+    return state.storages.filter((storage) => storage.kind === "Archive");
+  }
+  if (state.storageFilter === "Recording") {
+    return state.storages.filter((storage) => storage.kind !== "Archive");
+  }
+  return state.storages;
+}
+
+function renderStoragePies() {
+  const storages = visibleStorages();
+  const kindLabel = state.storageFilter === "Archive" ? "archive" : "storage";
+  document.getElementById("storage-pies-title").textContent =
+    `${storages.length} ${kindLabel} volume${storages.length === 1 ? "" : "s"}`;
+  document.getElementById("storage-pies-copy").textContent = state.storageFilter === "Archive"
+    ? "One pie chart for each archive volume."
+    : "One pie chart for each recording and archive volume.";
+  document.getElementById("storage-pie-grid").innerHTML = storages.map((storage) => {
+    const used = Math.min(Math.max(Number(storage.usagePercent) || 0, 0), 100);
+    const tone = used >= 90 ? "bad" : used >= 75 ? "warn" : "";
+    return `
+      <article class="storage-pie-card">
+        <h3 title="${escapeHtml(storage.name)}">${escapeHtml(storage.name)}</h3>
+        <div class="muted">${escapeHtml(storage.recordingServerName ?? "")} · ${escapeHtml(storage.kind)}</div>
+        <div class="storage-pie ${tone}" style="background: conic-gradient(var(--slice) 0 ${used}%, #e8eef2 ${used}% 100%)">
+          <div class="storage-pie-inner">${formatPercent(used)}</div>
+        </div>
+        <div class="muted">${escapeHtml(storage.usedLabel)} / ${escapeHtml(storage.maxLabel)}</div>
+      </article>
+    `;
+  }).join("") || `<p class="muted">No storage volumes were returned.</p>`;
 }
 
 function renderStorage(storages) {
