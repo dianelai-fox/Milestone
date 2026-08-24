@@ -21,7 +21,9 @@ const state = {
   pageSize: 100,
   managePage: 1,
   managePageSize: 100,
-  storageFilter: ""
+  storageFilter: "",
+  lifecycle: {},
+  highlightsOpen: true
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -31,6 +33,7 @@ const locationFilter = document.getElementById("location-filter");
 const labelFilter = document.getElementById("label-filter");
 const siteFilter = document.getElementById("site-filter");
 const vendorFilter = document.getElementById("vendor-filter");
+const lifecycleFilter = document.getElementById("lifecycle-filter");
 const pageSizeSelect = document.getElementById("page-size");
 const exportCameras = document.getElementById("export-cameras");
 const clearFilters = document.getElementById("clear-filters");
@@ -58,6 +61,7 @@ locationFilter.addEventListener("change", () => resetPageAndRender());
 labelFilter.addEventListener("change", () => resetPageAndRender());
 siteFilter.addEventListener("change", () => resetPageAndRender());
 vendorFilter.addEventListener("change", () => resetPageAndRender());
+lifecycleFilter.addEventListener("change", () => resetPageAndRender());
 pageSizeSelect.addEventListener("change", () => {
   state.pageSize = Number(pageSizeSelect.value) || 100;
   state.page = 1;
@@ -71,6 +75,7 @@ clearFilters.addEventListener("click", () => {
   locationFilter.value = "";
   siteFilter.value = "";
   vendorFilter.value = "";
+  lifecycleFilter.value = "";
   state.page = 1;
   renderInventory();
 });
@@ -131,6 +136,21 @@ document.addEventListener("click", (event) => {
     showStoragePies("Archive");
   }
 });
+document.addEventListener("click", (event) => {
+  const life = event.target.closest("[data-life-filter], [data-life-site], [data-life-query]");
+  if (!life) {
+    return;
+  }
+  showCamerasForLifecycle(life.dataset.lifeFilter ?? "", {
+    site: life.dataset.lifeSite,
+    query: life.dataset.lifeQuery
+  });
+});
+document.getElementById("highlights-toggle")?.addEventListener("click", () => {
+  state.highlightsOpen = !state.highlightsOpen;
+  document.querySelector(".highlights-card")?.classList.toggle("collapsed", !state.highlightsOpen);
+  document.getElementById("highlights-toggle")?.setAttribute("aria-expanded", String(state.highlightsOpen));
+});
 selectAll.addEventListener("change", () => {
   const { pageRows } = pagedCameras();
   if (selectAll.checked) {
@@ -170,6 +190,9 @@ function showView(name, options = {}) {
     state.storageFilter = "";
     renderStoragePies();
   }
+  if (name === "lifecycle") {
+    renderLifecycle();
+  }
   if (options.focus) {
     document.getElementById(options.focus)?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
@@ -202,6 +225,7 @@ async function loadDashboard() {
     state.storages = data.storages ?? [];
     state.recordingServers = data.recordingServers ?? [];
     state.summary = data.summary ?? {};
+    state.lifecycle = data.lifecycle ?? {};
     state.siteName = data.siteName ?? "";
     state.mapCenter = data.mapCenter ?? state.mapCenter;
     renderSource(data);
@@ -220,6 +244,7 @@ async function loadDashboard() {
     fillManageFilters();
     renderInventory();
     renderSites();
+    renderLifecycle();
     try {
       renderMap(state.cameras);
     } catch (mapError) {
@@ -323,6 +348,194 @@ function renderDeviceTypes() {
     </div>
   `;
   }).join("");
+}
+
+function matchesLifecycleFilter(camera, filter) {
+  const status = camera.intelligence?.lifecycleStatus ?? "";
+  if (!filter) {
+    return true;
+  }
+  if (filter === "compliant") {
+    return status === "Active" || status === "EOL";
+  }
+  if (filter === "noncompliant") {
+    return status === "EOS";
+  }
+  if (filter === "na") {
+    return !status;
+  }
+  return status === filter;
+}
+
+function lifecycleLabel(filter) {
+  return {
+    compliant: "Compliant",
+    noncompliant: "Non Compliant",
+    Active: "Current Product",
+    EOL: "EOL",
+    EOS: "EOS",
+    na: "N/A"
+  }[filter] ?? filter;
+}
+
+function renderLifecycle() {
+  const life = state.lifecycle ?? {};
+  const total = life.totalDevices ?? 0;
+  const compliant = life.compliantCount ?? 0;
+  const nonCompliant = life.nonCompliantCount ?? 0;
+  const na = life.naCount ?? 0;
+  const percent = life.overallCompliancePercent ?? 0;
+  const scored = compliant + nonCompliant;
+  const okWidth = scored ? (compliant / scored) * 100 : 0;
+  const badWidth = scored ? (nonCompliant / scored) * 100 : 0;
+
+  document.getElementById("lifecycle-summary").innerHTML = `
+    <article class="summary-card life-card">
+      <h3>DEVICES</h3>
+      <div class="life-devices">
+        <div class="life-score">
+          <div class="value">${percent}%</div>
+          <div class="muted">Overall Compliance</div>
+          <div class="life-bar" title="${percent}% compliant">
+            <span class="ok" style="width:${okWidth}%"></span>
+            <span class="bad" style="width:${badWidth}%"></span>
+          </div>
+        </div>
+        <div class="life-legend">
+          <button type="button" data-life-filter="compliant"><i class="dot teal"></i>Compliant: ${formatInt(compliant)}</button>
+          <button type="button" data-life-filter="noncompliant"><i class="dot pink"></i>Non Compliant: ${formatInt(nonCompliant)}</button>
+          <button type="button" data-life-filter="na"><i class="dot gray"></i>N/A: ${formatInt(na)}</button>
+          <div class="total">Total Devices: ${formatInt(total)}</div>
+        </div>
+      </div>
+    </article>
+    <article class="summary-card life-card">
+      <h3>DEVICE LIFECYCLE STATUS</h3>
+      <div class="life-status">
+        <button type="button" class="life-badge current" data-life-filter="Active">
+          <span>CURRENT PRODUCT</span>
+          <strong>${formatInt(life.currentProductCount)}</strong>
+        </button>
+        <button type="button" class="life-badge eol" data-life-filter="EOL">
+          <span>EOL</span>
+          <strong>${formatInt(life.eolCount)}</strong>
+        </button>
+        <button type="button" class="life-badge eos" data-life-filter="EOS">
+          <span>EOS</span>
+          <strong>${formatInt(life.eosCount)}</strong>
+        </button>
+        <button type="button" class="life-badge na" data-life-filter="na">
+          <span>N/A</span>
+          <strong>${formatInt(life.naCount)}</strong>
+        </button>
+      </div>
+    </article>
+    <article class="summary-card life-card">
+      <h3>SITES</h3>
+      <div class="life-sites">
+        <button type="button" data-life-filter="compliant"><i class="dot teal"></i>Compliant: ${formatInt(life.compliantSites)}</button>
+        <button type="button" data-life-filter="noncompliant"><i class="dot pink"></i>Non Compliant: ${formatInt(life.nonCompliantSites)}</button>
+        <div class="total">Total Sites: ${formatInt(life.totalSites)}</div>
+      </div>
+    </article>
+  `;
+
+  document.getElementById("lifecycle-highlights").innerHTML = `
+    ${renderAlertedSites(life.topAlertedSites ?? [])}
+    ${renderLifeDonut("Top Non-Compliant Vendor & Model", life.topNonCompliantModels ?? [], ["#1aae9f", "#148f83", "#5ecfc2", "#0e6e65", "#9adfd6", "#3d8bfd"], "EOS")}
+    ${renderLifeDonut("Top Non-Compliant by Type", life.topNonCompliantTypes ?? [], ["#3d8bfd", "#2b6cb0", "#7eb8da", "#1d4e89", "#a8c8ea", "#5aa9e6"], "EOS")}
+    ${renderEosYears(life.eosByYear ?? [])}
+    ${renderLifeDonut("Top EOL by Vendor & Model", life.topEolModels ?? [], ["#8ec5ff", "#5aa9e6", "#3d8bfd", "#b9d9f7", "#2b6cb0", "#7eb8da"], "EOL")}
+    ${renderLifeDonut("EOL by Type", life.eolByType ?? [], ["#1d4e89", "#2b6cb0", "#3d8bfd", "#5aa9e6", "#7eb8da", "#8ec5ff"], "EOL")}
+  `;
+}
+
+function renderAlertedSites(rows) {
+  const body = rows.length === 0
+    ? `<tr><td colspan="5" class="muted">No EOS or EOL devices were found.</td></tr>`
+    : rows.map((row) => `
+      <tr>
+        <td><button class="link-btn" type="button" data-life-site="${escapeHtml(row.site)}">${escapeHtml(row.site)}</button></td>
+        <td>${formatInt(row.eos)}</td>
+        <td>${formatInt(row.eol)}</td>
+        <td>${formatInt(row.total)}</td>
+        <td>
+          <div class="risk-cell">
+            <div class="risk-bar"><span style="width:${Math.min(row.riskPercent ?? 0, 100)}%"></span></div>
+            ${Number(row.riskPercent ?? 0).toFixed(1)}%
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  return `
+    <article class="highlight-card">
+      <h3>Top Alerted Sites</h3>
+      <table class="alert-table">
+        <thead>
+          <tr><th>Site</th><th>EOS</th><th>EOL</th><th>Total</th><th>Risk Level</th></tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </article>
+  `;
+}
+
+function renderLifeDonut(title, slices, colors, filter) {
+  const total = slices.reduce((sum, slice) => sum + (slice.count ?? 0), 0);
+  return `
+    <article class="highlight-card">
+      <h3>${escapeHtml(title)}</h3>
+      ${total === 0 ? `<p class="muted">No devices in this category.</p>` : `
+      <div class="life-donut-wrap">
+        <div class="life-donut-legend">
+          ${slices.map((slice, index) => `
+            <button type="button" data-life-filter="${filter}" data-life-query="${escapeHtml(slice.label)}">
+              <i class="dot" style="background:${colors[index % colors.length]}"></i>
+              ${escapeHtml(slice.label)}: ${formatInt(slice.count)}
+            </button>
+          `).join("")}
+        </div>
+        <div class="life-donut" style="background:${donutGradient(slices, colors)}">
+          <div class="life-donut-inner">${formatInt(total)}</div>
+        </div>
+      </div>`}
+    </article>
+  `;
+}
+
+function renderEosYears(rows) {
+  const max = Math.max(...rows.map((row) => row.count ?? 0), 1);
+  return `
+    <article class="highlight-card">
+      <h3>EOS by Year</h3>
+      ${rows.length === 0 ? `<p class="muted">No published EOS dates.</p>` : `
+      <div class="year-chart">
+        ${rows.map((row) => `
+          <div class="year-col">
+            <div class="year-count">${formatInt(row.count)}</div>
+            <div class="year-bar" style="height:${Math.max(((row.count ?? 0) / max) * 150, 6)}px"></div>
+            <div class="year-label">${row.year}</div>
+          </div>
+        `).join("")}
+      </div>`}
+    </article>
+  `;
+}
+
+function donutGradient(slices, colors) {
+  const total = slices.reduce((sum, slice) => sum + (slice.count ?? 0), 0) || 1;
+  let start = 0;
+  const stops = slices.map((slice, index) => {
+    const end = start + ((slice.count ?? 0) / total) * 100;
+    const stop = `${colors[index % colors.length]} ${start}% ${end}%`;
+    start = end;
+    return stop;
+  });
+  return `conic-gradient(${stops.join(", ")})`;
+}
+
+function formatInt(value) {
+  return Number(value ?? 0).toLocaleString();
 }
 
 function renderOperational() {
@@ -442,6 +655,7 @@ function clearCameraFilters({ keepServer = false } = {}) {
   locationFilter.value = "";
   siteFilter.value = "";
   vendorFilter.value = "";
+  lifecycleFilter.value = "";
   state.page = 1;
 }
 
@@ -480,6 +694,21 @@ function showCamerasForSite(siteName) {
   showView("devices");
 }
 
+function showCamerasForLifecycle(filter, extras = {}) {
+  state.inventoryView = "cameras";
+  clearCameraFilters();
+  if (extras.site) {
+    siteFilter.value = extras.site;
+  }
+  if (extras.query) {
+    searchInput.value = extras.query;
+  }
+  lifecycleFilter.value = filter ?? "";
+  renderOverview();
+  renderInventory();
+  showView("devices");
+}
+
 function renderInventory() {
   const serversWrap = document.getElementById("servers-wrap");
   const camerasWrap = document.getElementById("cameras-wrap");
@@ -503,11 +732,12 @@ function renderInventory() {
 
   const selected = state.recordingServers.find((server) => server.id === serverFilter.value);
   const selectedSite = siteFilter.value;
+  const selectedLife = lifecycleFilter.value;
   title.textContent = "Device Management";
   copy.innerHTML = selected
     ? `${visibleCameras().length} cameras on ${escapeHtml(selected.name)}. <button class="link-btn" type="button" id="back-to-servers">Back to servers</button> · <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
-    : selectedSite
-      ? `${visibleCameras().length} cameras at ${escapeHtml(selectedSite)}. <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
+    : selectedSite || selectedLife
+      ? `${visibleCameras().length} cameras${selectedSite ? ` at ${escapeHtml(selectedSite)}` : ""}${selectedLife ? ` · ${escapeHtml(lifecycleLabel(selectedLife))}` : ""}. <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
       : "All cameras from XProtect.";
   document.getElementById("tab-cameras").classList.add("active");
   document.getElementById("tab-servers").classList.remove("active");
@@ -617,11 +847,12 @@ function visibleCameras() {
     const matchesLabel = !labelFilter.value || (camera.labels ?? []).includes(labelFilter.value);
     const matchesSite = !siteFilter.value || camera.site === siteFilter.value;
     const matchesVendor = !vendorFilter.value || camera.vendor === vendorFilter.value;
+    const matchesLifecycle = matchesLifecycleFilter(camera, lifecycleFilter.value);
     const mapped = Boolean(camera.location);
     const matchesLocation = !locationFilter.value
       || (locationFilter.value === "mapped" && mapped)
       || (locationFilter.value === "unmapped" && !mapped);
-    return matchesQuery && matchesServer && matchesLabel && matchesSite && matchesVendor && matchesLocation;
+    return matchesQuery && matchesServer && matchesLabel && matchesSite && matchesVendor && matchesLifecycle && matchesLocation;
   });
 }
 

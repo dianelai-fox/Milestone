@@ -26,6 +26,8 @@ public static class DeviceIntelligenceCatalog
         new("P3265-LV", new DateTimeOffset(2031, 12, 31, 0, 0, 0, TimeSpan.Zero), true, "11.11", "Axis P3275-LV, Axis P3285-LV", "Compliant"),
         new("P3265-V", new DateTimeOffset(2031, 12, 31, 0, 0, 0, TimeSpan.Zero), true, "11.11", "Axis P3275-V", "Compliant"),
         new("P1465-LE", new DateTimeOffset(2031, 12, 31, 0, 0, 0, TimeSpan.Zero), true, "11.11", "Axis P1475-LE, Axis P1485-LE", "Compliant"),
+        new("Q3517-LVE", new DateTimeOffset(2026, 6, 30, 0, 0, 0, TimeSpan.Zero), true, "10.12", "Axis Q3538-LVE", "Compliant"),
+        new("M3058-PLVE", new DateTimeOffset(2027, 12, 31, 0, 0, 0, TimeSpan.Zero), true, "10.12", "Axis M3088-P", "Compliant"),
         new("Q1700-LE", new DateTimeOffset(2028, 12, 31, 0, 0, 0, TimeSpan.Zero), true, "10.12", "Axis Q1701-LE", "Compliant"),
         new("Q6135-LE", new DateTimeOffset(2029, 12, 31, 0, 0, 0, TimeSpan.Zero), false, "11.11", null, "Compliant"),
         new("Q6318-LE", new DateTimeOffset(2032, 12, 31, 0, 0, 0, TimeSpan.Zero), false, "11.11", null, "Compliant"),

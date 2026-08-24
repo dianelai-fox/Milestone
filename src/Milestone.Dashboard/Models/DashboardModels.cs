@@ -137,6 +137,7 @@ public sealed class DashboardSnapshot
     public IReadOnlyList<StorageVolume> Storages { get; init; } = [];
     public IReadOnlyList<RecordingServerInfo> RecordingServers { get; init; } = [];
     public CameraLocation? SuggestedMapCenter { get; set; }
+    public LifecycleOverview Lifecycle { get; set; } = new();
 
     public DashboardSummary Summary => DashboardSummary.From(this);
 
@@ -267,4 +268,46 @@ public sealed class HealthStatus
     public required string Source { get; init; }
     public DateTimeOffset GeneratedAt { get; init; }
     public bool SqlCacheEnabled { get; init; }
+}
+
+public sealed class LifecycleOverview
+{
+    public int TotalDevices { get; init; }
+    public int CompliantCount { get; init; }
+    public int NonCompliantCount { get; init; }
+    public int NaCount { get; init; }
+    public double OverallCompliancePercent { get; init; }
+    public int CurrentProductCount { get; init; }
+    public int EolCount { get; init; }
+    public int EosCount { get; init; }
+    public int CompliantSites { get; init; }
+    public int NonCompliantSites { get; init; }
+    public int TotalSites { get; init; }
+    public IReadOnlyList<LifecycleSiteAlert> TopAlertedSites { get; init; } = [];
+    public IReadOnlyList<LifecycleSlice> TopNonCompliantModels { get; init; } = [];
+    public IReadOnlyList<LifecycleSlice> TopNonCompliantTypes { get; init; } = [];
+    public IReadOnlyList<LifecycleYearCount> EosByYear { get; init; } = [];
+    public IReadOnlyList<LifecycleSlice> TopEolModels { get; init; } = [];
+    public IReadOnlyList<LifecycleSlice> EolByType { get; init; } = [];
+}
+
+public sealed class LifecycleSlice
+{
+    public required string Label { get; init; }
+    public int Count { get; init; }
+}
+
+public sealed class LifecycleSiteAlert
+{
+    public required string Site { get; init; }
+    public int Eos { get; init; }
+    public int Eol { get; init; }
+    public int Total { get; init; }
+    public double RiskPercent { get; init; }
+}
+
+public sealed class LifecycleYearCount
+{
+    public int Year { get; init; }
+    public int Count { get; init; }
 }

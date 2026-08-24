@@ -9,8 +9,13 @@
   --teal: #1aae9f;
   --teal-soft: #e6f7f5;
   --red: #e55353;
+  --pink: #e5537a;
+  --pink-soft: #fde8ef;
   --orange: #f0a202;
+  --orange-soft: #fff4d8;
   --gray: #9aa6b2;
+  --blue: #3d8bfd;
+  --blue-soft: #e8f1fb;
   --shadow: 0 8px 24px rgba(44, 58, 71, 0.08);
 }
 
@@ -228,6 +233,7 @@ main { padding: 20px 24px 40px; }
 .dot.teal { background: var(--teal); }
 .dot.green { background: #27ae60; }
 .dot.red { background: var(--red); }
+.dot.pink { background: var(--pink); }
 .dot.orange { background: var(--orange); }
 .dot.gray { background: var(--gray); }
 
@@ -785,6 +791,250 @@ th {
 .marker-cluster-medium { background: rgba(240, 162, 2, 0.25); }
 .marker-cluster-medium div { background: var(--orange); color: #fff; }
 
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 22px;
+  margin-bottom: 18px;
+}
+.page-head h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+}
+.page-tabs { display: flex; gap: 18px; }
+.life-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--teal);
+  border-bottom-color: var(--teal);
+  font-weight: 600;
+}
+.life-tab svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.life-summary .life-card { min-height: 168px; }
+.life-card h3 {
+  margin: 0 0 14px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 700;
+}
+.life-devices {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: center;
+}
+.life-score .value {
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.life-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 14px;
+  background: #edf1f4;
+}
+.life-bar .ok { background: var(--teal); }
+.life-bar .bad { background: var(--pink); }
+.life-legend {
+  display: grid;
+  gap: 8px;
+  min-width: 168px;
+  font-size: 13px;
+}
+.life-legend .total {
+  margin-top: 6px;
+  font-weight: 700;
+}
+.life-legend button,
+.life-status button,
+.life-sites button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.life-legend button:hover,
+.life-status button:hover,
+.life-sites button:hover { color: var(--teal); }
+
+.life-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.life-badge {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-width: 92px;
+}
+.life-badge span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.life-badge strong { font-size: 22px; }
+.life-badge.current { background: var(--teal-soft); color: #147f75; }
+.life-badge.eol { background: var(--orange-soft); color: #b47600; }
+.life-badge.eos { background: var(--pink-soft); color: #c43b61; }
+.life-badge.na { background: #eef1f4; color: #6b7784; }
+
+.life-sites {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+}
+.life-sites .total { margin-top: 6px; font-weight: 700; }
+
+.highlights-card { padding: 8px 20px 20px; }
+.highlights-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: 0;
+  padding: 10px 0 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.highlights-toggle .chevron { color: var(--muted); font-size: 14px; }
+.highlights-card.collapsed .highlights-grid { display: none; }
+.highlights-card.collapsed .chevron { transform: rotate(-90deg); }
+.highlights-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.highlight-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px 16px;
+  min-height: 250px;
+}
+.highlight-card h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.alert-table { width: 100%; }
+.alert-table th, .alert-table td {
+  padding: 7px 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.alert-table th { color: var(--muted); font-weight: 600; }
+.risk-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 110px;
+}
+.risk-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: #edf1f4;
+  overflow: hidden;
+}
+.risk-bar > span {
+  display: block;
+  height: 100%;
+  background: #8ec5ff;
+}
+.life-donut-wrap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.life-donut-legend {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+}
+.life-donut-legend button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.life-donut-legend button:hover { color: var(--teal); }
+.life-donut {
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.life-donut-inner {
+  width: 96px;
+  height: 96px;
+  background: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-weight: 700;
+  font-size: 22px;
+}
+.year-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 12px;
+  height: 200px;
+  padding: 8px 4px 0;
+}
+.year-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  height: 100%;
+}
+.year-count {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.year-bar {
+  width: 42%;
+  min-width: 18px;
+  max-width: 36px;
+  background: var(--teal);
+  border-radius: 4px 4px 0 0;
+}
+.year-label {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 @media (max-width: 1200px) {
-  .summary-row, .middle-row, .bottom-row, .device-row { grid-template-columns: 1fr; }
+  .summary-row, .middle-row, .bottom-row, .device-row, .highlights-grid, .life-devices { grid-template-columns: 1fr; }
 }

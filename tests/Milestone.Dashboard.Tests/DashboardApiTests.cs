@@ -51,6 +51,18 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.False(string.IsNullOrWhiteSpace(site.GetProperty("name").GetString()));
         Assert.True(site.GetProperty("managedCount").GetInt32() > 0);
         Assert.True(document.RootElement.GetProperty("mapCenter").TryGetProperty("latitude", out _));
+        var lifecycle = document.RootElement.GetProperty("lifecycle");
+        Assert.Equal(document.RootElement.GetProperty("cameras").GetArrayLength(), lifecycle.GetProperty("totalDevices").GetInt32());
+        Assert.True(lifecycle.GetProperty("eosCount").GetInt32() >= 1);
+        Assert.Equal(
+            lifecycle.GetProperty("currentProductCount").GetInt32()
+            + lifecycle.GetProperty("eolCount").GetInt32()
+            + lifecycle.GetProperty("eosCount").GetInt32()
+            + lifecycle.GetProperty("naCount").GetInt32(),
+            lifecycle.GetProperty("totalDevices").GetInt32());
+        Assert.Equal(
+            lifecycle.GetProperty("compliantSites").GetInt32() + lifecycle.GetProperty("nonCompliantSites").GetInt32(),
+            lifecycle.GetProperty("totalSites").GetInt32());
     }
 
     [Fact]
@@ -108,6 +120,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"view-devices\"", html);
         Assert.Contains("id=\"view-manage\"", html);
         Assert.Contains("id=\"view-storage\"", html);
+        Assert.Contains("id=\"view-lifecycle\"", html);
+        Assert.Contains("Device Lifecycle", html);
+        Assert.Contains("lifecycle-highlights", html);
         Assert.Contains("id=\"storage-pies\"", html);
         Assert.Contains("Replace previous locations", html);
         Assert.Contains("storage-pie-grid", html);
@@ -138,6 +153,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("color: #fff", css);
         Assert.Contains(".site-status", css);
         Assert.Contains("#22c55e", css);
+        Assert.Contains(".life-card", css);
+        Assert.Contains("--pink", css);
+        Assert.Contains(".highlights-grid", css);
     }
 
     [Fact]

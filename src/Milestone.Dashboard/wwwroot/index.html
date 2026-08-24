@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260824c" />
+  <link rel="stylesheet" href="/css/site.css?v=20260824d" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -27,6 +27,12 @@
       <button class="nav-btn" data-view="devices" title="Cameras">
         <span class="nav-icon">◉</span>
         <span class="nav-label">Cameras</span>
+      </button>
+      <button class="nav-btn" data-view="lifecycle" title="Device Lifecycle">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 2a8 8 0 1 1-8 8 8 8 0 0 1 8-8zm.75 3v5.19l3.45 2.07-.75 1.23L11.25 13V7z"/></svg>
+        </span>
+        <span class="nav-label">Device Lifecycle</span>
       </button>
       <button class="nav-btn" data-view="storage" title="Storage">
         <span class="nav-icon">▣</span>
@@ -104,6 +110,15 @@
           <select id="label-filter"><option value="">Group</option></select>
           <select id="server-filter"><option value="">Recording server</option></select>
           <select id="vendor-filter"><option value="">Vendor</option></select>
+          <select id="lifecycle-filter">
+            <option value="">Lifecycle</option>
+            <option value="compliant">Compliant</option>
+            <option value="noncompliant">Non Compliant</option>
+            <option value="Active">Current Product</option>
+            <option value="EOL">EOL</option>
+            <option value="EOS">EOS</option>
+            <option value="na">N/A</option>
+          </select>
           <input id="search" type="search" placeholder="Device Name" />
           <select id="location-filter">
             <option value="">Location</option>
@@ -261,6 +276,28 @@
       </section>
       </div>
 
+      <div id="view-lifecycle" class="view" hidden>
+      <section class="life-page">
+        <div class="page-head">
+          <h1>Device Lifecycle</h1>
+          <div class="page-tabs">
+            <button class="tab life-tab active" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h10v2H4v-2zm0 6h16v2H4v-2z"/></svg>
+              Overview
+            </button>
+          </div>
+        </div>
+        <section id="lifecycle-summary" class="summary-row life-summary"></section>
+        <section class="card highlights-card">
+          <button class="highlights-toggle" id="highlights-toggle" type="button" aria-expanded="true">
+            Highlights
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div id="lifecycle-highlights" class="highlights-grid"></div>
+        </section>
+      </section>
+      </div>
+
       <div id="view-storage" class="view" hidden>
       <section class="card" id="storage-pies">
         <div class="panel-head">
@@ -297,6 +334,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260824c"></script>
+  <script src="/js/dashboard.js?v=20260824d"></script>
 </body>
 </html>

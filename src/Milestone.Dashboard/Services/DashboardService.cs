@@ -161,6 +161,7 @@ public sealed class DashboardService
         }
 
         snapshot.Sites = SiteInventory.FromCameras(snapshot.Cameras);
+        snapshot.Lifecycle = LifecycleInventory.FromCameras(snapshot.Cameras);
     }
 
     internal static void ApplyOverrides(
