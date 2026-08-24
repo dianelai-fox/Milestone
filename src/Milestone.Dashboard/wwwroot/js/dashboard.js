@@ -433,9 +433,21 @@ function renderStorage(storages) {
   }).join("") || `<p class="muted">No storage volumes were returned.</p>`;
 }
 
+function clearCameraFilters({ keepServer = false } = {}) {
+  searchInput.value = "";
+  if (!keepServer) {
+    serverFilter.value = "";
+  }
+  labelFilter.value = "";
+  locationFilter.value = "";
+  siteFilter.value = "";
+  vendorFilter.value = "";
+  state.page = 1;
+}
+
 function showRecordingServers() {
   state.inventoryView = "servers";
-  serverFilter.value = "";
+  clearCameraFilters();
   renderOverview();
   renderInventory();
   showView("devices");
@@ -443,8 +455,7 @@ function showRecordingServers() {
 
 function showAllCameras() {
   state.inventoryView = "cameras";
-  serverFilter.value = "";
-  siteFilter.value = "";
+  clearCameraFilters();
   renderOverview();
   renderInventory();
   showView("devices");
@@ -452,6 +463,7 @@ function showAllCameras() {
 
 function showCamerasForServer(serverId) {
   state.inventoryView = "cameras";
+  clearCameraFilters({ keepServer: true });
   serverFilter.value = serverId;
   renderOverview();
   renderInventory();
@@ -514,7 +526,7 @@ function renderServers() {
       <td><button class="link-btn" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button></td>
       <td>${escapeHtml(server.hostName ?? "—")}</td>
       <td><span class="status ${server.enabled === false ? "off" : "on"}">${server.enabled === false ? "Offline" : "Online"}</span></td>
-      <td>${server.cameraCount ?? 0}</td>
+      <td><button class="link-btn" type="button" data-server="${escapeHtml(server.id)}" title="Show cameras on this server">${server.cameraCount ?? 0}</button></td>
       <td>${escapeHtml(formatMb(server.usedSpaceMb))}</td>
       <td>${escapeHtml(formatMb(server.maxSizeMb))}</td>
       <td>${formatPercent(usage)}</td>
@@ -529,7 +541,7 @@ function renderServers() {
 
 function fillServerFilter(servers) {
   const current = serverFilter.value;
-  serverFilter.innerHTML = `<option value="">Storage Server</option>` +
+  serverFilter.innerHTML = `<option value="">Recording server</option>` +
     servers.map((server) => `<option value="${escapeHtml(server.id)}">${escapeHtml(server.name)}</option>`).join("");
   serverFilter.value = current;
 }
@@ -598,7 +610,10 @@ function visibleCameras() {
       ...Object.entries(camera.customProperties ?? {}).flatMap(([key, value]) => [key, value])
     ].filter(Boolean).join(" ").toLowerCase();
     const matchesQuery = !query || haystack.includes(query);
-    const matchesServer = !serverFilter.value || camera.recordingServerId === serverFilter.value;
+    const selectedServer = state.recordingServers.find((server) => server.id === serverFilter.value);
+    const matchesServer = !serverFilter.value
+      || camera.recordingServerId === serverFilter.value
+      || (selectedServer && camera.recordingServerName === selectedServer.name);
     const matchesLabel = !labelFilter.value || (camera.labels ?? []).includes(labelFilter.value);
     const matchesSite = !siteFilter.value || camera.site === siteFilter.value;
     const matchesVendor = !vendorFilter.value || camera.vendor === vendorFilter.value;

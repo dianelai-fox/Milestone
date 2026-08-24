@@ -396,7 +396,12 @@ button { cursor: pointer; }
   cursor: pointer;
 }
 
-.view[hidden] { display: none !important; }
+.view[hidden],
+.filter-bar[hidden],
+.table-wrap[hidden],
+.table-footer[hidden] {
+  display: none !important;
+}
 .sites-card { width: 100%; }
 
 #map, #manage-map {
