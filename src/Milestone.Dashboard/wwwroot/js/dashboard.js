@@ -1342,7 +1342,8 @@ async function importCsv(event) {
     return;
   }
 
-  let response = await fetch("/api/locations/import", {
+  const replace = document.getElementById("csv-replace")?.checked !== false;
+  let response = await fetch(`/api/locations/import?replace=${replace}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(rows)
@@ -1351,7 +1352,7 @@ async function importCsv(event) {
   if (response.status === 404 || response.status === 405) {
     const form = new FormData();
     form.append("file", file, file.name);
-    response = await fetch("/api/locations/import-csv", { method: "POST", body: form });
+    response = await fetch(`/api/locations/import-csv?replace=${replace}`, { method: "POST", body: form });
   }
 
   const raw = await response.text();
@@ -1370,7 +1371,11 @@ async function importCsv(event) {
   const extra = payload.unmatched?.length ? ` Unmatched: ${payload.unmatched.slice(0, 8).join(", ")}` : "";
   const skipped = payload.skipped ? ` Skipped ${payload.skipped} rows without coordinates.` : "";
   const invalid = payload.invalid?.length ? ` Skipped ${payload.invalid.length} invalid coordinate row(s).` : "";
-  placeHint.textContent = `Imported ${payload.saved} camera location(s).${skipped}${invalid}${extra}`;
+  const removed = payload.removed ? ` Removed ${payload.removed} previous pin(s) that were not in this file.` : "";
+  const cameras = payload.cameraCount
+    ? ` XProtect still has ${payload.cameraCount} cameras. The CSV only updates locations, it does not add or delete cameras.`
+    : "";
+  placeHint.textContent = `Imported ${payload.saved} camera location(s).${removed}${cameras}${skipped}${invalid}${extra}`;
   await loadDashboard();
 }
 

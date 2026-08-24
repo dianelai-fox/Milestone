@@ -82,8 +82,21 @@ public sealed class LocationOverrideStore
                     : request;
             }
 
-            await using var stream = File.Create(_path);
-            await JsonSerializer.SerializeAsync(stream, mutable.Values, JsonOptions, cancellationToken);
+            await WriteUnlockedAsync(mutable.Values, cancellationToken);
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task ReplaceAllAsync(IEnumerable<LocationOverrideRequest> requests, CancellationToken cancellationToken)
+    {
+        await _lock.WaitAsync(cancellationToken);
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+            await WriteUnlockedAsync(requests, cancellationToken);
         }
         finally
         {
@@ -111,6 +124,12 @@ public sealed class LocationOverrideStore
         {
             return new Dictionary<string, LocationOverrideRequest>(StringComparer.OrdinalIgnoreCase);
         }
+    }
+
+    private async Task WriteUnlockedAsync(IEnumerable<LocationOverrideRequest> requests, CancellationToken cancellationToken)
+    {
+        await using var stream = File.Create(_path);
+        await JsonSerializer.SerializeAsync(stream, requests, JsonOptions, cancellationToken);
     }
 
     private static LocationOverrideRequest Merge(LocationOverrideRequest existing, LocationOverrideRequest incoming) =>

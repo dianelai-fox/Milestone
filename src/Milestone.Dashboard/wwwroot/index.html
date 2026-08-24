@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260824a" />
+  <link rel="stylesheet" href="/css/site.css?v=20260824b" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -72,6 +72,10 @@
           <label class="file-btn">
             Import CSV
             <input id="csv-import" type="file" accept=".csv,text/csv" hidden />
+          </label>
+          <label class="check-label">
+            <input id="csv-replace" type="checkbox" checked />
+            Replace previous locations
           </label>
           <a id="csv-template" href="/api/locations/template" download="camera-locations.csv">Download CSV</a>
         </div>
@@ -293,6 +297,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260824a"></script>
+  <script src="/js/dashboard.js?v=20260824b"></script>
 </body>
 </html>

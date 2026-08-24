@@ -109,6 +109,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"view-manage\"", html);
         Assert.Contains("id=\"view-storage\"", html);
         Assert.Contains("id=\"storage-pies\"", html);
+        Assert.Contains("Replace previous locations", html);
         Assert.Contains("storage-pie-grid", html);
         Assert.Contains("class=\"nav-label\"", html);
         Assert.Contains("Manage sites", html);
@@ -194,5 +195,36 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         response.EnsureSuccessStatusCode();
         var csv = await response.Content.ReadAsStringAsync();
         Assert.StartsWith("cameraId,name,latitude,longitude,site,address,Site_Name", csv);
+    }
+
+    [Fact]
+    public async Task Location_csv_import_replaces_previous_pins_and_keeps_xprotect_camera_count()
+    {
+        using var first = new MultipartFormDataContent();
+        first.Add(new StringContent("""
+            cameraId,name,latitude,longitude,site
+            c10,Server Room,34.05,-118.41,Old Site
+            c20,Archive Vault,34.12,-118.43,Old Site
+            """), "file", "old.csv");
+        (await _client.PostAsync("/api/locations/import-csv?replace=true", first)).EnsureSuccessStatusCode();
+
+        using var second = new MultipartFormDataContent();
+        second.Add(new StringContent("""
+            cameraId,name,latitude,longitude,site,address,Site_Name
+            c10,Server Room,34.054244,-118.414072,FOXUSWDMSAP663,"10201 W Pico Blvd, Los Angeles, CA 90064, USA",Fox Studio Lot
+            """), "file", "new.csv");
+        var response = await _client.PostAsync("/api/locations/import-csv?replace=true", second);
+        response.EnsureSuccessStatusCode();
+
+        using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(1, result.RootElement.GetProperty("saved").GetInt32());
+        Assert.Equal(1, result.RootElement.GetProperty("removed").GetInt32());
+        Assert.True(result.RootElement.GetProperty("cameraCount").GetInt32() >= 20);
+
+        using var dashboard = JsonDocument.Parse(await _client.GetStringAsync("/api/dashboard"));
+        Assert.True(dashboard.RootElement.GetProperty("cameras").GetArrayLength() >= 20);
+        var vault = dashboard.RootElement.GetProperty("cameras").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetString() == "c20");
+        Assert.False(vault.GetProperty("locationIsOverride").GetBoolean());
     }
 }

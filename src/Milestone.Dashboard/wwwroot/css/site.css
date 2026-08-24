@@ -369,6 +369,14 @@ button { cursor: pointer; }
 #place-hint { margin: 0 0 10px; }
 #map.placing { cursor: crosshair; }
 
+.check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
 .file-btn, a { color: var(--teal); text-decoration: none; }
 .file-btn {
   display: inline-flex;

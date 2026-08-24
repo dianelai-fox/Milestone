@@ -56,7 +56,8 @@ public sealed class DashboardService
 
     public async Task<LocationImportResult> ImportOverridesAsync(
         IEnumerable<LocationImportItem> items,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool replaceExisting = true)
     {
         var pending = items.ToList();
         var skipped = 0;
@@ -112,14 +113,34 @@ public sealed class DashboardService
             });
         }
 
-        if (overrides.Count > 0)
+        var previous = await _overrides.GetAllAsync(cancellationToken);
+        var importedIds = new HashSet<string>(overrides.Select(item => item.CameraId), StringComparer.OrdinalIgnoreCase);
+        var removed = 0;
+        if (replaceExisting)
+        {
+            await _overrides.ReplaceAllAsync(overrides, cancellationToken);
+            removed = previous.Keys.Count(id => !importedIds.Contains(id));
+        }
+        else if (overrides.Count > 0)
         {
             await _overrides.SaveManyAsync(overrides, cancellationToken);
+        }
+
+        var cameraCount = 0;
+        try
+        {
+            cameraCount = (await GetSnapshotAsync(cancellationToken)).Cameras.Count;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Imported locations but could not reload the camera count.");
         }
 
         return new LocationImportResult
         {
             Saved = overrides.Count,
+            Removed = removed,
+            CameraCount = cameraCount,
             Skipped = skipped,
             Unmatched = unmatched,
             Invalid = invalid

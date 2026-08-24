@@ -287,9 +287,9 @@ app.MapGet("/api/locations/template", async (DashboardService dashboard, Cancell
     return Results.Text(string.Join('\n', lines) + "\n", "text/csv");
 });
 
-app.MapPost("/api/locations/import", async (List<LocationImportItem> items, DashboardService dashboard, CancellationToken cancellationToken) =>
+app.MapPost("/api/locations/import", async (List<LocationImportItem> items, bool? replace, DashboardService dashboard, CancellationToken cancellationToken) =>
 {
-    return await ImportLocationsAsync(items, dashboard, cancellationToken);
+    return await ImportLocationsAsync(items, dashboard, replace ?? true, cancellationToken);
 });
 
 app.MapPost("/api/locations/import-csv", async (HttpRequest request, DashboardService dashboard, CancellationToken cancellationToken) =>
@@ -316,7 +316,14 @@ app.MapPost("/api/locations/import-csv", async (HttpRequest request, DashboardSe
         }
 
         var items = CsvLocationParser.Parse(text);
-        return await ImportLocationsAsync(items, dashboard, cancellationToken);
+        var replace = true;
+        if (request.Query.TryGetValue("replace", out var replaceValue)
+            && bool.TryParse(replaceValue, out var parsed))
+        {
+            replace = parsed;
+        }
+
+        return await ImportLocationsAsync(items, dashboard, replace, cancellationToken);
     }
     catch (Exception ex)
     {
@@ -327,6 +334,7 @@ app.MapPost("/api/locations/import-csv", async (HttpRequest request, DashboardSe
 static async Task<IResult> ImportLocationsAsync(
     List<LocationImportItem> items,
     DashboardService dashboard,
+    bool replace,
     CancellationToken cancellationToken)
 {
     if (items.Count == 0)
@@ -334,7 +342,7 @@ static async Task<IResult> ImportLocationsAsync(
         return Results.BadRequest(new { error = "No location rows with latitude and longitude were found. Leave those two columns filled; empty rows are skipped." });
     }
 
-    var result = await dashboard.ImportOverridesAsync(items, cancellationToken);
+    var result = await dashboard.ImportOverridesAsync(items, cancellationToken, replace);
     return Results.Ok(result);
 }
 

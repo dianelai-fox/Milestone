@@ -161,6 +161,8 @@ public sealed class LocationImportItem
 public sealed class LocationImportResult
 {
     public int Saved { get; init; }
+    public int Removed { get; init; }
+    public int CameraCount { get; init; }
     public int Skipped { get; init; }
     public IReadOnlyList<string> Unmatched { get; init; } = [];
     public IReadOnlyList<string> Invalid { get; init; } = [];
