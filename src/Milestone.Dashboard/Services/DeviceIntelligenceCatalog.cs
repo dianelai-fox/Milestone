@@ -73,7 +73,7 @@ public static class DeviceIntelligenceCatalog
             ReplacementModel = profile?.Replacement,
             WarrantyStatus = null,
             NdaaStatus = profile?.NdaaStatus ?? VendorNdaa(camera.Vendor),
-            PasswordExpiryStatus = PasswordStatus(passwordExpiry, clock),
+            PasswordExpiryStatus = PasswordStatus(camera, passwordExpiry, clock),
             PasswordExpiryDate = passwordExpiry,
             SslExpiryStatus = null,
             LastSslCertificate = null,
@@ -135,11 +135,13 @@ public static class DeviceIntelligenceCatalog
         return CompliantVendors.Contains(vendor) ? "Compliant" : null;
     }
 
-    private static string? PasswordStatus(DateTimeOffset? expiry, DateTimeOffset now)
+    private static string? PasswordStatus(CameraInfo camera, DateTimeOffset? expiry, DateTimeOffset now)
     {
         if (expiry is null)
         {
-            return null;
+            return camera.Enabled && !string.IsNullOrWhiteSpace(camera.HardwareUserName)
+                ? "Never Rotated"
+                : null;
         }
 
         if (expiry <= now)

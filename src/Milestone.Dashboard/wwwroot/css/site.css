@@ -896,6 +896,9 @@ th {
 .life-badge.eol { background: var(--orange-soft); color: #b47600; }
 .life-badge.eos { background: var(--pink-soft); color: #c43b61; }
 .life-badge.na { background: #eef1f4; color: #6b7784; }
+.life-badge.fresh { background: #e7f7ee; color: #1b7a43; }
+.life-badge.never { background: var(--blue-soft); color: #2b6cb0; }
+.life-badge.soon { background: var(--orange-soft); color: #b47600; }
 
 .life-sites {
   display: grid;
@@ -1058,7 +1061,44 @@ th {
   font-size: 12px;
   color: var(--muted);
 }
+.pw-gauge {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.pw-gauge-inner {
+  width: 96px;
+  height: 96px;
+  background: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 8px;
+}
+.pw-gauge-inner b {
+  font-size: 28px;
+  line-height: 1;
+}
+.pw-devices {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  align-items: center;
+}
+.pw-breakdown {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 36px;
+  height: 220px;
+  padding: 12px 8px 0;
+}
+.pw-breakdown .year-bar { background: #3d8bfd; width: 56px; max-width: 56px; }
+#password-breakdown-card { margin-top: 16px; }
 
 @media (max-width: 1200px) {
-  .summary-row, .middle-row, .bottom-row, .device-row, .highlights-grid, .life-devices, .ndaa-highlights-grid { grid-template-columns: 1fr; }
+  .summary-row, .middle-row, .bottom-row, .device-row, .highlights-grid, .life-devices, .ndaa-highlights-grid, .pw-devices { grid-template-columns: 1fr; }
 }

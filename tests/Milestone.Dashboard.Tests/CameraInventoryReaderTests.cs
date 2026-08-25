@@ -128,6 +128,22 @@ public class CameraInventoryReaderTests
     }
 
     [Fact]
+    public void Intelligence_marks_enabled_cameras_without_a_password_change_as_never_rotated()
+    {
+        var camera = new CameraInfo
+        {
+            Id = "c4",
+            Name = "Vault",
+            Enabled = true,
+            HardwareUserName = "root"
+        };
+
+        var intel = DeviceIntelligenceCatalog.Evaluate(camera, new DateTimeOffset(2026, 8, 25, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal("Never Rotated", intel.PasswordExpiryStatus);
+    }
+
+    [Fact]
     public void Intelligence_marks_hikvision_ndaa_restricted()
     {
         var camera = new CameraInfo

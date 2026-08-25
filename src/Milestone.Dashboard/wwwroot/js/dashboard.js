@@ -24,7 +24,9 @@ const state = {
   storageFilter: "",
   lifecycle: {},
   highlightsOpen: true,
-  ndaaHighlightsOpen: true
+  ndaaHighlightsOpen: true,
+  passwordRotation: {},
+  passwordHighlightsOpen: true
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -36,6 +38,7 @@ const siteFilter = document.getElementById("site-filter");
 const vendorFilter = document.getElementById("vendor-filter");
 const lifecycleFilter = document.getElementById("lifecycle-filter");
 const ndaaFilter = document.getElementById("ndaa-filter");
+const passwordFilter = document.getElementById("password-filter");
 const pageSizeSelect = document.getElementById("page-size");
 const exportCameras = document.getElementById("export-cameras");
 const clearFilters = document.getElementById("clear-filters");
@@ -65,6 +68,7 @@ siteFilter.addEventListener("change", () => resetPageAndRender());
 vendorFilter.addEventListener("change", () => resetPageAndRender());
 lifecycleFilter.addEventListener("change", () => resetPageAndRender());
 ndaaFilter.addEventListener("change", () => resetPageAndRender());
+passwordFilter.addEventListener("change", () => resetPageAndRender());
 pageSizeSelect.addEventListener("change", () => {
   state.pageSize = Number(pageSizeSelect.value) || 100;
   state.page = 1;
@@ -80,6 +84,7 @@ clearFilters.addEventListener("click", () => {
   vendorFilter.value = "";
   lifecycleFilter.value = "";
   ndaaFilter.value = "";
+  passwordFilter.value = "";
   state.page = 1;
   renderInventory();
 });
@@ -141,25 +146,31 @@ document.addEventListener("click", (event) => {
   }
 });
 document.addEventListener("click", (event) => {
-  const life = event.target.closest("[data-life-filter], [data-life-site], [data-life-query], [data-ndaa-filter]");
+  const life = event.target.closest("[data-life-filter], [data-life-site], [data-life-query], [data-ndaa-filter], [data-password-filter]");
   if (!life) {
     return;
   }
   showCamerasForLifecycle(life.dataset.lifeFilter ?? "", {
     site: life.dataset.lifeSite,
     query: life.dataset.lifeQuery,
-    ndaa: life.dataset.ndaaFilter
+    ndaa: life.dataset.ndaaFilter,
+    password: life.dataset.passwordFilter
   });
 });
 document.getElementById("highlights-toggle")?.addEventListener("click", () => {
   state.highlightsOpen = !state.highlightsOpen;
-  document.querySelector(".highlights-card:not(.ndaa-highlights-card)")?.classList.toggle("collapsed", !state.highlightsOpen);
+  document.getElementById("lifecycle-highlights-card")?.classList.toggle("collapsed", !state.highlightsOpen);
   document.getElementById("highlights-toggle")?.setAttribute("aria-expanded", String(state.highlightsOpen));
 });
 document.getElementById("ndaa-highlights-toggle")?.addEventListener("click", () => {
   state.ndaaHighlightsOpen = !state.ndaaHighlightsOpen;
   document.querySelector(".ndaa-highlights-card")?.classList.toggle("collapsed", !state.ndaaHighlightsOpen);
   document.getElementById("ndaa-highlights-toggle")?.setAttribute("aria-expanded", String(state.ndaaHighlightsOpen));
+});
+document.getElementById("password-highlights-toggle")?.addEventListener("click", () => {
+  state.passwordHighlightsOpen = !state.passwordHighlightsOpen;
+  document.getElementById("password-highlights-card")?.classList.toggle("collapsed", !state.passwordHighlightsOpen);
+  document.getElementById("password-highlights-toggle")?.setAttribute("aria-expanded", String(state.passwordHighlightsOpen));
 });
 selectAll.addEventListener("change", () => {
   const { pageRows } = pagedCameras();
@@ -203,6 +214,9 @@ function showView(name, options = {}) {
   if (name === "lifecycle") {
     renderLifecycle();
   }
+  if (name === "passwords") {
+    renderPasswords();
+  }
   if (options.focus) {
     document.getElementById(options.focus)?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
@@ -236,6 +250,7 @@ async function loadDashboard() {
     state.recordingServers = data.recordingServers ?? [];
     state.summary = data.summary ?? {};
     state.lifecycle = data.lifecycle ?? {};
+    state.passwordRotation = data.passwordRotation ?? {};
     state.siteName = data.siteName ?? "";
     state.mapCenter = data.mapCenter ?? state.mapCenter;
     renderSource(data);
@@ -255,6 +270,7 @@ async function loadDashboard() {
     renderInventory();
     renderSites();
     renderLifecycle();
+    renderPasswords();
     try {
       renderMap(state.cameras);
     } catch (mapError) {
@@ -401,6 +417,176 @@ function matchesNdaaFilter(camera, filter) {
 
 function ndaaLabel(filter) {
   return filter === "unknown" ? "Unknown" : filter;
+}
+
+function matchesPasswordFilter(camera, filter) {
+  const status = camera.intelligence?.passwordExpiryStatus ?? "";
+  if (!filter) {
+    return true;
+  }
+  if (filter === "compliant") {
+    return status === "Up To Date" || status === "Due Soon";
+  }
+  if (filter === "noncompliant") {
+    return status === "Never Rotated" || status === "Overdue";
+  }
+  if (filter === "na") {
+    return !status;
+  }
+  return status === filter;
+}
+
+function passwordLabel(filter) {
+  return {
+    compliant: "Password Compliant",
+    noncompliant: "Password Non Compliant",
+    "Up To Date": "Up To Date",
+    "Never Rotated": "Never Rotated",
+    Overdue: "Expired",
+    "Due Soon": "Soon To Be Expired",
+    na: "Password N/A"
+  }[filter] ?? filter;
+}
+
+function renderPasswords() {
+  const pw = state.passwordRotation ?? {};
+  const total = pw.totalDevices ?? 0;
+  const compliant = pw.compliantCount ?? 0;
+  const nonCompliant = pw.nonCompliantCount ?? 0;
+  const na = pw.naCount ?? 0;
+  const percent = pw.overallCompliancePercent ?? 0;
+  document.getElementById("password-summary").innerHTML = `
+    <article class="summary-card life-card">
+      <h3>DEVICES</h3>
+      <div class="pw-devices">
+        <div class="pw-gauge" style="background:${donutGradient(
+          [{ count: percent }, { count: Math.max(100 - percent, 0) }],
+          ["#27ae60", "#e55353"]
+        )}">
+          <div class="pw-gauge-inner">
+            <b>${percent}%</b>
+            <span class="muted">Overall Compliance</span>
+          </div>
+        </div>
+        <div class="life-legend">
+          <button type="button" data-password-filter="compliant"><i class="dot green"></i>Compliant: ${formatInt(compliant)}</button>
+          <button type="button" data-password-filter="noncompliant"><i class="dot red"></i>Non-Compliant: ${formatInt(nonCompliant)}</button>
+          <button type="button" data-password-filter="na"><i class="dot gray"></i>N/A: ${formatInt(na)}</button>
+          <div class="total">Total Devices: ${formatInt(total)}</div>
+        </div>
+      </div>
+    </article>
+    <article class="summary-card life-card">
+      <h3>PASSWORD EXPIRATION STATUS</h3>
+      <div class="life-status">
+        <button type="button" class="life-badge fresh" data-password-filter="Up To Date">
+          <span>UP TO DATE</span>
+          <strong>${formatInt(pw.upToDateCount)}</strong>
+        </button>
+        <button type="button" class="life-badge never" data-password-filter="Never Rotated">
+          <span>NEVER ROTATED</span>
+          <strong>${formatInt(pw.neverRotatedCount)}</strong>
+        </button>
+        <button type="button" class="life-badge eos" data-password-filter="Overdue">
+          <span>EXPIRED</span>
+          <strong>${formatInt(pw.expiredCount)}</strong>
+        </button>
+        <button type="button" class="life-badge na" data-password-filter="na">
+          <span>N/A</span>
+          <strong>${formatInt(pw.naCount)}</strong>
+        </button>
+        <button type="button" class="life-badge soon" data-password-filter="Due Soon">
+          <span>SOON TO BE EXPIRED</span>
+          <strong>${formatInt(pw.soonCount)}</strong>
+        </button>
+      </div>
+    </article>
+    <article class="summary-card life-card">
+      <h3>SITES</h3>
+      <div class="life-sites">
+        <button type="button" data-password-filter="compliant"><i class="dot green"></i>Compliant: ${formatInt(pw.compliantSites)}</button>
+        <button type="button" data-password-filter="noncompliant"><i class="dot red"></i>Non-Compliant: ${formatInt(pw.nonCompliantSites)}</button>
+        <div class="total">Total Sites: ${formatInt(pw.totalSites)}</div>
+      </div>
+    </article>
+  `;
+
+  document.getElementById("password-highlights").innerHTML = `
+    ${renderPasswordAlertedSites(pw.topAlertedSites ?? [])}
+    ${renderPasswordDonut("Non-Compliant By User Type", pw.nonCompliantByUserType ?? [], ["#1d4e89", "#3d8bfd", "#7eb8da", "#5aa9e6"], "noncompliant", false)}
+    ${renderPasswordDonut("Non-Compliant By Device Type", pw.nonCompliantByDeviceType ?? [], ["#3d8bfd", "#2b6cb0", "#7eb8da", "#1d4e89"], "noncompliant", true)}
+  `;
+  document.getElementById("password-breakdown").innerHTML = renderPasswordBreakdown(pw.expirationBreakdown ?? []);
+}
+
+function renderPasswordAlertedSites(rows) {
+  const body = rows.length === 0
+    ? `<tr><td colspan="4" class="muted">No password alerts were found.</td></tr>`
+    : rows.map((row) => `
+      <tr>
+        <td><button class="link-btn" type="button" data-life-site="${escapeHtml(row.site)}" data-password-filter="noncompliant">${escapeHtml(row.site)}</button></td>
+        <td>${formatInt(row.alerted)}</td>
+        <td>${formatInt(row.total)}</td>
+        <td>
+          <div class="risk-cell">
+            <div class="risk-bar"><span style="width:${Math.min(row.riskPercent ?? 0, 100)}%"></span></div>
+            ${Number(row.riskPercent ?? 0).toFixed(1)}%
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  return `
+    <article class="highlight-card">
+      <h3>Top Alerted Sites</h3>
+      <table class="alert-table">
+        <thead>
+          <tr><th>Site</th><th>Alerted Devices</th><th>Total</th><th>Risk Level</th></tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </article>
+  `;
+}
+
+function renderPasswordDonut(title, slices, colors, filter, useQuery = false) {
+  const total = slices.reduce((sum, slice) => sum + (slice.count ?? 0), 0);
+  return `
+    <article class="highlight-card">
+      <h3>${escapeHtml(title)}</h3>
+      ${total === 0 ? `<p class="muted">No devices in this category.</p>` : `
+      <div class="life-donut-wrap">
+        <div class="life-donut-legend">
+          ${slices.map((slice, index) => `
+            <button type="button" class="ndaa-legend-row" data-password-filter="${filter}" ${useQuery ? `data-life-query="${escapeHtml(slice.label)}"` : ""}>
+              <span><i class="dot" style="background:${colors[index % colors.length]}"></i>${escapeHtml(slice.label)}</span>
+              <strong>${formatInt(slice.count)}</strong>
+            </button>
+          `).join("")}
+        </div>
+        <div class="life-donut" style="background:${donutGradient(slices, colors)}">
+          <div class="life-donut-inner">${formatInt(total)}</div>
+        </div>
+      </div>`}
+    </article>
+  `;
+}
+
+function renderPasswordBreakdown(rows) {
+  const max = Math.max(...rows.map((row) => row.count ?? 0), 1);
+  if (rows.length === 0) {
+    return `<p class="muted">No password expiry dates were reported.</p>`;
+  }
+  return `
+    <div class="pw-breakdown">
+      ${rows.map((row) => `
+        <div class="year-col">
+          <div class="year-count">${formatInt(row.count)}</div>
+          <div class="year-bar" style="height:${Math.max(((row.count ?? 0) / max) * 160, 6)}px"></div>
+          <div class="year-label">${escapeHtml(row.label)}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderLifecycle() {
@@ -711,6 +897,7 @@ function clearCameraFilters({ keepServer = false } = {}) {
   vendorFilter.value = "";
   lifecycleFilter.value = "";
   ndaaFilter.value = "";
+  passwordFilter.value = "";
   state.page = 1;
 }
 
@@ -761,6 +948,9 @@ function showCamerasForLifecycle(filter, extras = {}) {
   if (extras.ndaa) {
     ndaaFilter.value = extras.ndaa;
   }
+  if (extras.password) {
+    passwordFilter.value = extras.password;
+  }
   lifecycleFilter.value = filter ?? "";
   renderOverview();
   renderInventory();
@@ -792,11 +982,12 @@ function renderInventory() {
   const selectedSite = siteFilter.value;
   const selectedLife = lifecycleFilter.value;
   const selectedNdaa = ndaaFilter.value;
+  const selectedPassword = passwordFilter.value;
   title.textContent = "Device Management";
   copy.innerHTML = selected
     ? `${visibleCameras().length} cameras on ${escapeHtml(selected.name)}. <button class="link-btn" type="button" id="back-to-servers">Back to servers</button> · <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
-    : selectedSite || selectedLife || selectedNdaa
-      ? `${visibleCameras().length} cameras${selectedSite ? ` at ${escapeHtml(selectedSite)}` : ""}${selectedLife ? ` · ${escapeHtml(lifecycleLabel(selectedLife))}` : ""}${selectedNdaa ? ` · NDAA ${escapeHtml(ndaaLabel(selectedNdaa))}` : ""}. <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
+    : selectedSite || selectedLife || selectedNdaa || selectedPassword
+      ? `${visibleCameras().length} cameras${selectedSite ? ` at ${escapeHtml(selectedSite)}` : ""}${selectedLife ? ` · ${escapeHtml(lifecycleLabel(selectedLife))}` : ""}${selectedNdaa ? ` · NDAA ${escapeHtml(ndaaLabel(selectedNdaa))}` : ""}${selectedPassword ? ` · ${escapeHtml(passwordLabel(selectedPassword))}` : ""}. <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
       : "All cameras from XProtect.";
   document.getElementById("tab-cameras").classList.add("active");
   document.getElementById("tab-servers").classList.remove("active");
@@ -908,11 +1099,12 @@ function visibleCameras() {
     const matchesVendor = !vendorFilter.value || camera.vendor === vendorFilter.value;
     const matchesLifecycle = matchesLifecycleFilter(camera, lifecycleFilter.value);
     const matchesNdaa = matchesNdaaFilter(camera, ndaaFilter.value);
+    const matchesPassword = matchesPasswordFilter(camera, passwordFilter.value);
     const mapped = Boolean(camera.location);
     const matchesLocation = !locationFilter.value
       || (locationFilter.value === "mapped" && mapped)
       || (locationFilter.value === "unmapped" && !mapped);
-    return matchesQuery && matchesServer && matchesLabel && matchesSite && matchesVendor && matchesLifecycle && matchesNdaa && matchesLocation;
+    return matchesQuery && matchesServer && matchesLabel && matchesSite && matchesVendor && matchesLifecycle && matchesNdaa && matchesPassword && matchesLocation;
   });
 }
 
@@ -1395,6 +1587,9 @@ function passwordTone(value) {
     return "ok";
   }
   if (value === "Due Soon") {
+    return "warn";
+  }
+  if (value === "Never Rotated") {
     return "warn";
   }
   return value === "Overdue" ? "bad" : "na";

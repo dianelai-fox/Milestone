@@ -138,6 +138,7 @@ public sealed class DashboardSnapshot
     public IReadOnlyList<RecordingServerInfo> RecordingServers { get; init; } = [];
     public CameraLocation? SuggestedMapCenter { get; set; }
     public LifecycleOverview Lifecycle { get; set; } = new();
+    public PasswordRotationOverview PasswordRotation { get; set; } = new();
 
     public DashboardSummary Summary => DashboardSummary.From(this);
 
@@ -312,5 +313,39 @@ public sealed class LifecycleSiteAlert
 public sealed class LifecycleYearCount
 {
     public int Year { get; init; }
+    public int Count { get; init; }
+}
+
+public sealed class PasswordRotationOverview
+{
+    public int TotalDevices { get; init; }
+    public int CompliantCount { get; init; }
+    public int NonCompliantCount { get; init; }
+    public int NaCount { get; init; }
+    public double OverallCompliancePercent { get; init; }
+    public int UpToDateCount { get; init; }
+    public int NeverRotatedCount { get; init; }
+    public int ExpiredCount { get; init; }
+    public int SoonCount { get; init; }
+    public int CompliantSites { get; init; }
+    public int NonCompliantSites { get; init; }
+    public int TotalSites { get; init; }
+    public IReadOnlyList<PasswordSiteAlert> TopAlertedSites { get; init; } = [];
+    public IReadOnlyList<LifecycleSlice> NonCompliantByUserType { get; init; } = [];
+    public IReadOnlyList<LifecycleSlice> NonCompliantByDeviceType { get; init; } = [];
+    public IReadOnlyList<PasswordBucket> ExpirationBreakdown { get; init; } = [];
+}
+
+public sealed class PasswordSiteAlert
+{
+    public required string Site { get; init; }
+    public int Alerted { get; init; }
+    public int Total { get; init; }
+    public double RiskPercent { get; init; }
+}
+
+public sealed class PasswordBucket
+{
+    public required string Label { get; init; }
     public int Count { get; init; }
 }

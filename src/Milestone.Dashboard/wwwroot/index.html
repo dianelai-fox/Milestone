@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260824f" />
+  <link rel="stylesheet" href="/css/site.css?v=20260825a" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -33,6 +33,12 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 2a8 8 0 1 1-8 8 8 8 0 0 1 8-8zm.75 3v5.19l3.45 2.07-.75 1.23L11.25 13V7z"/></svg>
         </span>
         <span class="nav-label">Device Lifecycle</span>
+      </button>
+      <button class="nav-btn" data-view="passwords" title="Password Rotation">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-7-2a2 2 0 1 1 4 0v2h-4zm4 9a2 2 0 1 1-2-2 2 2 0 0 1 2 2z"/></svg>
+        </span>
+        <span class="nav-label">Password Rotation</span>
       </button>
       <button class="nav-btn" data-view="storage" title="Storage">
         <span class="nav-icon">▣</span>
@@ -124,6 +130,16 @@
             <option value="Compliant">Compliant</option>
             <option value="Restricted">Restricted</option>
             <option value="unknown">Unknown</option>
+          </select>
+          <select id="password-filter">
+            <option value="">Password</option>
+            <option value="compliant">Compliant</option>
+            <option value="noncompliant">Non Compliant</option>
+            <option value="Up To Date">Up To Date</option>
+            <option value="Never Rotated">Never Rotated</option>
+            <option value="Overdue">Expired</option>
+            <option value="Due Soon">Soon To Be Expired</option>
+            <option value="na">N/A</option>
           </select>
           <input id="search" type="search" placeholder="Device Name" />
           <select id="location-filter">
@@ -294,7 +310,7 @@
           </div>
         </div>
         <section id="lifecycle-summary" class="summary-row life-summary"></section>
-        <section class="card highlights-card">
+        <section class="card highlights-card" id="lifecycle-highlights-card">
           <button class="highlights-toggle" id="highlights-toggle" type="button" aria-expanded="true">
             Highlights
             <span class="chevron" aria-hidden="true">▾</span>
@@ -307,6 +323,33 @@
             <span class="chevron" aria-hidden="true">▾</span>
           </button>
           <div id="ndaa-highlights" class="ndaa-highlights-grid"></div>
+        </section>
+      </section>
+      </div>
+
+      <div id="view-passwords" class="view" hidden>
+      <section class="life-page">
+        <div class="page-head">
+          <h1>Password Rotation</h1>
+          <div class="page-tabs">
+            <button class="tab life-tab active" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h10v2H4v-2zm0 6h16v2H4v-2z"/></svg>
+              Overview
+            </button>
+          </div>
+        </div>
+        <section id="password-summary" class="summary-row life-summary"></section>
+        <section class="card highlights-card" id="password-highlights-card">
+          <button class="highlights-toggle" id="password-highlights-toggle" type="button" aria-expanded="true">
+            Highlights
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div id="password-highlights" class="highlights-grid"></div>
+        </section>
+        <section class="card" id="password-breakdown-card">
+          <h2>Breakdown By Expiration Date</h2>
+          <p class="muted">Devices with a known password expiry, grouped by time remaining.</p>
+          <div id="password-breakdown"></div>
         </section>
       </section>
       </div>
@@ -347,6 +390,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260824f"></script>
+  <script src="/js/dashboard.js?v=20260825a"></script>
 </body>
 </html>

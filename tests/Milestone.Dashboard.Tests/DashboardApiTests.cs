@@ -69,6 +69,16 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
             + lifecycle.GetProperty("ndaaUnknownCount").GetInt32(),
             lifecycle.GetProperty("totalDevices").GetInt32());
         Assert.True(lifecycle.GetProperty("ndaaCompliantCount").GetInt32() >= 1);
+        var passwords = document.RootElement.GetProperty("passwordRotation");
+        Assert.Equal(
+            passwords.GetProperty("upToDateCount").GetInt32()
+            + passwords.GetProperty("neverRotatedCount").GetInt32()
+            + passwords.GetProperty("expiredCount").GetInt32()
+            + passwords.GetProperty("soonCount").GetInt32()
+            + passwords.GetProperty("naCount").GetInt32(),
+            passwords.GetProperty("totalDevices").GetInt32());
+        Assert.True(passwords.GetProperty("neverRotatedCount").GetInt32() >= 1);
+        Assert.True(passwords.GetProperty("expiredCount").GetInt32() >= 1);
     }
 
     [Fact]
@@ -131,6 +141,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("lifecycle-highlights", html);
         Assert.Contains("ndaa-highlights", html);
         Assert.Contains("NDAA Highlights", html);
+        Assert.Contains("id=\"view-passwords\"", html);
+        Assert.Contains("Password Rotation", html);
+        Assert.Contains("password-highlights", html);
         Assert.Contains("id=\"storage-pies\"", html);
         Assert.Contains("Replace previous locations", html);
         Assert.Contains("storage-pie-grid", html);
@@ -165,6 +178,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("--pink", css);
         Assert.Contains(".highlights-grid", css);
         Assert.Contains(".ndaa-highlights-card", css);
+        Assert.Contains(".pw-gauge", css);
     }
 
     [Fact]

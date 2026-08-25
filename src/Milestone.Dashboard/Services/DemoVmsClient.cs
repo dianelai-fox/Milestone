@@ -19,20 +19,20 @@ public sealed class DemoVmsClient : IVmsClient
             Cam("c04", "Elevator Bank A", "Building A", rec1, "REC-01 Downtown", -118.2563, 34.0526, true, "10.10.1.14", "AXIS P3225-LVE Mk II", "8.40.1", ["Building A / Elevators"], "AXIS P32 Series"),
             Cam("c05", "Parking P1 Entry", "Parking", rec1, "REC-01 Downtown", -118.2588, 34.0514, true, "10.10.1.21", "AXIS Q1700-LE", "10.12.104", ["Parking / P1"], "AXIS Q17 Series"),
             Cam("c06", "Parking P1 Exit", "Parking", rec1, "REC-01 Downtown", -118.2591, 34.0511, true, "10.10.1.22", "AXIS Q1700-LE", "10.12.104", ["Parking / P1"], "AXIS Q17 Series"),
-            Cam("c07", "Loading Dock", "Building A", rec1, "REC-01 Downtown", -118.2558, 34.0510, true, "10.10.1.31", "AXIS P3225-LV", "6.50.5", ["Building A / Dock"], "AXIS P32 Series"),
-            Cam("c08", "Perimeter North", "Campus", rec1, "REC-01 Downtown", -118.2550, 34.0538, true, "10.10.1.41", "AXIS Q6135-LE", "11.11.73", ["Campus / Perimeter"], "AXIS Q61 Series", true),
-            Cam("c09", "Perimeter South", "Campus", rec1, "REC-01 Downtown", -118.2582, 34.0502, true, "10.10.1.42", "AXIS Q6135-LE", "11.11.73", ["Campus / Perimeter"], "AXIS Q61 Series", true),
-            Cam("c10", "Server Room", "Building A", rec1, "REC-01 Downtown", null, null, true, "10.10.1.51", "AXIS M2036-LE", "11.9.52", ["Building A / Restricted"], "AXIS M20 Series"),
+            Cam("c07", "Loading Dock", "Building A", rec1, "REC-01 Downtown", -118.2558, 34.0510, true, "10.10.1.31", "AXIS P3225-LV", "6.50.5", ["Building A / Dock"], "AXIS P32 Series", passwordLastModified: new DateTimeOffset(2024, 6, 1, 9, 0, 0, TimeSpan.Zero)),
+            Cam("c08", "Perimeter North", "Campus", rec1, "REC-01 Downtown", -118.2550, 34.0538, true, "10.10.1.41", "AXIS Q6135-LE", "11.11.73", ["Campus / Perimeter"], "AXIS Q61 Series", true, userName: "operator"),
+            Cam("c09", "Perimeter South", "Campus", rec1, "REC-01 Downtown", -118.2582, 34.0502, true, "10.10.1.42", "AXIS Q6135-LE", "11.11.73", ["Campus / Perimeter"], "AXIS Q61 Series", true, userName: "operator"),
+            Cam("c10", "Server Room", "Building A", rec1, "REC-01 Downtown", null, null, true, "10.10.1.51", "AXIS M2036-LE", "11.9.52", ["Building A / Restricted"], "AXIS M20 Series", neverRotated: true),
             Cam("c11", "Studio Floor 2", "Building B", rec2, "REC-02 Studio", -118.2508, 34.0548, true, "10.20.1.11", "AXIS P3265-LVE", "11.11.65", ["Building B / Studio"], "AXIS P32 Series"),
             Cam("c12", "Studio Control", "Building B", rec2, "REC-02 Studio", -118.2504, 34.0551, true, "10.20.1.12", "AXIS P3265-V", "11.11.65", ["Building B / Control"], "AXIS P32 Series"),
-            Cam("c13", "Sound Stage A", "Building B", rec2, "REC-02 Studio", -118.2498, 34.0544, true, "10.20.1.13", "Hanwha XNV-8083R", "2.41.03", ["Building B / Stages"], "Hanwha Wisenet"),
-            Cam("c14", "Sound Stage B", "Building B", rec2, "REC-02 Studio", -118.2492, 34.0540, true, "10.20.1.14", "Hanwha XNV-8083R", "2.41.03", ["Building B / Stages"], "Hanwha Wisenet"),
-            Cam("c15", "Gatehouse", "Campus", rec2, "REC-02 Studio", -118.2526, 34.0562, true, "10.20.1.21", "AXIS P1465-LE", "11.11.61", ["Campus / Gate"], "AXIS P14 Series"),
-            Cam("c16", "Employee Lot", "Parking", rec2, "REC-02 Studio", -118.2534, 34.0536, true, "10.20.1.22", "AXIS P1465-LE", "11.11.61", ["Parking / Employee"], "AXIS P14 Series"),
-            Cam("c17", "Warehouse Aisle 3", "Warehouse", rec2, "REC-02 Studio", -118.2484, 34.0528, true, "10.20.1.31", "Hikvision DS-2CD2686G2", "V5.7.15", ["Warehouse / Aisles"], "Hikvision"),
-            Cam("c18", "Warehouse Dock 2", "Warehouse", rec2, "REC-02 Studio", -118.2478, 34.0522, false, "10.20.1.32", "Hikvision DS-2CD2686G2", "V5.7.11", ["Warehouse / Dock"], "Hikvision"),
+            Cam("c13", "Sound Stage A", "Building B", rec2, "REC-02 Studio", -118.2498, 34.0544, true, "10.20.1.13", "Hanwha XNV-8083R", "2.41.03", ["Building B / Stages"], "Hanwha Wisenet", userName: "viewer"),
+            Cam("c14", "Sound Stage B", "Building B", rec2, "REC-02 Studio", -118.2492, 34.0540, true, "10.20.1.14", "Hanwha XNV-8083R", "2.41.03", ["Building B / Stages"], "Hanwha Wisenet", userName: "viewer"),
+            Cam("c15", "Gatehouse", "Campus", rec2, "REC-02 Studio", -118.2526, 34.0562, true, "10.20.1.21", "AXIS P1465-LE", "11.11.61", ["Campus / Gate"], "AXIS P14 Series", passwordLastModified: new DateTimeOffset(2025, 11, 1, 9, 0, 0, TimeSpan.Zero)),
+            Cam("c16", "Employee Lot", "Parking", rec2, "REC-02 Studio", -118.2534, 34.0536, true, "10.20.1.22", "AXIS P1465-LE", "11.11.61", ["Parking / Employee"], "AXIS P14 Series", passwordLastModified: new DateTimeOffset(2025, 9, 1, 9, 0, 0, TimeSpan.Zero)),
+            Cam("c17", "Warehouse Aisle 3", "Warehouse", rec2, "REC-02 Studio", -118.2484, 34.0528, true, "10.20.1.31", "Hikvision DS-2CD2686G2", "V5.7.15", ["Warehouse / Aisles"], "Hikvision", neverRotated: true, userName: "viewer"),
+            Cam("c18", "Warehouse Dock 2", "Warehouse", rec2, "REC-02 Studio", -118.2478, 34.0522, false, "10.20.1.32", "Hikvision DS-2CD2686G2", "V5.7.11", ["Warehouse / Dock"], "Hikvision", neverRotated: true),
             Cam("c19", "Roof PTZ", "Building B", rec2, "REC-02 Studio", -118.2501, 34.0556, true, "10.20.1.41", "AXIS Q6318-LE", "11.11.73", ["Building B / Roof"], "AXIS Q63 Series", true),
-            Cam("c20", "Archive Vault", "Building B", rec2, "REC-02 Studio", null, null, true, "10.20.1.51", "AXIS M3086-V", "11.8.61", ["Building B / Restricted"], "AXIS M30 Series")
+            Cam("c20", "Archive Vault", "Building B", rec2, "REC-02 Studio", null, null, true, "10.20.1.51", "AXIS M3086-V", "11.8.61", ["Building B / Restricted"], "AXIS M30 Series", neverRotated: true)
         };
 
         var storages = new List<StorageVolume>
@@ -143,7 +143,10 @@ public sealed class DemoVmsClient : IVmsClient
         string firmware,
         IReadOnlyList<string> labels,
         string driver,
-        bool ptz = false)
+        bool ptz = false,
+        DateTimeOffset? passwordLastModified = null,
+        bool neverRotated = false,
+        string userName = "root")
     {
         var serial = $"ACC{id[1..].ToUpperInvariant()}{address.Replace(".", "")[^6..]}";
         return new CameraInfo
@@ -157,7 +160,7 @@ public sealed class DemoVmsClient : IVmsClient
             HardwareId = $"h-{id}",
             HardwareName = name,
             HardwareAddress = $"http://{address}/",
-            HardwareUserName = "root",
+            HardwareUserName = userName,
             HardwareEnabled = enabled,
             HardwareDriver = driver,
             Vendor = CameraIdentity.Vendor(model, driver),
@@ -179,7 +182,9 @@ public sealed class DemoVmsClient : IVmsClient
             PtzEnabled = ptz,
             CreatedDate = new DateTimeOffset(2024, 3, 12, 16, 0, 0, TimeSpan.Zero),
             LastModified = new DateTimeOffset(2026, 8, 1, 18, 30, 0, TimeSpan.Zero),
-            PasswordLastModified = new DateTimeOffset(2026, 1, 15, 9, 0, 0, TimeSpan.Zero),
+            PasswordLastModified = neverRotated
+                ? null
+                : passwordLastModified ?? new DateTimeOffset(2026, 1, 15, 9, 0, 0, TimeSpan.Zero),
             Labels = labels,
             CustomProperties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
