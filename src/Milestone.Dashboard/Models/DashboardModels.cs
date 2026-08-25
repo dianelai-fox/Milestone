@@ -289,6 +289,9 @@ public sealed class LifecycleOverview
     public IReadOnlyList<LifecycleYearCount> EosByYear { get; init; } = [];
     public IReadOnlyList<LifecycleSlice> TopEolModels { get; init; } = [];
     public IReadOnlyList<LifecycleSlice> EolByType { get; init; } = [];
+    public int NdaaCompliantCount { get; init; }
+    public int NdaaRestrictedCount { get; init; }
+    public int NdaaUnknownCount { get; init; }
 }
 
 public sealed class LifecycleSlice

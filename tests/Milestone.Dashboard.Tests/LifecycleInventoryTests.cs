@@ -10,12 +10,16 @@ public class LifecycleInventoryTests
     {
         var overview = LifecycleInventory.FromCameras(
         [
-            Camera("c01", "Lobby", "Building A", "Active", new DateTimeOffset(2031, 1, 1, 0, 0, 0, TimeSpan.Zero), "Axis", "P3265-LVE"),
-            Camera("c02", "Dock", "Building A", "EOL", new DateTimeOffset(2029, 1, 1, 0, 0, 0, TimeSpan.Zero), "Axis", "P3245-LVE"),
-            Camera("c03", "Gate", "Campus", "EOS", new DateTimeOffset(2025, 12, 31, 0, 0, 0, TimeSpan.Zero), "Axis", "P3225-LV Mk II"),
+            Camera("c01", "Lobby", "Building A", "Active", new DateTimeOffset(2031, 1, 1, 0, 0, 0, TimeSpan.Zero), "Axis", "P3265-LVE", "Compliant"),
+            Camera("c02", "Dock", "Building A", "EOL", new DateTimeOffset(2029, 1, 1, 0, 0, 0, TimeSpan.Zero), "Axis", "P3245-LVE", "Compliant"),
+            Camera("c03", "Gate", "Campus", "EOS", new DateTimeOffset(2025, 12, 31, 0, 0, 0, TimeSpan.Zero), "Axis", "P3225-LV Mk II", "Compliant"),
             Camera("c04", "Vault", "Campus", null, null, "Hanwha", "XNV-8083R"),
-            Camera("c05", "Lot", "Parking", "EOS", new DateTimeOffset(2021, 10, 31, 0, 0, 0, TimeSpan.Zero), "Axis", "P3225-LV")
+            Camera("c05", "Lot", "Parking", "EOS", new DateTimeOffset(2021, 10, 31, 0, 0, 0, TimeSpan.Zero), "Axis", "P3225-LV", "Restricted")
         ]);
+
+        Assert.Equal(3, overview.NdaaCompliantCount);
+        Assert.Equal(1, overview.NdaaRestrictedCount);
+        Assert.Equal(1, overview.NdaaUnknownCount);
 
         Assert.Equal(5, overview.TotalDevices);
         Assert.Equal(2, overview.CompliantCount);
@@ -94,7 +98,8 @@ public class LifecycleInventoryTests
         string? lifecycle,
         DateTimeOffset? eos,
         string vendor,
-        string model) =>
+        string model,
+        string? ndaa = null) =>
         new()
         {
             Id = id,
@@ -105,7 +110,8 @@ public class LifecycleInventoryTests
             Intelligence = new DeviceIntelligence
             {
                 LifecycleStatus = lifecycle,
-                EosDate = eos
+                EosDate = eos,
+                NdaaStatus = ndaa
             }
         };
 }

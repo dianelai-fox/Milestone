@@ -23,7 +23,8 @@ const state = {
   managePageSize: 100,
   storageFilter: "",
   lifecycle: {},
-  highlightsOpen: true
+  highlightsOpen: true,
+  ndaaHighlightsOpen: true
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -34,6 +35,7 @@ const labelFilter = document.getElementById("label-filter");
 const siteFilter = document.getElementById("site-filter");
 const vendorFilter = document.getElementById("vendor-filter");
 const lifecycleFilter = document.getElementById("lifecycle-filter");
+const ndaaFilter = document.getElementById("ndaa-filter");
 const pageSizeSelect = document.getElementById("page-size");
 const exportCameras = document.getElementById("export-cameras");
 const clearFilters = document.getElementById("clear-filters");
@@ -62,6 +64,7 @@ labelFilter.addEventListener("change", () => resetPageAndRender());
 siteFilter.addEventListener("change", () => resetPageAndRender());
 vendorFilter.addEventListener("change", () => resetPageAndRender());
 lifecycleFilter.addEventListener("change", () => resetPageAndRender());
+ndaaFilter.addEventListener("change", () => resetPageAndRender());
 pageSizeSelect.addEventListener("change", () => {
   state.pageSize = Number(pageSizeSelect.value) || 100;
   state.page = 1;
@@ -76,6 +79,7 @@ clearFilters.addEventListener("click", () => {
   siteFilter.value = "";
   vendorFilter.value = "";
   lifecycleFilter.value = "";
+  ndaaFilter.value = "";
   state.page = 1;
   renderInventory();
 });
@@ -137,19 +141,25 @@ document.addEventListener("click", (event) => {
   }
 });
 document.addEventListener("click", (event) => {
-  const life = event.target.closest("[data-life-filter], [data-life-site], [data-life-query]");
+  const life = event.target.closest("[data-life-filter], [data-life-site], [data-life-query], [data-ndaa-filter]");
   if (!life) {
     return;
   }
   showCamerasForLifecycle(life.dataset.lifeFilter ?? "", {
     site: life.dataset.lifeSite,
-    query: life.dataset.lifeQuery
+    query: life.dataset.lifeQuery,
+    ndaa: life.dataset.ndaaFilter
   });
 });
 document.getElementById("highlights-toggle")?.addEventListener("click", () => {
   state.highlightsOpen = !state.highlightsOpen;
-  document.querySelector(".highlights-card")?.classList.toggle("collapsed", !state.highlightsOpen);
+  document.querySelector(".highlights-card:not(.ndaa-highlights-card)")?.classList.toggle("collapsed", !state.highlightsOpen);
   document.getElementById("highlights-toggle")?.setAttribute("aria-expanded", String(state.highlightsOpen));
+});
+document.getElementById("ndaa-highlights-toggle")?.addEventListener("click", () => {
+  state.ndaaHighlightsOpen = !state.ndaaHighlightsOpen;
+  document.querySelector(".ndaa-highlights-card")?.classList.toggle("collapsed", !state.ndaaHighlightsOpen);
+  document.getElementById("ndaa-highlights-toggle")?.setAttribute("aria-expanded", String(state.ndaaHighlightsOpen));
 });
 selectAll.addEventListener("change", () => {
   const { pageRows } = pagedCameras();
@@ -378,6 +388,21 @@ function lifecycleLabel(filter) {
   }[filter] ?? filter;
 }
 
+function matchesNdaaFilter(camera, filter) {
+  const status = camera.intelligence?.ndaaStatus ?? "";
+  if (!filter) {
+    return true;
+  }
+  if (filter === "unknown") {
+    return !status;
+  }
+  return status === filter;
+}
+
+function ndaaLabel(filter) {
+  return filter === "unknown" ? "Unknown" : filter;
+}
+
 function renderLifecycle() {
   const life = state.lifecycle ?? {};
   const total = life.totalDevices ?? 0;
@@ -447,6 +472,35 @@ function renderLifecycle() {
     ${renderEosYears(life.eosByYear ?? [])}
     ${renderLifeDonut("Top EOL by Vendor & Model", life.topEolModels ?? [], ["#8ec5ff", "#5aa9e6", "#3d8bfd", "#b9d9f7", "#2b6cb0", "#7eb8da"], "EOL")}
     ${renderLifeDonut("EOL by Type", life.eolByType ?? [], ["#1d4e89", "#2b6cb0", "#3d8bfd", "#5aa9e6", "#7eb8da", "#8ec5ff"], "EOL")}
+  `;
+  document.getElementById("ndaa-highlights").innerHTML = renderNdaaStatus(life);
+}
+
+function renderNdaaStatus(life) {
+  const slices = [
+    { label: "Compliant", count: life.ndaaCompliantCount ?? 0, color: "#1d4e89", filter: "Compliant" },
+    { label: "Restricted", count: life.ndaaRestrictedCount ?? 0, color: "#e5537a", filter: "Restricted" },
+    { label: "Unknown", count: life.ndaaUnknownCount ?? 0, color: "#5aa9e6", filter: "unknown" }
+  ];
+  const total = slices.reduce((sum, slice) => sum + slice.count, 0);
+  return `
+    <article class="highlight-card">
+      <h3>NDAA Status</h3>
+      ${total === 0 ? `<p class="muted">No devices were returned.</p>` : `
+      <div class="life-donut-wrap">
+        <div class="life-donut-legend">
+          ${slices.map((slice) => `
+            <button type="button" class="ndaa-legend-row" data-ndaa-filter="${slice.filter}">
+              <span><i class="dot" style="background:${slice.color}"></i>${escapeHtml(slice.label)}</span>
+              <strong>${formatInt(slice.count)}</strong>
+            </button>
+          `).join("")}
+        </div>
+        <div class="life-donut" style="background:${donutGradient(slices, slices.map((slice) => slice.color))}">
+          <div class="life-donut-inner">${formatInt(total)}</div>
+        </div>
+      </div>`}
+    </article>
   `;
 }
 
@@ -656,6 +710,7 @@ function clearCameraFilters({ keepServer = false } = {}) {
   siteFilter.value = "";
   vendorFilter.value = "";
   lifecycleFilter.value = "";
+  ndaaFilter.value = "";
   state.page = 1;
 }
 
@@ -703,6 +758,9 @@ function showCamerasForLifecycle(filter, extras = {}) {
   if (extras.query) {
     searchInput.value = extras.query;
   }
+  if (extras.ndaa) {
+    ndaaFilter.value = extras.ndaa;
+  }
   lifecycleFilter.value = filter ?? "";
   renderOverview();
   renderInventory();
@@ -733,11 +791,12 @@ function renderInventory() {
   const selected = state.recordingServers.find((server) => server.id === serverFilter.value);
   const selectedSite = siteFilter.value;
   const selectedLife = lifecycleFilter.value;
+  const selectedNdaa = ndaaFilter.value;
   title.textContent = "Device Management";
   copy.innerHTML = selected
     ? `${visibleCameras().length} cameras on ${escapeHtml(selected.name)}. <button class="link-btn" type="button" id="back-to-servers">Back to servers</button> · <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
-    : selectedSite || selectedLife
-      ? `${visibleCameras().length} cameras${selectedSite ? ` at ${escapeHtml(selectedSite)}` : ""}${selectedLife ? ` · ${escapeHtml(lifecycleLabel(selectedLife))}` : ""}. <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
+    : selectedSite || selectedLife || selectedNdaa
+      ? `${visibleCameras().length} cameras${selectedSite ? ` at ${escapeHtml(selectedSite)}` : ""}${selectedLife ? ` · ${escapeHtml(lifecycleLabel(selectedLife))}` : ""}${selectedNdaa ? ` · NDAA ${escapeHtml(ndaaLabel(selectedNdaa))}` : ""}. <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
       : "All cameras from XProtect.";
   document.getElementById("tab-cameras").classList.add("active");
   document.getElementById("tab-servers").classList.remove("active");
@@ -848,11 +907,12 @@ function visibleCameras() {
     const matchesSite = !siteFilter.value || camera.site === siteFilter.value;
     const matchesVendor = !vendorFilter.value || camera.vendor === vendorFilter.value;
     const matchesLifecycle = matchesLifecycleFilter(camera, lifecycleFilter.value);
+    const matchesNdaa = matchesNdaaFilter(camera, ndaaFilter.value);
     const mapped = Boolean(camera.location);
     const matchesLocation = !locationFilter.value
       || (locationFilter.value === "mapped" && mapped)
       || (locationFilter.value === "unmapped" && !mapped);
-    return matchesQuery && matchesServer && matchesLabel && matchesSite && matchesVendor && matchesLifecycle && matchesLocation;
+    return matchesQuery && matchesServer && matchesLabel && matchesSite && matchesVendor && matchesLifecycle && matchesNdaa && matchesLocation;
   });
 }
 

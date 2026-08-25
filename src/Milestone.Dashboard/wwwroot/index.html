@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260824e" />
+  <link rel="stylesheet" href="/css/site.css?v=20260824f" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -118,6 +118,12 @@
             <option value="EOL">EOL</option>
             <option value="EOS">EOS</option>
             <option value="na">N/A</option>
+          </select>
+          <select id="ndaa-filter">
+            <option value="">NDAA</option>
+            <option value="Compliant">Compliant</option>
+            <option value="Restricted">Restricted</option>
+            <option value="unknown">Unknown</option>
           </select>
           <input id="search" type="search" placeholder="Device Name" />
           <select id="location-filter">
@@ -295,6 +301,13 @@
           </button>
           <div id="lifecycle-highlights" class="highlights-grid"></div>
         </section>
+        <section class="card highlights-card ndaa-highlights-card">
+          <button class="highlights-toggle" id="ndaa-highlights-toggle" type="button" aria-expanded="true">
+            NDAA Highlights
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div id="ndaa-highlights" class="ndaa-highlights-grid"></div>
+        </section>
       </section>
       </div>
 
@@ -334,6 +347,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260824e"></script>
+  <script src="/js/dashboard.js?v=20260824f"></script>
 </body>
 </html>

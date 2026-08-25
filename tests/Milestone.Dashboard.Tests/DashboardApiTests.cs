@@ -63,6 +63,12 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(
             lifecycle.GetProperty("compliantSites").GetInt32() + lifecycle.GetProperty("nonCompliantSites").GetInt32(),
             lifecycle.GetProperty("totalSites").GetInt32());
+        Assert.Equal(
+            lifecycle.GetProperty("ndaaCompliantCount").GetInt32()
+            + lifecycle.GetProperty("ndaaRestrictedCount").GetInt32()
+            + lifecycle.GetProperty("ndaaUnknownCount").GetInt32(),
+            lifecycle.GetProperty("totalDevices").GetInt32());
+        Assert.True(lifecycle.GetProperty("ndaaCompliantCount").GetInt32() >= 1);
     }
 
     [Fact]
@@ -123,6 +129,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"view-lifecycle\"", html);
         Assert.Contains("Device Lifecycle", html);
         Assert.Contains("lifecycle-highlights", html);
+        Assert.Contains("ndaa-highlights", html);
+        Assert.Contains("NDAA Highlights", html);
         Assert.Contains("id=\"storage-pies\"", html);
         Assert.Contains("Replace previous locations", html);
         Assert.Contains("storage-pie-grid", html);
@@ -156,6 +164,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".life-card", css);
         Assert.Contains("--pink", css);
         Assert.Contains(".highlights-grid", css);
+        Assert.Contains(".ndaa-highlights-card", css);
     }
 
     [Fact]

@@ -51,7 +51,10 @@ public static class LifecycleInventory
                 .OrderBy(item => item.Year)
                 .ToList(),
             TopEolModels = TopSlices(list.Where(camera => Status(camera) == "EOL"), ModelLabel),
-            EolByType = TopSlices(list.Where(camera => Status(camera) == "EOL"), DeviceType)
+            EolByType = TopSlices(list.Where(camera => Status(camera) == "EOL"), DeviceType),
+            NdaaCompliantCount = list.Count(camera => Ndaa(camera) == "Compliant"),
+            NdaaRestrictedCount = list.Count(camera => Ndaa(camera) == "Restricted"),
+            NdaaUnknownCount = list.Count(camera => Ndaa(camera) is not "Compliant" and not "Restricted")
         };
     }
 
@@ -127,6 +130,8 @@ public static class LifecycleInventory
     }
 
     private static string? Status(CameraInfo camera) => camera.Intelligence?.LifecycleStatus;
+
+    private static string? Ndaa(CameraInfo camera) => camera.Intelligence?.NdaaStatus;
 
     private static bool ContainsAny(string haystack, params string[] needles) =>
         needles.Any(needle => haystack.Contains(needle, StringComparison.OrdinalIgnoreCase));
