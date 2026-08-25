@@ -930,17 +930,23 @@ th {
   border-radius: 12px;
   padding: 14px 16px 16px;
   min-height: 250px;
+  overflow-x: auto;
 }
 .highlight-card h3 {
   margin: 0 0 12px;
   font-size: 14px;
   font-weight: 700;
 }
-.alert-table { width: 100%; }
+.alert-table { width: 100%; min-width: 320px; }
 .alert-table th, .alert-table td {
   padding: 7px 6px;
   font-size: 12px;
   white-space: nowrap;
+}
+.alert-table td:first-child {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .alert-table th { color: var(--muted); font-weight: 600; }
 .risk-cell {

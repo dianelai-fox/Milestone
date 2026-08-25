@@ -118,7 +118,12 @@ public static class LifecycleInventory
     {
         var vendor = string.IsNullOrWhiteSpace(camera.Vendor) ? "" : camera.Vendor.Trim();
         var model = string.IsNullOrWhiteSpace(camera.Model) ? "Unknown model" : camera.Model.Trim();
-        return string.IsNullOrWhiteSpace(vendor) ? model : $"{vendor} {model}";
+        if (string.IsNullOrWhiteSpace(vendor) || model.StartsWith(vendor, StringComparison.OrdinalIgnoreCase))
+        {
+            return model;
+        }
+
+        return $"{vendor} {model}";
     }
 
     private static string? Status(CameraInfo camera) => camera.Intelligence?.LifecycleStatus;

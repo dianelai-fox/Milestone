@@ -42,6 +42,17 @@ public class LifecycleInventoryTests
     }
 
     [Fact]
+    public void Does_not_repeat_vendor_when_the_model_already_includes_it()
+    {
+        var overview = LifecycleInventory.FromCameras(
+        [
+            Camera("c01", "Dock", "Building A", "EOS", new DateTimeOffset(2021, 10, 31, 0, 0, 0, TimeSpan.Zero), "Axis", "AXIS P3225-LV")
+        ]);
+
+        Assert.Equal("AXIS P3225-LV", Assert.Single(overview.TopNonCompliantModels).Label);
+    }
+
+    [Fact]
     public void Empty_inventory_is_all_zeros()
     {
         var overview = LifecycleInventory.FromCameras([]);
