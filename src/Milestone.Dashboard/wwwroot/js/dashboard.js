@@ -26,7 +26,10 @@ const state = {
   highlightsOpen: true,
   ndaaHighlightsOpen: true,
   passwordRotation: {},
-  passwordHighlightsOpen: true
+  passwordHighlightsOpen: true,
+  firmware: {},
+  firmwareHighlightsOpen: true,
+  firmwareTab: "overview"
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -39,6 +42,7 @@ const vendorFilter = document.getElementById("vendor-filter");
 const lifecycleFilter = document.getElementById("lifecycle-filter");
 const ndaaFilter = document.getElementById("ndaa-filter");
 const passwordFilter = document.getElementById("password-filter");
+const firmwareFilter = document.getElementById("firmware-filter");
 const pageSizeSelect = document.getElementById("page-size");
 const exportCameras = document.getElementById("export-cameras");
 const clearFilters = document.getElementById("clear-filters");
@@ -69,6 +73,7 @@ vendorFilter.addEventListener("change", () => resetPageAndRender());
 lifecycleFilter.addEventListener("change", () => resetPageAndRender());
 ndaaFilter.addEventListener("change", () => resetPageAndRender());
 passwordFilter.addEventListener("change", () => resetPageAndRender());
+firmwareFilter.addEventListener("change", () => resetPageAndRender());
 pageSizeSelect.addEventListener("change", () => {
   state.pageSize = Number(pageSizeSelect.value) || 100;
   state.page = 1;
@@ -85,6 +90,7 @@ clearFilters.addEventListener("click", () => {
   lifecycleFilter.value = "";
   ndaaFilter.value = "";
   passwordFilter.value = "";
+  firmwareFilter.value = "";
   state.page = 1;
   renderInventory();
 });
@@ -146,7 +152,7 @@ document.addEventListener("click", (event) => {
   }
 });
 document.addEventListener("click", (event) => {
-  const life = event.target.closest("[data-life-filter], [data-life-site], [data-life-query], [data-ndaa-filter], [data-password-filter]");
+  const life = event.target.closest("[data-life-filter], [data-life-site], [data-life-query], [data-ndaa-filter], [data-password-filter], [data-firmware-filter]");
   if (!life) {
     return;
   }
@@ -154,8 +160,12 @@ document.addEventListener("click", (event) => {
     site: life.dataset.lifeSite,
     query: life.dataset.lifeQuery,
     ndaa: life.dataset.ndaaFilter,
-    password: life.dataset.passwordFilter
+    password: life.dataset.passwordFilter,
+    firmware: life.dataset.firmwareFilter
   });
+});
+document.querySelectorAll("[data-firmware-tab]").forEach((button) => {
+  button.addEventListener("click", () => setFirmwareTab(button.dataset.firmwareTab));
 });
 document.getElementById("highlights-toggle")?.addEventListener("click", () => {
   state.highlightsOpen = !state.highlightsOpen;
@@ -171,6 +181,11 @@ document.getElementById("password-highlights-toggle")?.addEventListener("click",
   state.passwordHighlightsOpen = !state.passwordHighlightsOpen;
   document.getElementById("password-highlights-card")?.classList.toggle("collapsed", !state.passwordHighlightsOpen);
   document.getElementById("password-highlights-toggle")?.setAttribute("aria-expanded", String(state.passwordHighlightsOpen));
+});
+document.getElementById("firmware-highlights-toggle")?.addEventListener("click", () => {
+  state.firmwareHighlightsOpen = !state.firmwareHighlightsOpen;
+  document.getElementById("firmware-highlights-card")?.classList.toggle("collapsed", !state.firmwareHighlightsOpen);
+  document.getElementById("firmware-highlights-toggle")?.setAttribute("aria-expanded", String(state.firmwareHighlightsOpen));
 });
 selectAll.addEventListener("change", () => {
   const { pageRows } = pagedCameras();
@@ -217,6 +232,9 @@ function showView(name, options = {}) {
   if (name === "passwords") {
     renderPasswords();
   }
+  if (name === "firmware") {
+    renderFirmware();
+  }
   if (options.focus) {
     document.getElementById(options.focus)?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
@@ -251,6 +269,7 @@ async function loadDashboard() {
     state.summary = data.summary ?? {};
     state.lifecycle = data.lifecycle ?? {};
     state.passwordRotation = data.passwordRotation ?? {};
+    state.firmware = data.firmware ?? {};
     state.siteName = data.siteName ?? "";
     state.mapCenter = data.mapCenter ?? state.mapCenter;
     renderSource(data);
@@ -271,6 +290,7 @@ async function loadDashboard() {
     renderSites();
     renderLifecycle();
     renderPasswords();
+    renderFirmware();
     try {
       renderMap(state.cameras);
     } catch (mapError) {
@@ -589,6 +609,182 @@ function renderPasswordBreakdown(rows) {
   `;
 }
 
+function hasNoFirmware(camera) {
+  return !camera.firmware;
+}
+
+function hasFirmwareUpgrade(camera) {
+  const firmware = camera.firmware ?? "";
+  const suggested = camera.intelligence?.suggestedFirmware ?? "";
+  return Boolean(firmware && suggested && !firmware.toLowerCase().startsWith(suggested.toLowerCase()));
+}
+
+function isFirmwareOutdated(camera) {
+  return camera.intelligence?.lifecycleStatus === "EOS" || hasFirmwareUpgrade(camera);
+}
+
+function isFirmwareVulnerable(camera) {
+  return camera.intelligence?.vulnerabilitySeverity === "High"
+    || camera.intelligence?.vulnerabilitySeverity === "Medium";
+}
+
+function matchesFirmwareFilter(camera, filter) {
+  if (!filter) {
+    return true;
+  }
+  if (filter === "na") {
+    return hasNoFirmware(camera);
+  }
+  if (filter === "compliant") {
+    return !hasNoFirmware(camera) && !isFirmwareOutdated(camera);
+  }
+  if (filter === "noncompliant") {
+    return isFirmwareOutdated(camera);
+  }
+  if (filter === "vulnerable") {
+    return isFirmwareVulnerable(camera);
+  }
+  if (filter === "upgrade") {
+    return hasFirmwareUpgrade(camera);
+  }
+  return true;
+}
+
+function firmwareLabel(filter) {
+  return {
+    compliant: "Compliant version",
+    noncompliant: "Outdated firmware",
+    vulnerable: "Vulnerable firmware",
+    upgrade: "Available upgrade",
+    na: "Firmware N/A"
+  }[filter] ?? filter;
+}
+
+function setFirmwareTab(tab) {
+  state.firmwareTab = tab === "details" ? "details" : "overview";
+  document.getElementById("firmware-overview-panel").hidden = state.firmwareTab !== "overview";
+  document.getElementById("firmware-details-panel").hidden = state.firmwareTab !== "details";
+  document.getElementById("firmware-tab-overview")?.classList.toggle("active", state.firmwareTab === "overview");
+  document.getElementById("firmware-tab-overview")?.classList.toggle("life-tab", state.firmwareTab === "overview");
+  document.getElementById("firmware-tab-details")?.classList.toggle("active", state.firmwareTab === "details");
+  document.getElementById("firmware-tab-details")?.classList.toggle("life-tab", state.firmwareTab === "details");
+}
+
+function renderFirmware() {
+  const fw = state.firmware ?? {};
+  const total = fw.totalDevices ?? 0;
+  const compliant = fw.compliantCount ?? 0;
+  const nonCompliant = fw.nonCompliantCount ?? 0;
+  const na = fw.naCount ?? 0;
+  const percent = fw.overallCompliancePercent ?? 0;
+  const scored = compliant + nonCompliant;
+  const okWidth = scored ? (compliant / scored) * 100 : 0;
+  const badWidth = scored ? (nonCompliant / scored) * 100 : 0;
+  document.getElementById("firmware-summary").innerHTML = `
+    <article class="summary-card life-card">
+      <h3>DEVICES</h3>
+      <div class="life-devices">
+        <div class="life-score">
+          <div class="value">${percent}%</div>
+          <div class="muted">Overall Compliance</div>
+          <div class="life-bar" title="${percent}% compliant">
+            <span class="ok" style="width:${okWidth}%;background:#27ae60"></span>
+            <span class="bad" style="width:${badWidth}%"></span>
+          </div>
+        </div>
+        <div class="life-legend">
+          <button type="button" data-firmware-filter="compliant"><i class="dot green"></i>Compliant: ${formatInt(compliant)}</button>
+          <button type="button" data-firmware-filter="noncompliant"><i class="dot red"></i>Non Compliant: ${formatInt(nonCompliant)}</button>
+          <button type="button" data-firmware-filter="na"><i class="dot gray"></i>N/A: ${formatInt(na)}</button>
+          <div class="total">Total Devices: ${formatInt(total)}</div>
+        </div>
+      </div>
+    </article>
+    <article class="summary-card life-card">
+      <h3>OUTDATED FIRMWARE STATUS</h3>
+      <div class="life-status">
+        <button type="button" class="life-badge fresh" data-firmware-filter="compliant">
+          <span>COMPLIANT VERSION</span>
+          <strong>${formatInt(fw.compliantVersionCount)}</strong>
+        </button>
+        <button type="button" class="life-badge vuln" data-firmware-filter="vulnerable">
+          <span>VULNERABLE FIRMWARE</span>
+          <strong>${formatInt(fw.vulnerableCount)}</strong>
+        </button>
+        <button type="button" class="life-badge upgrade" data-firmware-filter="upgrade">
+          <span>AVAILABLE UPGRADE</span>
+          <strong>${formatInt(fw.availableUpgradeCount)}</strong>
+        </button>
+        <button type="button" class="life-badge na" data-firmware-filter="na">
+          <span>N/A</span>
+          <strong>${formatInt(fw.naCount)}</strong>
+        </button>
+      </div>
+    </article>
+    <article class="summary-card life-card">
+      <h3>SITES</h3>
+      <div class="life-sites">
+        <button type="button" data-firmware-filter="compliant"><i class="dot green"></i>Compliant: ${formatInt(fw.compliantSites)}</button>
+        <button type="button" data-firmware-filter="noncompliant"><i class="dot red"></i>Non Compliant: ${formatInt(fw.nonCompliantSites)}</button>
+        <div class="total">Total Sites: ${formatInt(fw.totalSites)}</div>
+      </div>
+    </article>
+  `;
+  document.getElementById("firmware-highlights").innerHTML = `
+    ${renderFirmwareAlertedSites(fw.topAlertedSites ?? [])}
+    ${renderPasswordDonut("Top Non Compliant Vendor & Model", fw.topNonCompliantModels ?? [], ["#1d4e89", "#3d8bfd", "#7eb8da", "#5aa9e6", "#2b6cb0"], "noncompliant", true)}
+    ${renderPasswordDonut("Top Non Compliant by Device Type", fw.topNonCompliantTypes ?? [], ["#3d8bfd", "#2b6cb0", "#7eb8da", "#1d4e89"], "noncompliant", true)}
+  `.replaceAll("data-password-filter", "data-firmware-filter");
+  renderFirmwareDetails(fw.details ?? []);
+  setFirmwareTab(state.firmwareTab);
+}
+
+function renderFirmwareAlertedSites(rows) {
+  const body = rows.length === 0
+    ? `<tr><td colspan="4" class="muted">No outdated firmware was found.</td></tr>`
+    : rows.map((row) => {
+      const filled = Math.round((row.riskPercent ?? 0) / 20);
+      return `
+      <tr>
+        <td><button class="link-btn" type="button" data-life-site="${escapeHtml(row.site)}" data-firmware-filter="noncompliant">${escapeHtml(row.site)}</button></td>
+        <td>${formatInt(row.alerted)}</td>
+        <td>${formatInt(row.total)}</td>
+        <td>
+          <div class="risk-cell">
+            <div class="risk-segments">${[0, 1, 2, 3, 4].map((index) => `<i class="${index < filled ? "on" : ""}"></i>`).join("")}</div>
+            ${Number(row.riskPercent ?? 0).toFixed(1)}%
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  return `
+    <article class="highlight-card">
+      <h3>Top Alerted Sites</h3>
+      <table class="alert-table">
+        <thead>
+          <tr><th>Site</th><th>Alerted Devices</th><th>Total</th><th>Risk Level</th></tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </article>
+  `;
+}
+
+function renderFirmwareDetails(rows) {
+  document.getElementById("firmware-detail-body").innerHTML = rows.map((row) => `
+    <tr>
+      <td>${escapeHtml(row.name)}</td>
+      <td>${escapeHtml(row.site ?? "Unassigned")}</td>
+      <td>${escapeHtml(row.vendor ?? "—")}</td>
+      <td>${escapeHtml(row.model ?? "—")}</td>
+      <td>${escapeHtml(row.firmware ?? "—")}</td>
+      <td>${escapeHtml(row.suggestedFirmware ?? "—")}</td>
+      <td>${escapeHtml(row.status ?? "—")}</td>
+      <td>${severityCell(row.vulnerability)}</td>
+    </tr>
+  `).join("") || `<tr><td colspan="8" class="muted">No outdated or vulnerable firmware was found.</td></tr>`;
+}
+
 function renderLifecycle() {
   const life = state.lifecycle ?? {};
   const total = life.totalDevices ?? 0;
@@ -898,6 +1094,7 @@ function clearCameraFilters({ keepServer = false } = {}) {
   lifecycleFilter.value = "";
   ndaaFilter.value = "";
   passwordFilter.value = "";
+  firmwareFilter.value = "";
   state.page = 1;
 }
 
@@ -951,6 +1148,9 @@ function showCamerasForLifecycle(filter, extras = {}) {
   if (extras.password) {
     passwordFilter.value = extras.password;
   }
+  if (extras.firmware) {
+    firmwareFilter.value = extras.firmware;
+  }
   lifecycleFilter.value = filter ?? "";
   renderOverview();
   renderInventory();
@@ -983,11 +1183,12 @@ function renderInventory() {
   const selectedLife = lifecycleFilter.value;
   const selectedNdaa = ndaaFilter.value;
   const selectedPassword = passwordFilter.value;
+  const selectedFirmware = firmwareFilter.value;
   title.textContent = "Device Management";
   copy.innerHTML = selected
     ? `${visibleCameras().length} cameras on ${escapeHtml(selected.name)}. <button class="link-btn" type="button" id="back-to-servers">Back to servers</button> · <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
-    : selectedSite || selectedLife || selectedNdaa || selectedPassword
-      ? `${visibleCameras().length} cameras${selectedSite ? ` at ${escapeHtml(selectedSite)}` : ""}${selectedLife ? ` · ${escapeHtml(lifecycleLabel(selectedLife))}` : ""}${selectedNdaa ? ` · NDAA ${escapeHtml(ndaaLabel(selectedNdaa))}` : ""}${selectedPassword ? ` · ${escapeHtml(passwordLabel(selectedPassword))}` : ""}. <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
+    : selectedSite || selectedLife || selectedNdaa || selectedPassword || selectedFirmware
+      ? `${visibleCameras().length} cameras${selectedSite ? ` at ${escapeHtml(selectedSite)}` : ""}${selectedLife ? ` · ${escapeHtml(lifecycleLabel(selectedLife))}` : ""}${selectedNdaa ? ` · NDAA ${escapeHtml(ndaaLabel(selectedNdaa))}` : ""}${selectedPassword ? ` · ${escapeHtml(passwordLabel(selectedPassword))}` : ""}${selectedFirmware ? ` · ${escapeHtml(firmwareLabel(selectedFirmware))}` : ""}. <button class="link-btn" type="button" id="show-all-cameras">Show all cameras</button>`
       : "All cameras from XProtect.";
   document.getElementById("tab-cameras").classList.add("active");
   document.getElementById("tab-servers").classList.remove("active");
@@ -1100,11 +1301,12 @@ function visibleCameras() {
     const matchesLifecycle = matchesLifecycleFilter(camera, lifecycleFilter.value);
     const matchesNdaa = matchesNdaaFilter(camera, ndaaFilter.value);
     const matchesPassword = matchesPasswordFilter(camera, passwordFilter.value);
+    const matchesFirmware = matchesFirmwareFilter(camera, firmwareFilter.value);
     const mapped = Boolean(camera.location);
     const matchesLocation = !locationFilter.value
       || (locationFilter.value === "mapped" && mapped)
       || (locationFilter.value === "unmapped" && !mapped);
-    return matchesQuery && matchesServer && matchesLabel && matchesSite && matchesVendor && matchesLifecycle && matchesNdaa && matchesPassword && matchesLocation;
+    return matchesQuery && matchesServer && matchesLabel && matchesSite && matchesVendor && matchesLifecycle && matchesNdaa && matchesPassword && matchesFirmware && matchesLocation;
   });
 }
 

@@ -163,6 +163,7 @@ public sealed class DashboardService
         snapshot.Sites = SiteInventory.FromCameras(snapshot.Cameras);
         snapshot.Lifecycle = LifecycleInventory.FromCameras(snapshot.Cameras);
         snapshot.PasswordRotation = PasswordRotationInventory.FromCameras(snapshot.Cameras);
+        snapshot.Firmware = FirmwareInventory.FromCameras(snapshot.Cameras);
     }
 
     internal static void ApplyOverrides(

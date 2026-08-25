@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260825a" />
+  <link rel="stylesheet" href="/css/site.css?v=20260825b" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -39,6 +39,12 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-7-2a2 2 0 1 1 4 0v2h-4zm4 9a2 2 0 1 1-2-2 2 2 0 0 1 2 2z"/></svg>
         </span>
         <span class="nav-label">Password Rotation</span>
+      </button>
+      <button class="nav-btn" data-view="firmware" title="Outdated Firmware">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4zm1 6h4v8.2l2.4-1.4.9 1.6L12 20.5 6.7 17.4l.9-1.6L10 17.2z"/></svg>
+        </span>
+        <span class="nav-label">Outdated Firmware</span>
       </button>
       <button class="nav-btn" data-view="storage" title="Storage">
         <span class="nav-icon">▣</span>
@@ -139,6 +145,14 @@
             <option value="Never Rotated">Never Rotated</option>
             <option value="Overdue">Expired</option>
             <option value="Due Soon">Soon To Be Expired</option>
+            <option value="na">N/A</option>
+          </select>
+          <select id="firmware-filter">
+            <option value="">Firmware</option>
+            <option value="compliant">Compliant version</option>
+            <option value="noncompliant">Outdated</option>
+            <option value="vulnerable">Vulnerable</option>
+            <option value="upgrade">Available upgrade</option>
             <option value="na">N/A</option>
           </select>
           <input id="search" type="search" placeholder="Device Name" />
@@ -354,6 +368,55 @@
       </section>
       </div>
 
+      <div id="view-firmware" class="view" hidden>
+      <section class="life-page">
+        <div class="page-head">
+          <h1>Outdated Firmware</h1>
+          <div class="page-tabs">
+            <button class="tab life-tab active" type="button" data-firmware-tab="overview" id="firmware-tab-overview">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h10v2H4v-2zm0 6h16v2H4v-2z"/></svg>
+              Overview
+            </button>
+            <button class="tab" type="button" data-firmware-tab="details" id="firmware-tab-details">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-6h2zm0-8h-2V7h2z"/></svg>
+              Details
+            </button>
+          </div>
+        </div>
+        <div id="firmware-overview-panel">
+          <section id="firmware-summary" class="summary-row life-summary"></section>
+          <section class="card highlights-card" id="firmware-highlights-card">
+            <button class="highlights-toggle" id="firmware-highlights-toggle" type="button" aria-expanded="true">
+              Highlights
+              <span class="chevron" aria-hidden="true">▾</span>
+            </button>
+            <div id="firmware-highlights" class="highlights-grid"></div>
+          </section>
+        </div>
+        <section class="card" id="firmware-details-panel" hidden>
+          <h2>Firmware details</h2>
+          <p class="muted">Cameras that are outdated, vulnerable, or have a suggested upgrade.</p>
+          <div class="table-wrap table-scroll firmware-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Device</th>
+                  <th>Site</th>
+                  <th>Vendor</th>
+                  <th>Model</th>
+                  <th>Firmware</th>
+                  <th>Suggested FW</th>
+                  <th>Status</th>
+                  <th>Vulnerability</th>
+                </tr>
+              </thead>
+              <tbody id="firmware-detail-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+      </div>
+
       <div id="view-storage" class="view" hidden>
       <section class="card" id="storage-pies">
         <div class="panel-head">
@@ -390,6 +453,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260825a"></script>
+  <script src="/js/dashboard.js?v=20260825b"></script>
 </body>
 </html>

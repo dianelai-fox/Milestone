@@ -79,6 +79,14 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
             passwords.GetProperty("totalDevices").GetInt32());
         Assert.True(passwords.GetProperty("neverRotatedCount").GetInt32() >= 1);
         Assert.True(passwords.GetProperty("expiredCount").GetInt32() >= 1);
+        var firmware = document.RootElement.GetProperty("firmware");
+        Assert.Equal(
+            firmware.GetProperty("compliantCount").GetInt32()
+            + firmware.GetProperty("nonCompliantCount").GetInt32()
+            + firmware.GetProperty("naCount").GetInt32(),
+            firmware.GetProperty("totalDevices").GetInt32());
+        Assert.True(firmware.GetProperty("nonCompliantCount").GetInt32() >= 1);
+        Assert.True(firmware.GetProperty("details").GetArrayLength() >= 1);
     }
 
     [Fact]
@@ -144,6 +152,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"view-passwords\"", html);
         Assert.Contains("Password Rotation", html);
         Assert.Contains("password-highlights", html);
+        Assert.Contains("id=\"view-firmware\"", html);
+        Assert.Contains("Outdated Firmware", html);
+        Assert.Contains("firmware-highlights", html);
         Assert.Contains("id=\"storage-pies\"", html);
         Assert.Contains("Replace previous locations", html);
         Assert.Contains("storage-pie-grid", html);
@@ -179,6 +190,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".highlights-grid", css);
         Assert.Contains(".ndaa-highlights-card", css);
         Assert.Contains(".pw-gauge", css);
+        Assert.Contains(".risk-segments", css);
     }
 
     [Fact]

@@ -1098,6 +1098,24 @@ th {
 }
 .pw-breakdown .year-bar { background: #3d8bfd; width: 56px; max-width: 56px; }
 #password-breakdown-card { margin-top: 16px; }
+.life-badge.upgrade { background: var(--blue-soft); color: #2b6cb0; }
+.life-badge.vuln { background: var(--pink-soft); color: #c43b61; }
+.risk-segments {
+  display: inline-flex;
+  gap: 3px;
+  margin-right: 8px;
+}
+.risk-segments i {
+  width: 10px;
+  height: 8px;
+  border-radius: 2px;
+  background: #edf1f4;
+}
+.risk-segments i.on { background: #3d8bfd; }
+.firmware-table-wrap { max-height: calc(100vh - 260px); }
+.firmware-table-wrap table { min-width: 920px; }
+#firmware-details-panel[hidden],
+#firmware-overview-panel[hidden] { display: none !important; }
 
 @media (max-width: 1200px) {
   .summary-row, .middle-row, .bottom-row, .device-row, .highlights-grid, .life-devices, .ndaa-highlights-grid, .pw-devices { grid-template-columns: 1fr; }

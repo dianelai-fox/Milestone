@@ -139,6 +139,7 @@ public sealed class DashboardSnapshot
     public CameraLocation? SuggestedMapCenter { get; set; }
     public LifecycleOverview Lifecycle { get; set; } = new();
     public PasswordRotationOverview PasswordRotation { get; set; } = new();
+    public FirmwareOverview Firmware { get; set; } = new();
 
     public DashboardSummary Summary => DashboardSummary.From(this);
 
@@ -348,4 +349,36 @@ public sealed class PasswordBucket
 {
     public required string Label { get; init; }
     public int Count { get; init; }
+}
+
+public sealed class FirmwareOverview
+{
+    public int TotalDevices { get; init; }
+    public int CompliantCount { get; init; }
+    public int NonCompliantCount { get; init; }
+    public int NaCount { get; init; }
+    public double OverallCompliancePercent { get; init; }
+    public int CompliantVersionCount { get; init; }
+    public int VulnerableCount { get; init; }
+    public int AvailableUpgradeCount { get; init; }
+    public int CompliantSites { get; init; }
+    public int NonCompliantSites { get; init; }
+    public int TotalSites { get; init; }
+    public IReadOnlyList<PasswordSiteAlert> TopAlertedSites { get; init; } = [];
+    public IReadOnlyList<LifecycleSlice> TopNonCompliantModels { get; init; } = [];
+    public IReadOnlyList<LifecycleSlice> TopNonCompliantTypes { get; init; } = [];
+    public IReadOnlyList<FirmwareDetailRow> Details { get; init; } = [];
+}
+
+public sealed class FirmwareDetailRow
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public string? Site { get; init; }
+    public string? Vendor { get; init; }
+    public string? Model { get; init; }
+    public string? Firmware { get; init; }
+    public string? SuggestedFirmware { get; init; }
+    public string? Status { get; init; }
+    public string? Vulnerability { get; init; }
 }
