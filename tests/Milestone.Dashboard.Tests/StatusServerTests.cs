@@ -147,12 +147,12 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(8, master.GetProperty("totalServers").GetInt32());
         Assert.Equal(4, perspective.GetProperty("totalServers").GetInt32());
         Assert.Equal(
-            master.GetProperty("onlineCount").GetInt32() + master.GetProperty("offlineCount").GetInt32(),
-            8);
+            8,
+            master.GetProperty("onlineCount").GetInt32() + master.GetProperty("offlineCount").GetInt32());
         Assert.Equal(master.GetProperty("offlineCount").GetInt32(), master.GetProperty("attentionCount").GetInt32());
         Assert.Equal(
-            perspective.GetProperty("onlineCount").GetInt32() + perspective.GetProperty("offlineCount").GetInt32(),
-            4);
+            4,
+            perspective.GetProperty("onlineCount").GetInt32() + perspective.GetProperty("offlineCount").GetInt32());
         Assert.Equal(perspective.GetProperty("offlineCount").GetInt32(), perspective.GetProperty("attentionCount").GetInt32());
         Assert.Equal(12, document.RootElement.GetProperty("servers").GetArrayLength());
         Assert.Contains(
