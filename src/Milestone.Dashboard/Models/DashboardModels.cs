@@ -430,3 +430,12 @@ public sealed class EncryptPasswordRequest
     public string Password { get; set; } = string.Empty;
     public bool Save { get; set; }
 }
+
+public sealed class XprotectConnectionRequest
+{
+    public string GatewayBaseUrl { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public bool UseDemoData { get; set; }
+    public bool BypassSslValidation { get; set; }
+}

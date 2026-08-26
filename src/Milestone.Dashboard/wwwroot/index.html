@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260826c" />
+  <link rel="stylesheet" href="/css/site.css?v=20260826d" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -56,6 +56,12 @@
         <span class="nav-icon">▣</span>
         <span class="nav-label">Storage</span>
       </button>
+      <button class="nav-btn" id="nav-connect" data-view="connect" title="Connect to XProtect">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7a5 5 0 0 1 7.07 0l1.41 1.41-1.41 1.42-1.42-1.42a3 3 0 1 0-4.24 4.24l1.42 1.42-1.42 1.41-1.41-1.41A5 5 0 0 1 7 7zm3.17 7.17 1.42-1.41 1.41 1.41a3 3 0 0 0 4.24-4.24l-1.41-1.42 1.41-1.41 1.42 1.41a5 5 0 0 1-7.08 7.08l-1.41-1.42z"/></svg>
+        </span>
+        <span class="nav-label">Connect to XProtect</span>
+      </button>
       <button class="nav-btn" id="nav-encrypt" data-view="encrypt" title="Encrypt password">
         <span class="nav-icon">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V6a3 3 0 0 0-3-3z"/></svg>
@@ -80,7 +86,7 @@
     <main>
       <p id="demo-banner" class="demo-banner" hidden>
         Showing sample cameras and recording servers, not your XProtect site.
-        On the IIS server keep your existing appsettings.json (do not replace it when you publish) and set Milestone:UseDemoData to false, then recycle the app pool.
+        Open Connect to XProtect, turn off demo data, enter a Basic user, then recycle the app pool if the site still started in demo mode.
       </p>
       <p id="page-error" class="page-error" hidden></p>
       <section id="kpi-row" hidden></section>
@@ -491,6 +497,38 @@
       </section>
       </div>
 
+      <div id="view-connect" class="view" hidden>
+      <section class="life-page">
+        <div class="page-head">
+          <h1>Connect to XProtect</h1>
+        </div>
+        <section class="card encrypt-card">
+          <p class="muted">HTTP 400 on login usually means the Basic user, password, or gateway URL is wrong. Use a Basic user from Management Client, not a Windows login. The gateway URL is the management server or API Gateway root, with no <code>/API</code> on the end.</p>
+          <form id="connect-form" class="encrypt-form">
+            <label for="connect-gateway">Gateway URL</label>
+            <input id="connect-gateway" name="gateway" type="url" placeholder="https://your-management-server" autocomplete="off" />
+            <label for="connect-username">Basic user</label>
+            <input id="connect-username" name="username" type="text" autocomplete="username" />
+            <label for="connect-password">Password</label>
+            <input id="connect-password" name="password" type="password" autocomplete="off" placeholder="Leave blank to keep the saved password" />
+            <label class="check-label">
+              <input id="connect-demo" type="checkbox" />
+              Use demo data (ignore XProtect)
+            </label>
+            <label class="check-label">
+              <input id="connect-bypass-ssl" type="checkbox" />
+              Bypass TLS certificate errors (lab only)
+            </label>
+            <div class="connect-actions">
+              <button id="connect-test" type="button">Test login</button>
+              <button id="connect-save" type="submit">Save connection</button>
+            </div>
+          </form>
+          <p id="connect-status" class="muted"></p>
+        </section>
+      </section>
+      </div>
+
       <div id="view-encrypt" class="view" hidden>
       <section class="life-page">
         <div class="page-head">
@@ -518,6 +556,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260826c"></script>
+  <script src="/js/dashboard.js?v=20260826d"></script>
 </body>
 </html>

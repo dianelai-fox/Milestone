@@ -83,6 +83,34 @@ public sealed class AppSettingsPasswordWriter
         var milestone = node["Milestone"] as JsonObject
                         ?? throw new InvalidOperationException("appsettings.json has no Milestone section.");
         milestone["Password"] = encrypted;
+        WriteNode(node);
+    }
+
+    public void SaveConnection(
+        string gatewayBaseUrl,
+        string username,
+        string? encryptedPassword,
+        bool useDemoData,
+        bool bypassSsl)
+    {
+        var json = File.ReadAllText(_path);
+        var node = JsonNode.Parse(json) ?? throw new InvalidOperationException("appsettings.json is empty.");
+        var milestone = node["Milestone"] as JsonObject
+                        ?? throw new InvalidOperationException("appsettings.json has no Milestone section.");
+        milestone["GatewayBaseUrl"] = XprotectAuth.NormalizeGatewayBaseUrl(gatewayBaseUrl);
+        milestone["Username"] = username.Trim();
+        milestone["UseDemoData"] = useDemoData;
+        milestone["BypassSslValidation"] = bypassSsl;
+        if (!string.IsNullOrWhiteSpace(encryptedPassword))
+        {
+            milestone["Password"] = encryptedPassword;
+        }
+
+        WriteNode(node);
+    }
+
+    private void WriteNode(JsonNode node)
+    {
         File.Copy(_path, _path + ".bak", overwrite: true);
         File.WriteAllText(_path, node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
     }

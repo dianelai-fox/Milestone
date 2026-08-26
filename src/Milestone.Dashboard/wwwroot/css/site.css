@@ -194,7 +194,9 @@ main { padding: 20px 24px 40px; }
   margin: 16px 0;
 }
 .encrypt-form label { font-weight: 700; }
-.encrypt-form input[type="password"] {
+.encrypt-form input[type="password"],
+.encrypt-form input[type="url"],
+.encrypt-form input[type="text"] {
   width: 100%;
   max-width: 420px;
   border: 1px solid var(--line);
@@ -202,8 +204,15 @@ main { padding: 20px 24px 40px; }
   padding: 10px 12px;
   font: inherit;
 }
+.connect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
 .encrypt-form button,
-#encrypt-submit {
+#encrypt-submit,
+#connect-save,
+#connect-test {
   width: fit-content;
   background: var(--teal);
   color: #fff;
@@ -212,6 +221,11 @@ main { padding: 20px 24px 40px; }
   padding: 10px 16px;
   font: inherit;
   cursor: pointer;
+}
+#connect-test {
+  background: #fff;
+  color: var(--teal);
+  border: 1px solid var(--teal);
 }
 .encrypt-result-label { display: block; font-weight: 700; margin-top: 12px; }
 #encrypt-result {

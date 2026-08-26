@@ -46,6 +46,7 @@ catch (Exception)
 builder.Services.AddSingleton<LocationOverrideStore>();
 builder.Services.AddSingleton<SnapshotCache>();
 builder.Services.AddSingleton<AppSettingsPasswordWriter>();
+builder.Services.AddSingleton<XprotectConnectionTester>();
 builder.Services.AddSingleton<DemoVmsClient>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
@@ -293,6 +294,124 @@ app.MapPost("/api/settings/password", (
     }
 
     return Results.Ok(new { encrypted, saved, saveError });
+});
+
+app.MapGet("/api/settings/connection", (AppSettingsPasswordWriter writer, MilestoneOptions options) =>
+    Results.Ok(new
+    {
+        gatewayBaseUrl = options.GatewayBaseUrl,
+        username = options.Username,
+        passwordSet = !string.IsNullOrWhiteSpace(options.Password),
+        useDemoData = options.UseDemoData,
+        bypassSslValidation = options.BypassSslValidation,
+        canWrite = writer.CanWrite,
+        settingsPath = writer.FilePath
+    }));
+
+app.MapPost("/api/settings/connection/test", async (
+    XprotectConnectionRequest request,
+    MilestoneOptions options,
+    XprotectConnectionTester tester,
+    CancellationToken cancellationToken) =>
+{
+    var gateway = string.IsNullOrWhiteSpace(request.GatewayBaseUrl) ? options.GatewayBaseUrl : request.GatewayBaseUrl;
+    var username = string.IsNullOrWhiteSpace(request.Username) ? options.Username : request.Username;
+    var password = string.IsNullOrWhiteSpace(request.Password) ? options.Password : request.Password;
+    if (request.UseDemoData)
+    {
+        return Results.Ok(new { ok = true, message = "Demo data is on. Turn it off to test a live XProtect login." });
+    }
+
+    var error = await tester.TestAsync(
+        gateway,
+        username,
+        password,
+        options.ClientId,
+        request.BypassSslValidation,
+        cancellationToken);
+    return error is null
+        ? Results.Ok(new { ok = true, message = "XProtect login succeeded." })
+        : Results.Ok(new { ok = false, error });
+});
+
+app.MapPost("/api/settings/connection", async (
+    XprotectConnectionRequest request,
+    MilestoneOptions options,
+    AppSettingsPasswordWriter writer,
+    XprotectConnectionTester tester,
+    IDataProtectionProvider dataProtection,
+    CancellationToken cancellationToken) =>
+{
+    var gateway = (request.GatewayBaseUrl ?? string.Empty).Trim();
+    var username = (request.Username ?? string.Empty).Trim();
+    var password = string.IsNullOrWhiteSpace(request.Password) ? options.Password : request.Password.Trim();
+    if (!request.UseDemoData
+        && (string.IsNullOrWhiteSpace(gateway) || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password)))
+    {
+        return Results.BadRequest(new { error = "Gateway URL, username, and password are required when demo data is off." });
+    }
+
+    var protector = dataProtection.CreateProtector(AppSecretProtector.Purpose);
+    string? encrypted = null;
+    if (!string.IsNullOrWhiteSpace(request.Password))
+    {
+        encrypted = AppSecretProtector.Protect(protector, request.Password.Trim());
+    }
+    else if (writer.PasswordIsEncrypted)
+    {
+        encrypted = writer.ReadPassword();
+    }
+    else if (!string.IsNullOrWhiteSpace(options.Password))
+    {
+        encrypted = AppSecretProtector.Protect(protector, options.Password);
+    }
+
+    var recycleRequired = options.UseDemoData != request.UseDemoData
+                          || options.BypassSslValidation != request.BypassSslValidation;
+    try
+    {
+        writer.SaveConnection(gateway, username, encrypted, request.UseDemoData, request.BypassSslValidation);
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new
+        {
+            saved = false,
+            saveError = "Could not update appsettings.json. " + ex.Message,
+            loginOk = false
+        });
+    }
+
+    options.GatewayBaseUrl = XprotectAuth.NormalizeGatewayBaseUrl(gateway);
+    options.Username = username;
+    if (!string.IsNullOrWhiteSpace(request.Password))
+    {
+        options.Password = request.Password.Trim();
+    }
+
+    options.UseDemoData = request.UseDemoData;
+    options.BypassSslValidation = request.BypassSslValidation;
+
+    string? loginError = null;
+    if (!request.UseDemoData)
+    {
+        loginError = await tester.TestAsync(
+            options.GatewayBaseUrl,
+            options.Username,
+            options.Password,
+            options.ClientId,
+            options.BypassSslValidation,
+            cancellationToken);
+    }
+
+    return Results.Ok(new
+    {
+        saved = true,
+        saveError = (string?)null,
+        loginOk = loginError is null,
+        loginError,
+        recycleRequired
+    });
 });
 
 app.MapGet("/api/geocode", async (string q, IHttpClientFactory httpFactory, CancellationToken cancellationToken) =>

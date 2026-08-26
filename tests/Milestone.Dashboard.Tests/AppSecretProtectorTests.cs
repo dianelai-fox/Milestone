@@ -52,6 +52,36 @@ public class AppSecretProtectorTests
         Assert.Contains("\"UseDemoData\": false", File.ReadAllText(path), StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void Writer_saves_connection_settings_without_clearing_the_password()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "MilestoneDashboardTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, "appsettings.json");
+        File.WriteAllText(path, """
+            {
+              "Milestone": {
+                "UseDemoData": true,
+                "GatewayBaseUrl": "https://xprotect.example.com",
+                "Username": "old",
+                "Password": "ENC:keep-me",
+                "BypassSslValidation": false
+              }
+            }
+            """);
+
+        var writer = new AppSettingsPasswordWriter(path);
+        writer.SaveConnection("https://fox-xprotect.local/API", "reader", null, false, true);
+
+        var text = File.ReadAllText(path);
+        Assert.Contains("https://fox-xprotect.local", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("https://fox-xprotect.local/API", text, StringComparison.Ordinal);
+        Assert.Contains("\"Username\": \"reader\"", text, StringComparison.Ordinal);
+        Assert.Contains("\"Password\": \"ENC:keep-me\"", text, StringComparison.Ordinal);
+        Assert.Contains("\"UseDemoData\": false", text, StringComparison.Ordinal);
+        Assert.Contains("\"BypassSslValidation\": true", text, StringComparison.Ordinal);
+    }
+
     private static IDataProtector CreateProtector()
     {
         var services = new ServiceCollection();

@@ -26,13 +26,15 @@ dotnet test
 
 ## Connect to XProtect
 
+If the badge says **Unavailable** and the page shows `XProtect login failed (HTTP 400)`, the site is already in live mode but the gateway rejected the login. Open **Connect to XProtect** in the sidebar (the page also opens itself after a login error). Use an XProtect **Basic user**, not a Windows/`DOMAIN\user` account. Set the gateway URL to the management server or API Gateway root, with no `/API` suffix. Click **Test login**, then **Save connection**. Recycle the app pool only if you changed **Use demo data**.
+
 1. Confirm the API Gateway answers:
 
    `GET https://<management-or-gateway-host>/api/.well-known/uris`
 
 2. Create an XProtect **Basic user** with permission to read cameras, recording servers, and storage.
 
-3. On the web server, set these values (IIS Configuration Editor, environment variables, or `appsettings.Production.json` that is **not** committed):
+3. On the web server, set these values from **Connect to XProtect**, IIS Configuration Editor, environment variables, or `appsettings.Production.json` that is **not** committed:
 
 | Setting | Example | Purpose |
 | --- | --- | --- |

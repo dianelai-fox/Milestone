@@ -124,6 +124,47 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task Connection_settings_do_not_return_the_password()
+    {
+        var response = await _client.GetAsync("/api/settings/connection");
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(json);
+        Assert.True(document.RootElement.GetProperty("useDemoData").GetBoolean());
+        Assert.False(document.RootElement.TryGetProperty("password", out _));
+        Assert.True(document.RootElement.TryGetProperty("passwordSet", out _));
+        Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("gatewayBaseUrl").GetString()));
+        Assert.DoesNotContain("ENC:", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Connection_test_explains_demo_mode_and_rejects_the_example_host()
+    {
+        var demo = await _client.PostAsJsonAsync("/api/settings/connection/test", new
+        {
+            useDemoData = true
+        });
+        demo.EnsureSuccessStatusCode();
+        using var demoDocument = JsonDocument.Parse(await demo.Content.ReadAsStringAsync());
+        Assert.True(demoDocument.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Contains("Demo data", demoDocument.RootElement.GetProperty("message").GetString());
+
+        var live = await _client.PostAsJsonAsync("/api/settings/connection/test", new
+        {
+            gatewayBaseUrl = "https://xprotect.example.com",
+            username = "reader",
+            password = "secret",
+            useDemoData = false
+        });
+        live.EnsureSuccessStatusCode();
+        var liveJson = await live.Content.ReadAsStringAsync();
+        using var liveDocument = JsonDocument.Parse(liveJson);
+        Assert.False(liveDocument.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Contains("example host", liveDocument.RootElement.GetProperty("error").GetString());
+        Assert.DoesNotContain("secret", liveJson, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Location_override_rejects_invalid_coordinates()
     {
         var response = await _client.PostAsJsonAsync("/api/locations", new
@@ -196,6 +237,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"view-encrypt\"", html);
         Assert.Contains("Encrypt password", html);
         Assert.Contains("encrypt-form", html);
+        Assert.Contains("id=\"view-connect\"", html);
+        Assert.Contains("Connect to XProtect", html);
+        Assert.Contains("connect-form", html);
         Assert.Contains("Security Servers", html);
         Assert.Contains("servers-grid", html);
         Assert.Contains("id=\"storage-pies\"", html);
@@ -237,6 +281,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".server-grid", css);
         Assert.Contains(".server-card", css);
         Assert.Contains(".demo-banner", css);
+        Assert.Contains(".connect-actions", css);
     }
 
     [Fact]

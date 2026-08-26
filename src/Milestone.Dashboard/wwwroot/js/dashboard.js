@@ -256,6 +256,9 @@ function showView(name, options = {}) {
   if (name === "security-servers" || name === "servers") {
     renderSecurityServers();
   }
+  if (name === "connect") {
+    loadConnectionSettings();
+  }
   if (name === "encrypt") {
     loadEncryptStatus();
   }
@@ -327,9 +330,10 @@ async function loadDashboard() {
     document.getElementById("source-badge").textContent = "Unavailable";
     pageError.hidden = false;
     pageError.innerHTML = `Could not load dashboard: ${escapeHtml(error.message)}`;
-    if (/login|password|Username|GatewayBaseUrl/i.test(error.message)) {
-      pageError.innerHTML += ` <button class="link-btn" type="button" id="open-encrypt">Open Encrypt password</button>`;
-      document.getElementById("open-encrypt")?.addEventListener("click", () => showView("encrypt"));
+    if (/login|password|Username|GatewayBaseUrl|UseDemoData/i.test(error.message)) {
+      pageError.innerHTML += ` <button class="link-btn" type="button" id="open-connect">Open Connect to XProtect</button>`;
+      document.getElementById("open-connect")?.addEventListener("click", () => showView("connect"));
+      showView("connect");
     }
   } finally {
     refreshButton.disabled = false;
@@ -2446,6 +2450,139 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 }
+
+function connectPayload() {
+  return {
+    gatewayBaseUrl: document.getElementById("connect-gateway")?.value ?? "",
+    username: document.getElementById("connect-username")?.value ?? "",
+    password: document.getElementById("connect-password")?.value ?? "",
+    useDemoData: Boolean(document.getElementById("connect-demo")?.checked),
+    bypassSslValidation: Boolean(document.getElementById("connect-bypass-ssl")?.checked)
+  };
+}
+
+async function loadConnectionSettings() {
+  const status = document.getElementById("connect-status");
+  if (!status) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/settings/connection", { cache: "no-store" });
+    if (!response.ok) {
+      return;
+    }
+    const data = await response.json();
+    const gateway = document.getElementById("connect-gateway");
+    const username = document.getElementById("connect-username");
+    const password = document.getElementById("connect-password");
+    const demo = document.getElementById("connect-demo");
+    const bypass = document.getElementById("connect-bypass-ssl");
+    if (gateway && !gateway.value) {
+      gateway.value = data.gatewayBaseUrl ?? "";
+    }
+    if (username && !username.value) {
+      username.value = data.username ?? "";
+    }
+    if (password) {
+      password.placeholder = data.passwordSet
+        ? "Leave blank to keep the saved password"
+        : "XProtect Basic user password";
+    }
+    if (demo) {
+      demo.checked = Boolean(data.useDemoData);
+    }
+    if (bypass) {
+      bypass.checked = Boolean(data.bypassSslValidation);
+    }
+    const bits = [
+      data.passwordSet ? "A password is already saved on this server." : "No password is saved yet.",
+      data.canWrite ? "This site can update appsettings.json." : "This site cannot write appsettings.json. Grant Modify on the site folder to the app-pool identity.",
+      data.useDemoData ? "UseDemoData is still true, so live XProtect login is off." : "UseDemoData is false."
+    ];
+    if (!status.dataset.locked) {
+      status.textContent = bits.join(" ");
+    }
+  } catch {
+    status.textContent = "Could not read connection settings.";
+  }
+}
+
+async function testXprotectConnection() {
+  const status = document.getElementById("connect-status");
+  const button = document.getElementById("connect-test");
+  if (!status || !button) {
+    return;
+  }
+  button.disabled = true;
+  status.dataset.locked = "1";
+  status.textContent = "Testing XProtect login…";
+  try {
+    const response = await fetch("/api/settings/connection/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(connectPayload())
+    });
+    const data = await response.json();
+    if (data.ok) {
+      status.textContent = data.message || "XProtect login succeeded.";
+    } else {
+      status.textContent = data.error || data.message || `Login test failed (${response.status}).`;
+    }
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+document.getElementById("connect-test")?.addEventListener("click", () => {
+  testXprotectConnection();
+});
+
+document.getElementById("connect-form")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const status = document.getElementById("connect-status");
+  const submit = document.getElementById("connect-save");
+  const password = document.getElementById("connect-password");
+  if (!status || !submit) {
+    return;
+  }
+  submit.disabled = true;
+  status.dataset.locked = "1";
+  status.textContent = "Saving connection…";
+  try {
+    const response = await fetch("/api/settings/connection", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(connectPayload())
+    });
+    const data = await response.json();
+    if (!response.ok && !data.saved) {
+      throw new Error(data.error || data.saveError || `Save failed (${response.status})`);
+    }
+    if (!data.saved) {
+      throw new Error(data.saveError || "Could not update appsettings.json.");
+    }
+    if (password) {
+      password.value = "";
+    }
+    if (data.recycleRequired) {
+      status.textContent = data.loginOk
+        ? "Saved. Recycle the XProtectDashboard app pool, then press Ctrl+F5."
+        : `Saved, but login still failed. ${data.loginError || "Recycle the app pool after you correct the Basic user."}`;
+    } else if (data.loginOk) {
+      status.textContent = "Saved. Loading cameras…";
+      await loadDashboard();
+      status.textContent = "Saved. XProtect login succeeded.";
+    } else {
+      status.textContent = data.loginError || "Saved, but XProtect login still failed.";
+    }
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    submit.disabled = false;
+  }
+});
 
 async function loadEncryptStatus() {
   const status = document.getElementById("encrypt-status");
