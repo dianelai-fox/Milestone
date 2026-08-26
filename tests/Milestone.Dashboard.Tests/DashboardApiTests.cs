@@ -102,6 +102,15 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(
             securityServers.GetProperty("servers").EnumerateArray(),
             server => server.GetProperty("enabled").GetBoolean() == false);
+        var lenel = securityServers.GetProperty("servers").EnumerateArray()
+            .Single(server => server.GetProperty("name").GetString() == "FOXUSWDMSIA297");
+        Assert.Equal("Lenel application", lenel.GetProperty("role").GetString());
+        Assert.Equal("application", lenel.GetProperty("kind").GetString());
+        Assert.Equal("LENELNEWAPP.INT.APPS.FOX", lenel.GetProperty("hostName").GetString());
+        Assert.Equal("LENELNEWAPP.INT.APPS.FOX", lenel.GetProperty("domainName").GetString());
+        Assert.DoesNotContain(
+            document.RootElement.GetProperty("recordingServers").EnumerateArray(),
+            server => server.GetProperty("name").GetString() == "FOXUSWDMSIA297");
     }
 
     [Fact]
@@ -252,6 +261,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Connect to XProtect", html);
         Assert.Contains("connect-form", html);
         Assert.Contains("Security Servers", html);
+        Assert.Contains("Lenel", html);
         Assert.Contains("servers-grid", html);
         Assert.Contains("id=\"storage-pies\"", html);
         Assert.Contains("Replace previous locations", html);
@@ -291,6 +301,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".risk-segments", css);
         Assert.Contains(".server-grid", css);
         Assert.Contains(".server-card", css);
+        Assert.Contains(".server-domain", css);
         Assert.Contains(".demo-banner", css);
         Assert.Contains(".connect-actions", css);
     }

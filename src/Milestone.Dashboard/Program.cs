@@ -47,6 +47,8 @@ builder.Services.AddSingleton<LocationOverrideStore>();
 builder.Services.AddSingleton<SnapshotCache>();
 builder.Services.AddSingleton<AppSettingsPasswordWriter>();
 builder.Services.AddSingleton<XprotectConnectionTester>();
+builder.Services.AddSingleton<ManagedServerCatalog>();
+builder.Services.AddSingleton<ManagedServerMonitor>();
 builder.Services.AddSingleton<DemoVmsClient>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>

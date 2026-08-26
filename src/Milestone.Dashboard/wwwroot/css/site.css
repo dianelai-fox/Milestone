@@ -1202,6 +1202,13 @@ th {
   gap: 14px;
 }
 .server-card.attention { border-color: #f0c36d; }
+.server-card.managed { border-color: #c5d4de; }
+.server-domain {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text);
+  word-break: break-all;
+}
 .server-card-head {
   display: flex;
   align-items: flex-start;

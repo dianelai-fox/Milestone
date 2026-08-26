@@ -833,7 +833,7 @@ function renderSecurityServers() {
       <div class="life-devices">
         <div class="life-score">
           <div class="value">${formatInt(overview.totalServers ?? servers.length)}</div>
-          <div class="muted">Managed recording servers</div>
+          <div class="muted">Recording and application servers</div>
         </div>
         <div class="life-legend">
           <button type="button" data-server-filter="online"><i class="dot teal"></i>Online: ${formatInt(online)}</button>
@@ -874,9 +874,11 @@ function renderSecurityServers() {
             ? `<tr><td colspan="3" class="muted">All servers are online with enough storage.</td></tr>`
             : attention.map((server) => `
               <tr>
-                <td><button class="link-btn" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button></td>
+                <td>${isRecordingServer(server)
+                  ? `<button class="link-btn" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button>`
+                  : escapeHtml(server.name)}</td>
                 <td><span class="status ${server.enabled === false ? "off" : "on"}">${escapeHtml(server.status ?? (server.enabled === false ? "Offline" : "Online"))}</span></td>
-                <td>${escapeHtml(server.storageHealth ?? "—")} · ${formatPercent(server.effectiveStorageUsagePercent ?? server.storageUsagePercent)}</td>
+                <td>${escapeHtml(server.storageHealth ?? "—")}${server.storageReported === false ? "" : ` · ${formatPercent(server.effectiveStorageUsagePercent ?? server.storageUsagePercent)}`}</td>
               </tr>`).join("")}
         </tbody>
       </table>
@@ -884,34 +886,47 @@ function renderSecurityServers() {
     <article class="highlight-card">
       <h3>How this page is scored</h3>
       <ul class="server-notes">
-        <li>Online / Offline comes from the XProtect recording server enabled state.</li>
+        <li>XProtect recording servers use the enabled state from the API. Application servers such as Lenel are probed on the network.</li>
         <li>Storage uses the tightest volume on each server. Warning starts at 75% and critical at 90%.</li>
       </ul>
     </article>
   `;
   const demo = String(state.source || "").startsWith("demo");
   copy.textContent = demo
-    ? `${servers.length} sample recording servers. Set UseDemoData to false on IIS to load your live XProtect servers and cameras.`
+    ? `${servers.length} servers, including sample XProtect recording servers and configured application servers such as Lenel.`
     : filter
-      ? `${visible.length} of ${servers.length} security servers · ${serverFilterLabel(filter)}. Click a server to see its cameras.`
-      : `${servers.length} recording servers from XProtect. Click a server name or camera count to see its cameras.`;
+      ? `${visible.length} of ${servers.length} security servers · ${serverFilterLabel(filter)}.`
+      : `${servers.length} security servers. Click an XProtect recording server to see its cameras.`;
   grid.innerHTML = visible.map((server) => {
+    const managed = !isRecordingServer(server);
+    const storageReported = server.storageReported !== false && server.storageHealth !== "Not reported";
     const storagePercent = Number(server.effectiveStorageUsagePercent ?? server.storageUsagePercent ?? 0);
     const storageTone = healthTone(server.storageHealth);
+    const domain = server.domainName || server.hostName || "";
+    const nameHtml = managed
+      ? `<div class="server-name">${escapeHtml(server.name)} ${escapeHtml(server.role || server.application || "application")}</div>`
+      : `<button class="link-btn server-name" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button>`;
+    const metricHtml = managed
+      ? `<div class="server-metric">
+          <span class="label">Application</span>
+          <strong>${escapeHtml(server.application || "Lenel")}</strong>
+        </div>`
+      : `<button class="server-metric" type="button" data-server="${escapeHtml(server.id)}" title="Show cameras on this server">
+          <span class="label">Cameras</span>
+          <strong>${formatInt(server.cameraCount)}</strong>
+        </button>`;
     return `
-    <article class="server-card ${server.needsAttention ? "attention" : ""}">
+    <article class="server-card ${server.needsAttention ? "attention" : ""} ${managed ? "managed" : ""}">
       <div class="server-card-head">
         <div>
-          <button class="link-btn server-name" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button>
-          <div class="muted">${escapeHtml(server.role ?? "Recording server")} · ${escapeHtml(server.hostName ?? "Host not reported")}</div>
+          ${nameHtml}
+          <div class="muted">${managed ? "Domain name" : escapeHtml(server.role ?? "Recording server")}</div>
+          <div class="server-domain">${escapeHtml(domain || "Host not reported")}</div>
         </div>
         <span class="status ${server.enabled === false ? "off" : "on"}">${escapeHtml(server.status ?? (server.enabled === false ? "Offline" : "Online"))}</span>
       </div>
       <div class="server-metrics">
-        <button class="server-metric" type="button" data-server="${escapeHtml(server.id)}" title="Show cameras on this server">
-          <span class="label">Cameras</span>
-          <strong>${formatInt(server.cameraCount)}</strong>
-        </button>
+        ${metricHtml}
         <div class="server-metric">
           <span class="label">Volumes</span>
           <strong>${formatInt(server.volumeCount)}</strong>
@@ -920,12 +935,12 @@ function renderSecurityServers() {
       <div class="server-bar-block">
         <div class="server-bar-label">
           <span>Storage</span>
-          <span class="health ${storageTone}">${escapeHtml(server.storageHealth ?? "Healthy")} · ${formatPercent(storagePercent)}</span>
+          <span class="health ${storageTone}">${escapeHtml(storageReported ? `${server.storageHealth ?? "Healthy"} · ${formatPercent(storagePercent)}` : "Not reported")}</span>
         </div>
-        <div class="server-bar" title="${formatPercent(storagePercent)} used on the tightest volume">
-          <span class="${storageTone}" style="width:${Math.min(storagePercent, 100)}%"></span>
+        <div class="server-bar ${storageReported ? "" : "empty"}" title="${storageReported ? `${formatPercent(storagePercent)} used on the tightest volume` : "Storage not reported"}">
+          <span class="${storageTone}" style="width:${storageReported ? Math.min(storagePercent, 100) : 0}%"></span>
         </div>
-        <div class="muted">${formatMb(server.usedSpaceMb)} used of ${formatMb(server.maxSizeMb)}</div>
+        <div class="muted">${storageReported ? `${formatMb(server.usedSpaceMb)} used of ${formatMb(server.maxSizeMb)}` : "Disk space is not available from this host"}</div>
       </div>
     </article>`;
   }).join("") || `<p class="muted">No security servers match this filter.</p>`;
@@ -964,7 +979,14 @@ function matchesServerHealthFilter(server, filter) {
   if (filter === "storage-critical") {
     return server.storageHealth === "Critical";
   }
+  if (filter === "storage-na") {
+    return server.storageHealth === "Not reported" || server.storageReported === false;
+  }
   return true;
+}
+
+function isRecordingServer(server) {
+  return (server.kind ?? "recording") === "recording" && (server.source ?? "XProtect") !== "Managed";
 }
 
 function serverFilterLabel(filter) {
@@ -974,7 +996,8 @@ function serverFilterLabel(filter) {
     attention: "Needs attention",
     "storage-ok": "Enough storage",
     "storage-warn": "Storage warning",
-    "storage-critical": "Storage critical"
+    "storage-critical": "Storage critical",
+    "storage-na": "Storage not reported"
   }[filter] ?? filter;
 }
 
