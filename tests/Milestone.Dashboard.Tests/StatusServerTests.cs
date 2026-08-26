@@ -62,6 +62,21 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task Documentation_ip_is_offline()
+    {
+        var monitor = new StatusServerMonitor();
+        var overview = await monitor.ProbeAsync(
+        [
+            new StatusServerCatalog.Spec("doc-net", "192.0.2.1")
+        ], CancellationToken.None);
+
+        var server = Assert.Single(overview.Servers);
+        Assert.False(server.Online);
+        Assert.Equal("Offline", server.Status);
+        Assert.Equal(1, overview.Decks[0].AttentionCount);
+    }
+
+    [Fact]
     public async Task Server_status_api_returns_the_mastermind_deck()
     {
         var response = await _client.GetAsync("/api/server-status");

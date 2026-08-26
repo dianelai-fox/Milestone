@@ -7,7 +7,7 @@ namespace Milestone.Dashboard.Services;
 
 public sealed class StatusServerMonitor
 {
-    private static readonly int[] ProbePorts = [445, 3389, 80, 443];
+    private static readonly int[] ProbePorts = [445, 3389];
 
     public async Task<ServerStatusOverview> ProbeAsync(CancellationToken cancellationToken)
     {
@@ -81,18 +81,21 @@ public sealed class StatusServerMonitor
             return true;
         }
 
-        return await TryPingAsync(ipAddress);
+        return OperatingSystem.IsWindows() && await TryPingAsync(ipAddress);
     }
 
     private static async Task<bool> TryConnectAsync(string ipAddress, int port, CancellationToken cancellationToken)
     {
         try
         {
-            using var client = new TcpClient();
+            var address = IPAddress.Parse(ipAddress);
+            using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromMilliseconds(1000));
-            await client.ConnectAsync(IPAddress.Parse(ipAddress), port, timeout.Token);
-            return client.Connected;
+            await socket.ConnectAsync(new IPEndPoint(address, port), timeout.Token);
+            return socket.Connected
+                   && socket.RemoteEndPoint is IPEndPoint remote
+                   && remote.Address.Equals(address);
         }
         catch
         {
