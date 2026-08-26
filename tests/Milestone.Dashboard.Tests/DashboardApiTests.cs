@@ -303,6 +303,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".status-deck", css);
         Assert.Contains(".status-grid", css);
         Assert.Contains(".status-server-card", css);
+        Assert.Contains(".status-deck-list", css);
         Assert.Contains(".status-deck-group", css);
         Assert.Contains(".demo-banner", css);
         Assert.Contains(".connect-actions", css);
