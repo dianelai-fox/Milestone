@@ -318,10 +318,17 @@ app.MapPost("/api/server-status/import-csv", async (
 
         var saved = await store.ImportAsync(imported, replace, catalog, cancellationToken);
         var overview = await monitor.ProbeAsync(saved, cancellationToken);
+        var duplicateNames = imported
+            .GroupBy(server => server.Name, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToList();
         return Results.Ok(new
         {
             imported = imported.Count,
+            saved = saved.Count,
             replacedDecks = replace,
+            duplicateNames,
             decks = imported.Select(server => server.Deck).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             overview
         });

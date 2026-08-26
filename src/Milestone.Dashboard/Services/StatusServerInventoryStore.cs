@@ -89,29 +89,38 @@ public sealed class StatusServerInventoryStore
             }
 
             IReadOnlyList<StatusServerCatalog.Spec> next;
-            var byName = current.ToDictionary(server => server.Name, StringComparer.OrdinalIgnoreCase);
+            var byKey = StatusServerCatalog.IndexByIdentity(current);
             foreach (var row in imported)
             {
-                byName[row.Name] = byName.TryGetValue(row.Name, out var existing)
+                var key = StatusServerCatalog.IdentityKey(row);
+                if (key.Length == 0)
+                {
+                    continue;
+                }
+
+                byKey[key] = byKey.TryGetValue(key, out var existing)
                     ? StatusServerCatalog.Merge(existing, row)
                     : row;
             }
 
             if (replaceDecks)
             {
-                var importedNames = imported
-                    .Select(server => server.Name)
+                var importedKeys = imported
+                    .Select(StatusServerCatalog.IdentityKey)
+                    .Where(key => key.Length > 0)
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var importedDecks = imported
-                    .Select(server => byName[server.Name].Deck)
+                    .Select(StatusServerCatalog.ResolveDeck)
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                next = byName.Values
-                    .Where(server => importedNames.Contains(server.Name) || !importedDecks.Contains(server.Deck))
+                next = byKey.Values
+                    .Where(server =>
+                        importedKeys.Contains(StatusServerCatalog.IdentityKey(server))
+                        || !importedDecks.Contains(StatusServerCatalog.ResolveDeck(server)))
                     .ToList();
             }
             else
             {
-                next = byName.Values.ToList();
+                next = byKey.Values.ToList();
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
@@ -153,7 +162,9 @@ public sealed class StatusServerInventoryStore
             var items = await JsonSerializer.DeserializeAsync<List<StatusServerCatalog.Spec>>(
                             stream, JsonOptions, cancellationToken)
                         ?? [];
-            return items.Where(item => !string.IsNullOrWhiteSpace(item.Name)).ToList();
+            return StatusServerCatalog.IndexByIdentity(items.Where(item => !string.IsNullOrWhiteSpace(item.Name)))
+                .Values
+                .ToList();
         }
         catch (Exception ex)
         {

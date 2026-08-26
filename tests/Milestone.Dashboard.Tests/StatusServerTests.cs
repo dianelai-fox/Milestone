@@ -414,6 +414,80 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public void Duplicate_server_names_in_csv_do_not_throw()
+    {
+        const string csv = """
+            Server Name,IP Address,Server Description,Server Function,Domain,Environment,OS,SQL
+            FOXUSWDMSIA304,10.180.80.200,Lenel,Application,corp.fox,Prod,Windows Server 2022,
+            FOXUSWDMSIA304,10.180.80.200,Lenel,Application,corp.fox,Prod,Windows Server 2022,
+            FOXUSWDMSIA304,10.180.80.201,Aztec,Application,corp.fox,Prod,Windows Server 2022,
+            FOXUSWDMSDB303,10.180.80.154,MasterMind,App/DB,corp.fox,Prod,Windows Server 2022,Microsoft SQL Server 2022
+            """;
+        var imported = StatusServerCsvParser.Parse(csv);
+        Assert.Equal(4, imported.Count);
+        var combined = new StatusServerCatalog().Combine(imported);
+        Assert.Contains(combined, server => server.Name == "FOXUSWDMSIA304" && server.Deck == "Lenel");
+        Assert.Contains(combined, server => server.Name == "FOXUSWDMSIA304" && server.Deck == "Aztec");
+        Assert.Equal(1, combined.Count(server => server.Name == "FOXUSWDMSIA304" && server.Deck == "Lenel"));
+        Assert.Equal(2, combined.Count(server => server.Name == "FOXUSWDMSIA304"));
+    }
+
+    [Fact]
+    public async Task Server_status_csv_import_accepts_duplicate_names_and_new_applications()
+    {
+        var store = _factory.Services.GetRequiredService<StatusServerInventoryStore>();
+        try
+        {
+            const string first = """
+                Server Name,IP Address,Server Description,Server Function,Domain,Environment,OS,SQL
+                FOXUSWDMSIA304,10.180.80.200,Lenel,Application,corp.fox,Prod,Windows Server 2022,
+                FOXUSWDMSIA304,10.180.80.200,Lenel,Application,corp.fox,QA,Windows Server 2022,
+                """;
+            using (var seed = new MultipartFormDataContent())
+            {
+                var file = new StringContent(first, Encoding.UTF8, "text/csv");
+                file.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
+                seed.Add(file, "file", "servers.csv");
+                (await _client.PostAsync("/api/server-status/import-csv?replace=true", seed)).EnsureSuccessStatusCode();
+            }
+
+            const string csv = """
+                Server Name,IP Address,Server Description,Server Function,Domain,Environment,OS,SQL
+                FOXUSWDMSIA304,10.180.80.200,Lenel,Application,corp.fox,Prod,Windows Server 2022,
+                FOXUSWDMSIA304,10.180.80.201,Aztec,Receiver,corp.fox,Prod,Windows Server 2022,
+                FOXUSWDMSDB303,10.180.80.154,MasterMind,App/DB,corp.fox,Prod,Windows Server 2022,Microsoft SQL Server 2022
+                NEWAPP-01,10.180.90.10,C-Cure,Application,corp.fox,Prod,Windows Server 2022,
+                """;
+            using var content = new MultipartFormDataContent();
+            var next = new StringContent(csv, Encoding.UTF8, "text/csv");
+            next.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
+            content.Add(next, "file", "servers.csv");
+            var response = await _client.PostAsync("/api/server-status/import-csv?replace=true", content);
+            response.EnsureSuccessStatusCode();
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(4, document.RootElement.GetProperty("imported").GetInt32());
+            Assert.Contains(
+                document.RootElement.GetProperty("duplicateNames").EnumerateArray().Select(item => item.GetString()),
+                name => name == "FOXUSWDMSIA304");
+            var servers = document.RootElement.GetProperty("overview").GetProperty("servers").EnumerateArray().ToList();
+            Assert.Contains(servers, server => server.GetProperty("name").GetString() == "FOXUSWDMSIA304"
+                                              && server.GetProperty("deck").GetString() == "Lenel"
+                                              && server.GetProperty("ipAddress").GetString() == "10.180.80.200");
+            Assert.Contains(servers, server => server.GetProperty("name").GetString() == "FOXUSWDMSIA304"
+                                              && server.GetProperty("deck").GetString() == "Aztec"
+                                              && server.GetProperty("ipAddress").GetString() == "10.180.80.201");
+            Assert.Contains(servers, server => server.GetProperty("name").GetString() == "NEWAPP-01"
+                                              && server.GetProperty("deck").GetString() == "C-Cure");
+            Assert.Contains(servers, server => server.GetProperty("name").GetString() == "FOXUSWDMSAP655"
+                                              && server.GetProperty("deck").GetString() == "Perspective");
+        }
+        finally
+        {
+            await store.ClearAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
     public async Task Dashboard_security_servers_do_not_include_mastermind_hosts()
     {
         using var document = JsonDocument.Parse(await _client.GetStringAsync("/api/dashboard"));

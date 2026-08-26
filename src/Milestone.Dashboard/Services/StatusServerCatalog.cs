@@ -45,33 +45,63 @@ public sealed class StatusServerCatalog
             return builtIn;
         }
 
+        var importedMap = IndexByIdentity(imported);
         if (replaceDecks)
         {
-            var names = imported.Select(server => server.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var decks = imported.Select(server => server.Deck).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var decks = importedMap.Values
+                .Select(server => ResolveDeck(server))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
             return
             [
-                .. imported,
-                .. builtIn.Where(server => !names.Contains(server.Name) && !decks.Contains(server.Deck))
+                .. importedMap.Values,
+                .. builtIn.Where(server =>
+                    !importedMap.ContainsKey(IdentityKey(server)) && !decks.Contains(ResolveDeck(server)))
             ];
         }
 
-        var byName = builtIn.ToDictionary(server => server.Name, StringComparer.OrdinalIgnoreCase);
-        var extras = new List<Spec>();
-        foreach (var row in imported)
+        var byKey = IndexByIdentity(builtIn);
+        foreach (var row in importedMap.Values)
         {
-            if (byName.TryGetValue(row.Name, out var existing))
-            {
-                byName[row.Name] = Merge(existing, row);
-            }
-            else
-            {
-                extras.Add(row);
-            }
+            var key = IdentityKey(row);
+            byKey[key] = byKey.TryGetValue(key, out var existing)
+                ? Merge(existing, row)
+                : row;
         }
 
-        return [.. byName.Values, .. extras];
+        return byKey.Values.ToList();
     }
+
+    internal static Dictionary<string, Spec> IndexByIdentity(IEnumerable<Spec> servers)
+    {
+        var map = new Dictionary<string, Spec>(StringComparer.OrdinalIgnoreCase);
+        foreach (var server in servers)
+        {
+            var key = IdentityKey(server);
+            if (key.Length == 0)
+            {
+                continue;
+            }
+
+            map[key] = map.TryGetValue(key, out var existing)
+                ? Merge(existing, server)
+                : server;
+        }
+
+        return map;
+    }
+
+    internal static string IdentityKey(Spec server)
+    {
+        if (string.IsNullOrWhiteSpace(server.Name))
+        {
+            return "";
+        }
+
+        return $"{server.Name.Trim()}\u001f{ResolveDeck(server)}";
+    }
+
+    internal static string ResolveDeck(Spec server) =>
+        StatusServerCsvParser.ResolveApplication(server.Description, server.Deck);
 
     internal static Spec Merge(Spec existing, Spec incoming)
     {

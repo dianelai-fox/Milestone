@@ -97,7 +97,7 @@ public sealed class StatusServerMonitor
         var application = StatusServerCsvParser.ResolveApplication(spec.Description, spec.Deck);
         return new StatusServerInfo
         {
-            Id = $"status:{spec.Name}",
+            Id = $"status:{spec.Name}:{application}",
             Name = spec.Name,
             IpAddress = spec.IpAddress,
             Role = spec.Role,

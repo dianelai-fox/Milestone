@@ -2552,7 +2552,11 @@ async function importStatusCsv(event) {
 
   if (hint) {
     const decks = Array.isArray(payload.decks) && payload.decks.length ? payload.decks.join(", ") : "listed decks";
-    hint.textContent = `Imported ${payload.imported} server(s) for ${decks}. Online status is checked from this IIS server.`;
+    const saved = payload.saved ?? payload.imported;
+    const dups = Array.isArray(payload.duplicateNames) && payload.duplicateNames.length
+      ? ` Repeated names kept once per application: ${payload.duplicateNames.slice(0, 8).join(", ")}.`
+      : "";
+    hint.textContent = `Imported ${saved} server(s) for ${decks}.${dups} Online status is checked from this IIS server.`;
   }
 }
 
