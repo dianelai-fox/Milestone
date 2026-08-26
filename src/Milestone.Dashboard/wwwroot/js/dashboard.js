@@ -342,16 +342,14 @@ function counts() {
   const cameras = state.cameras;
   const storages = state.storages;
   const servers = state.recordingServers;
-  const security = state.securityServers ?? {};
   return {
     cameras: cameras.length,
     enabled: cameras.filter((item) => item.enabled).length,
     disabled: cameras.filter((item) => !item.enabled).length,
     mapped: cameras.filter((item) => item.location).length,
     unmapped: cameras.filter((item) => !item.location).length,
-    servers: security.totalServers ?? servers.length,
-    serversOnline: security.onlineCount ?? servers.filter((item) => item.enabled !== false).length,
-    recordingServers: servers.length,
+    servers: servers.length,
+    serversOnline: servers.filter((item) => item.enabled !== false).length,
     storage: storages.length,
     archives: storages.filter((item) => item.kind === "Archive").length,
     warn: storages.filter((item) => item.usagePercent >= 75).length,
@@ -400,7 +398,7 @@ function renderDeviceTypes() {
   const data = counts();
   const items = [
     [data.cameras, "Camera"],
-    [data.recordingServers ?? data.servers, "Recording Server"],
+    [data.servers, "Recording Server"],
     [data.storage, "Storage"],
     [data.archives, "Archive"],
     [data.mapped, "Mapped"],
@@ -816,7 +814,7 @@ function renderSecurityServers() {
       <div class="life-devices">
         <div class="life-score">
           <div class="value">${formatInt(overview.totalServers ?? servers.length)}</div>
-          <div class="muted">XProtect and other security apps</div>
+          <div class="muted">Managed recording servers</div>
         </div>
         <div class="life-legend">
           <button type="button" data-server-filter="online"><i class="dot teal"></i>Online: ${formatInt(online)}</button>
@@ -841,10 +839,6 @@ function renderSecurityServers() {
           <span>CRITICAL</span>
           <strong>${formatInt(overview.storageCriticalCount)}</strong>
         </button>
-        <button type="button" class="life-badge na" data-server-filter="storage-na">
-          <span>NOT REPORTED</span>
-          <strong>${formatInt(overview.storageUnknownCount)}</strong>
-        </button>
       </div>
       <div class="muted server-capacity">${formatMb(overview.usedSpaceMb)} used of ${formatMb(overview.maxSizeMb)} · ${formatPercent(overview.storageUsagePercent)}</div>
     </article>
@@ -861,9 +855,7 @@ function renderSecurityServers() {
             ? `<tr><td colspan="3" class="muted">All servers are online with enough storage.</td></tr>`
             : attention.map((server) => `
               <tr>
-                <td>${isRecordingServer(server)
-                  ? `<button class="link-btn" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button>`
-                  : escapeHtml(server.name)}</td>
+                <td><button class="link-btn" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button></td>
                 <td><span class="status ${server.enabled === false ? "off" : "on"}">${escapeHtml(server.status ?? (server.enabled === false ? "Offline" : "Online"))}</span></td>
                 <td>${escapeHtml(server.storageHealth ?? "—")} · ${formatPercent(server.effectiveStorageUsagePercent ?? server.storageUsagePercent)}</td>
               </tr>`).join("")}
@@ -873,43 +865,31 @@ function renderSecurityServers() {
     <article class="highlight-card">
       <h3>How this page is scored</h3>
       <ul class="server-notes">
-        <li>XProtect recording servers use the enabled state and the tightest volume. Warning starts at 75% and critical at 90%.</li>
-        <li>Other apps such as Lenel are listed from configuration. Online is a network check from this IIS server. Storage is a Windows disk query; if the app pool cannot reach the host, storage shows Not reported.</li>
-        <li>Add more hosts in appsettings.json under Milestone:ManagedServers, or in App_Data/security-servers.json.</li>
+        <li>Online / Offline comes from the XProtect recording server enabled state.</li>
+        <li>Storage uses the tightest volume on each server. Warning starts at 75% and critical at 90%.</li>
       </ul>
     </article>
   `;
   copy.textContent = filter
-    ? `${visible.length} of ${servers.length} security servers · ${serverFilterLabel(filter)}.`
-    : `${servers.length} security servers, including XProtect recording servers and other applications.`;
+    ? `${visible.length} of ${servers.length} security servers · ${serverFilterLabel(filter)}. Click a server to see its cameras.`
+    : `${servers.length} security servers from XProtect. Click a server name or camera count to see its cameras.`;
   grid.innerHTML = visible.map((server) => {
-    const managed = !isRecordingServer(server);
-    const storageReported = server.storageReported !== false && server.storageHealth !== "Not reported";
     const storagePercent = Number(server.effectiveStorageUsagePercent ?? server.storageUsagePercent ?? 0);
     const storageTone = healthTone(server.storageHealth);
-    const nameHtml = managed
-      ? `<div class="server-name">${escapeHtml(server.name)}</div>`
-      : `<button class="link-btn server-name" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button>`;
-    const metricHtml = managed
-      ? `<div class="server-metric">
-          <span class="label">Application</span>
-          <strong>${escapeHtml(server.application || server.role || "App")}</strong>
-        </div>`
-      : `<button class="server-metric" type="button" data-server="${escapeHtml(server.id)}" title="Show cameras on this server">
-          <span class="label">Cameras</span>
-          <strong>${formatInt(server.cameraCount)}</strong>
-        </button>`;
     return `
     <article class="server-card ${server.needsAttention ? "attention" : ""}">
       <div class="server-card-head">
         <div>
-          ${nameHtml}
+          <button class="link-btn server-name" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button>
           <div class="muted">${escapeHtml(server.role ?? "Recording server")} · ${escapeHtml(server.hostName ?? "Host not reported")}</div>
         </div>
         <span class="status ${server.enabled === false ? "off" : "on"}">${escapeHtml(server.status ?? (server.enabled === false ? "Offline" : "Online"))}</span>
       </div>
       <div class="server-metrics">
-        ${metricHtml}
+        <button class="server-metric" type="button" data-server="${escapeHtml(server.id)}" title="Show cameras on this server">
+          <span class="label">Cameras</span>
+          <strong>${formatInt(server.cameraCount)}</strong>
+        </button>
         <div class="server-metric">
           <span class="label">Volumes</span>
           <strong>${formatInt(server.volumeCount)}</strong>
@@ -918,12 +898,12 @@ function renderSecurityServers() {
       <div class="server-bar-block">
         <div class="server-bar-label">
           <span>Storage</span>
-          <span class="health ${storageTone}">${escapeHtml(storageReported ? `${server.storageHealth ?? "Healthy"} · ${formatPercent(storagePercent)}` : "Not reported")}</span>
+          <span class="health ${storageTone}">${escapeHtml(server.storageHealth ?? "Healthy")} · ${formatPercent(storagePercent)}</span>
         </div>
-        <div class="server-bar ${storageReported ? "" : "empty"}" title="${storageReported ? `${formatPercent(storagePercent)} used on the tightest volume` : "Storage not reported"}">
-          <span class="${storageTone}" style="width:${storageReported ? Math.min(storagePercent, 100) : 0}%"></span>
+        <div class="server-bar" title="${formatPercent(storagePercent)} used on the tightest volume">
+          <span class="${storageTone}" style="width:${Math.min(storagePercent, 100)}%"></span>
         </div>
-        <div class="muted">${storageReported ? `${formatMb(server.usedSpaceMb)} used of ${formatMb(server.maxSizeMb)}` : "Disk space is not available from this host"}</div>
+        <div class="muted">${formatMb(server.usedSpaceMb)} used of ${formatMb(server.maxSizeMb)}</div>
       </div>
     </article>`;
   }).join("") || `<p class="muted">No security servers match this filter.</p>`;
@@ -962,14 +942,7 @@ function matchesServerHealthFilter(server, filter) {
   if (filter === "storage-critical") {
     return server.storageHealth === "Critical";
   }
-  if (filter === "storage-na") {
-    return server.storageHealth === "Not reported" || server.storageReported === false;
-  }
   return true;
-}
-
-function isRecordingServer(server) {
-  return (server.kind ?? "recording") === "recording" && (server.source ?? "XProtect") !== "Managed";
 }
 
 function serverFilterLabel(filter) {
@@ -979,8 +952,7 @@ function serverFilterLabel(filter) {
     attention: "Needs attention",
     "storage-ok": "Enough storage",
     "storage-warn": "Storage warning",
-    "storage-critical": "Storage critical",
-    "storage-na": "Storage not reported"
+    "storage-critical": "Storage critical"
   }[filter] ?? filter;
 }
 

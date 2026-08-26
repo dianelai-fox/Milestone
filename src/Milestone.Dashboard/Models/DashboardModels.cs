@@ -104,22 +104,14 @@ public sealed class RecordingServerInfo
     public long UsedSpaceMb { get; init; }
     public long MaxSizeMb { get; init; }
     public string Role { get; set; } = "Recording server";
-    public string Kind { get; set; } = "recording";
-    public string Source { get; set; } = "XProtect";
-    public string? Application { get; set; }
     public int VolumeCount { get; set; }
     public double WorstVolumeUsagePercent { get; set; }
-    public bool StorageReported { get; set; } = true;
 
     public string Status => Enabled ? "Online" : "Offline";
     public double StorageUsagePercent => StorageMetrics.UsagePercent(UsedSpaceMb, MaxSizeMb);
-    public string StorageHealth => StorageReported
-        ? ServerHealth.Storage(EffectiveStorageUsagePercent)
-        : "Not reported";
+    public string StorageHealth => ServerHealth.Storage(EffectiveStorageUsagePercent);
     public bool NeedsAttention =>
-        !Enabled || (StorageReported && ServerHealth.IsStorageAttention(EffectiveStorageUsagePercent));
-    public bool IsRecordingServer =>
-        string.Equals(Kind, "recording", StringComparison.OrdinalIgnoreCase);
+        !Enabled || ServerHealth.IsStorageAttention(EffectiveStorageUsagePercent);
 
     public double EffectiveStorageUsagePercent =>
         VolumeCount > 0 ? WorstVolumeUsagePercent : StorageUsagePercent;
@@ -156,7 +148,6 @@ public sealed class DashboardSnapshot
     public IReadOnlyList<SiteInfo> Sites { get; set; } = [];
     public IReadOnlyList<StorageVolume> Storages { get; init; } = [];
     public IReadOnlyList<RecordingServerInfo> RecordingServers { get; init; } = [];
-    public IReadOnlyList<RecordingServerInfo> ManagedServers { get; set; } = [];
     public CameraLocation? SuggestedMapCenter { get; set; }
     public LifecycleOverview Lifecycle { get; set; } = new();
     public PasswordRotationOverview PasswordRotation { get; set; } = new();
@@ -426,9 +417,6 @@ public sealed class SecurityServersOverview
     public int StorageHealthyCount { get; init; }
     public int StorageWarningCount { get; init; }
     public int StorageCriticalCount { get; init; }
-    public int StorageUnknownCount { get; init; }
-    public int RecordingServerCount { get; init; }
-    public int ApplicationServerCount { get; init; }
     public int AttentionCount { get; init; }
     public long UsedSpaceMb { get; init; }
     public long MaxSizeMb { get; init; }

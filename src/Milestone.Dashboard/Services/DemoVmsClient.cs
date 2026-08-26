@@ -145,34 +145,13 @@ public sealed class DemoVmsClient : IVmsClient
             }
         };
 
-        var managed = new List<RecordingServerInfo>
-        {
-            new()
-            {
-                Id = "managed:FOXUSWDMSIA297",
-                Name = "FOXUSWDMSIA297",
-                HostName = "FOXUSWDMSIA297",
-                Enabled = true,
-                Role = "Lenel",
-                Application = "Lenel",
-                Kind = "application",
-                Source = "Managed",
-                VolumeCount = 2,
-                UsedSpaceMb = 184_320,
-                MaxSizeMb = 524_288,
-                WorstVolumeUsagePercent = 48,
-                StorageReported = true
-            }
-        };
-
         return Task.FromResult(new DashboardSnapshot
         {
             Source = SourceName,
             SiteName = "Demo Campus",
             Cameras = cameras,
             Storages = storages,
-            RecordingServers = servers,
-            ManagedServers = managed
+            RecordingServers = servers
         });
     }
 
