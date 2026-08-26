@@ -254,6 +254,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Application", html);
         Assert.Contains("Server Description", html);
         Assert.Contains("id=\"status-table-card\"", html);
+        Assert.True(html.IndexOf("id=\"status-decks\"", StringComparison.Ordinal) < html.IndexOf("id=\"status-table-card\"", StringComparison.Ordinal));
+        Assert.True(html.IndexOf("id=\"status-table-card\"", StringComparison.Ordinal) < html.IndexOf("id=\"status-grid\"", StringComparison.Ordinal));
         Assert.Contains("One row per server", html);
         Assert.Contains("Server applications", html);
         Assert.Contains("MasterMind", html);
@@ -315,6 +317,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".status-deck-group", css);
         Assert.Contains(".status-toolbar", css);
         Assert.Contains(".status-rows-table", css);
+        Assert.Contains(".status-table-block", css);
         Assert.Contains(".server-description", css);
         Assert.Contains(".demo-banner", css);
         Assert.Contains(".connect-actions", css);

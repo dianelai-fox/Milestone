@@ -1256,8 +1256,9 @@ th {
   word-break: break-word;
 }
 .status-detail-wide { grid-column: 1 / -1; }
+.status-table-block { margin: 8px 0 22px; }
 .status-table-wrap {
-  max-height: calc(100vh - 280px);
+  max-height: min(420px, 46vh);
 }
 .status-rows-table { min-width: 1680px; }
 .status-rows-table .name-cell { font-weight: 700; }
