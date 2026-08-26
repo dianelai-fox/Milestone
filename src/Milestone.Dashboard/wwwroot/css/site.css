@@ -1203,6 +1203,9 @@ th {
 }
 .server-card.attention { border-color: #f0c36d; }
 .status-deck { min-width: 320px; }
+#view-server-status .table-scroll { overflow-x: auto; }
+#view-server-status td { white-space: nowrap; }
+#view-server-status td:last-child { white-space: normal; min-width: 180px; }
 .server-card-head {
   display: flex;
   align-items: flex-start;

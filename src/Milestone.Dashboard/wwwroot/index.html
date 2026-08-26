@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260826g" />
+  <link rel="stylesheet" href="/css/site.css?v=20260826h" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -483,13 +483,20 @@
               <p class="muted" id="status-copy">Non-XProtect servers. Online is a live network check of the listed IP address.</p>
             </div>
           </div>
-          <div class="table-wrap">
+          <div class="table-wrap table-scroll">
             <table>
               <thead>
                 <tr>
                   <th>Server Name</th>
+                  <th>Role</th>
                   <th>IP Address</th>
                   <th>Status</th>
+                  <th>Response</th>
+                  <th>Storage</th>
+                  <th>OS</th>
+                  <th>Uptime</th>
+                  <th>Last checked</th>
+                  <th>Detail</th>
                 </tr>
               </thead>
               <tbody id="status-body"></tbody>
@@ -591,6 +598,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260826g"></script>
+  <script src="/js/dashboard.js?v=20260826h"></script>
 </body>
 </html>

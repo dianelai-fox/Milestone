@@ -445,9 +445,25 @@ public sealed class StatusServerInfo
     public required string Id { get; init; }
     public required string Name { get; init; }
     public required string IpAddress { get; init; }
+    public string Role { get; init; } = "Server";
     public string Deck { get; init; } = "MasterMind";
     public bool Online { get; init; }
-    public bool NeedsAttention => !Online;
+    public DateTimeOffset CheckedAt { get; init; } = DateTimeOffset.UtcNow;
+    public int? LatencyMs { get; init; }
+    public int? ProbePort { get; init; }
+    public string? ProbeMethod { get; init; }
+    public string Detail { get; init; } = string.Empty;
+    public string? OperatingSystem { get; init; }
+    public DateTimeOffset? LastBoot { get; init; }
+    public string? Uptime { get; init; }
+    public double? MemoryUsedPercent { get; init; }
+    public double? StorageUsedPercent { get; init; }
+    public bool StorageReported { get; init; }
+    public string StorageHealth => StorageReported && StorageUsedPercent is { } percent
+        ? ServerHealth.Storage(percent)
+        : "Not reported";
+    public bool NeedsAttention =>
+        !Online || (StorageReported && StorageUsedPercent is { } percent && ServerHealth.IsStorageAttention(percent));
     public string Status => Online ? "Online" : "Offline";
 }
 

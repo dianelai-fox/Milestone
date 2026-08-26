@@ -247,6 +247,10 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"nav-server-status\"", html);
         Assert.Contains("Server Status", html);
         Assert.Contains("MasterMind", html);
+        Assert.Contains("Last checked", html);
+        Assert.Contains("<th>Role</th>", html);
+        Assert.Contains("<th>Response</th>", html);
+        Assert.Contains("<th>Detail</th>", html);
         Assert.Contains("id=\"demo-banner\"", html);
         Assert.Contains("UseDemoData", html);
         Assert.Contains("id=\"view-encrypt\"", html);

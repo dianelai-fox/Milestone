@@ -28,6 +28,9 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(catalog, server => server.Name == "AZTEC-FOX-3.corp.fox" && server.IpAddress == "10.180.118.12");
         Assert.Contains(catalog, server => server.Name == "FOX2204376" && server.IpAddress == "10.138.201.11");
         Assert.Contains(catalog, server => server.Name == "FOX2205442" && server.IpAddress == "10.138.201.43");
+        Assert.Equal("Database", catalog.Single(server => server.Name == "FOXUSWDMSDB303").Role);
+        Assert.Equal("Application", catalog.Single(server => server.Name == "AZTEC-FOX-1.corp.fox").Role);
+        Assert.Equal("Endpoint", catalog.Single(server => server.Name == "FOX2204376").Role);
     }
 
     [Theory]
@@ -46,8 +49,8 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         var monitor = new StatusServerMonitor();
         var overview = await monitor.ProbeAsync(
         [
-            new StatusServerCatalog.Spec("online-lab", "127.0.0.1"),
-            new StatusServerCatalog.Spec("bad-ip", "not-an-ip")
+            new StatusServerCatalog.Spec("online-lab", "127.0.0.1", "Lab"),
+            new StatusServerCatalog.Spec("bad-ip", "not-an-ip", "Lab")
         ], CancellationToken.None);
 
         var deck = Assert.Single(overview.Decks);
@@ -67,13 +70,59 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         var monitor = new StatusServerMonitor();
         var overview = await monitor.ProbeAsync(
         [
-            new StatusServerCatalog.Spec("doc-net", "192.0.2.1")
+            new StatusServerCatalog.Spec("doc-net", "192.0.2.1", "Lab")
         ], CancellationToken.None);
 
         var server = Assert.Single(overview.Servers);
         Assert.False(server.Online);
         Assert.Equal("Offline", server.Status);
+        Assert.Equal("Lab", server.Role);
+        Assert.Contains("No response", server.Detail);
+        Assert.False(string.IsNullOrWhiteSpace(server.CheckedAt.ToString()));
         Assert.Equal(1, overview.Decks[0].AttentionCount);
+    }
+
+    [Fact]
+    public void Parses_windows_inventory_json()
+    {
+        const string json = """
+            {
+              "os": {
+                "Caption": "Microsoft Windows Server 2022 Standard",
+                "LastBootUpTime": "2026-08-20T08:00:00Z",
+                "TotalVisibleMemorySize": 33554432,
+                "FreePhysicalMemory": 16777216
+              },
+              "disks": [
+                { "DeviceID": "C:", "Size": 536870912000, "FreeSpace": 107374182400 }
+              ]
+            }
+            """;
+
+        var reading = StatusServerMonitor.ParseInventoryJson(json);
+        Assert.NotNull(reading);
+        Assert.Equal("Microsoft Windows Server 2022 Standard", reading.OperatingSystem);
+        Assert.Equal(50, reading.MemoryUsedPercent);
+        Assert.True(reading.StorageUsedPercent is >= 79 and <= 81);
+        Assert.False(string.IsNullOrWhiteSpace(reading.Uptime));
+    }
+
+    [Fact]
+    public void High_storage_on_an_online_server_needs_attention()
+    {
+        var server = new Milestone.Dashboard.Models.StatusServerInfo
+        {
+            Id = "status:db",
+            Name = "FOXUSWDMSDB303",
+            IpAddress = "10.180.80.154",
+            Role = "Database",
+            Online = true,
+            StorageReported = true,
+            StorageUsedPercent = 92
+        };
+
+        Assert.Equal("Critical", server.StorageHealth);
+        Assert.True(server.NeedsAttention);
     }
 
     [Fact]
@@ -93,7 +142,9 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(
             document.RootElement.GetProperty("servers").EnumerateArray(),
             server => server.GetProperty("name").GetString() == "FOXUSWDMSDB303"
-                      && server.GetProperty("ipAddress").GetString() == "10.180.80.154");
+                      && server.GetProperty("ipAddress").GetString() == "10.180.80.154"
+                      && server.GetProperty("role").GetString() == "Database"
+                      && server.GetProperty("detail").GetString()?.Length > 0);
     }
 
     [Fact]

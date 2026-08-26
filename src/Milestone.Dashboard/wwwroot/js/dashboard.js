@@ -868,21 +868,31 @@ function renderServerStatus() {
     if (filter === "online") {
       return server.online;
     }
-    if (filter === "offline" || filter === "attention") {
+    if (filter === "offline") {
       return !server.online;
+    }
+    if (filter === "attention") {
+      return Boolean(server.needsAttention);
     }
     return true;
   });
   title.textContent = filter
     ? `MasterMind servers · ${statusFilterLabel(filter)}`
     : "MasterMind servers";
-  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers. Online is a live check of the listed IP address. Offline servers need attention.`;
+  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers. Role, response time, storage, OS, and uptime are shown when the IIS server can read them.`;
   body.innerHTML = visible.map((server) => `
     <tr>
       <td>${escapeHtml(server.name)}</td>
+      <td>${escapeHtml(server.role ?? "Server")}</td>
       <td>${escapeHtml(server.ipAddress)}</td>
       <td><span class="status ${server.online ? "on" : "off"}">${escapeHtml(server.status)}</span></td>
-    </tr>`).join("") || `<tr><td colspan="3" class="muted">No servers match this filter.</td></tr>`;
+      <td>${escapeHtml(formatStatusResponse(server))}</td>
+      <td>${escapeHtml(formatStatusStorage(server))}</td>
+      <td>${escapeHtml(server.operatingSystem ?? "—")}</td>
+      <td>${escapeHtml(server.uptime ?? "—")}</td>
+      <td>${escapeHtml(formatDate(server.checkedAt) ?? "—")}</td>
+      <td>${escapeHtml(server.detail ?? "—")}</td>
+    </tr>`).join("") || `<tr><td colspan="10" class="muted">No servers match this filter.</td></tr>`;
   document.querySelectorAll("#view-server-status [data-status-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       const next = button.getAttribute("data-status-filter") ?? "";
@@ -890,6 +900,23 @@ function renderServerStatus() {
       renderServerStatus();
     });
   });
+}
+
+function formatStatusResponse(server) {
+  if (server.latencyMs != null && server.probeMethod) {
+    return `${server.latencyMs} ms · ${server.probeMethod}${server.probePort ? ` ${server.probePort}` : ""}`;
+  }
+  if (server.probeMethod) {
+    return server.probeMethod;
+  }
+  return "—";
+}
+
+function formatStatusStorage(server) {
+  if (server.storageReported && server.storageUsedPercent != null) {
+    return `${server.storageHealth ?? "Healthy"} · ${formatPercent(server.storageUsedPercent)}`;
+  }
+  return "Not reported";
 }
 
 function statusFilterLabel(filter) {
