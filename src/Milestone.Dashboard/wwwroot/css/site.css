@@ -1202,7 +1202,10 @@ th {
   gap: 14px;
 }
 .server-card.attention { border-color: #f0c36d; }
-.status-deck { min-width: 320px; }
+.status-deck { min-width: 280px; }
+#status-decks.summary-row {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
 .status-panel-head {
   display: flex;
   justify-content: space-between;

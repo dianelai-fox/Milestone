@@ -251,10 +251,12 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Last checked", html);
         Assert.Contains("id=\"status-grid\"", html);
         Assert.Contains("id=\"status-rows\"", html);
+        Assert.Contains("Application", html);
         Assert.Contains("Server Description", html);
         Assert.Contains("id=\"status-table-card\"", html);
         Assert.Contains("One row per server", html);
-        Assert.Contains("MasterMind and Perspective", html);
+        Assert.Contains("Server applications", html);
+        Assert.Contains("MasterMind", html);
         Assert.Contains("id=\"status-csv-import\"", html);
         Assert.Contains("Replace servers in this file", html);
         Assert.Contains("/api/server-status/template", html);

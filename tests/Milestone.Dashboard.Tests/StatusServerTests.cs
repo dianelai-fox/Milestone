@@ -82,22 +82,24 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public void Free_text_server_description_stays_on_the_mastermind_deck()
+    public void Server_description_becomes_its_own_application_group()
     {
         var csv = MasterMindTemplate.Replace(
             "FOXUSWDMSDB303,10.180.80.154,MasterMind,App/DB",
-            "FOXUSWDMSDB303,10.180.80.154,Primary MasterMind database,App/DB");
+            "FOXUSWDMSDB303,10.180.80.154,Lenel,App/DB");
         csv = csv.Replace(
             "FOX2205442,10.138.201.43,MasterMind,",
-            "FOX2205442,10.138.201.43,MAS backup processor,");
+            "FOX2205442,10.138.201.43,Aztec,");
         var rows = StatusServerCsvParser.Parse(csv);
         var db = rows.Single(row => row.Name == "FOXUSWDMSDB303");
-        Assert.Equal("MasterMind", db.Deck);
-        Assert.Equal("Primary MasterMind database", db.Description);
+        Assert.Equal("Lenel", db.Deck);
+        Assert.Equal("Lenel", db.Description);
         var backup = rows.Single(row => row.Name == "FOX2205442");
-        Assert.Equal("MasterMind", backup.Deck);
-        Assert.Equal("MAS backup processor", backup.Description);
-        Assert.Equal(8, rows.Count(row => row.Deck == "MasterMind"));
+        Assert.Equal("Aztec", backup.Deck);
+        Assert.Equal("Aztec", backup.Description);
+        Assert.Equal(6, rows.Count(row => row.Deck == "MasterMind"));
+        Assert.Contains(rows, row => row.Deck == "Lenel");
+        Assert.Contains(rows, row => row.Deck == "Aztec");
     }
 
     [Fact]
@@ -117,10 +119,10 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
             IpAddress = "10.180.80.154",
             Role = "App/DB",
             Deck = "MasterMind",
-            Description = "Primary MasterMind database"
+            Description = "Lenel"
         });
-        Assert.Equal("MasterMind", updated.Deck);
-        Assert.Equal("Primary MasterMind database", updated.Description);
+        Assert.Equal("Lenel", updated.Deck);
+        Assert.Equal("Lenel", updated.Description);
 
         var json = JsonSerializer.Serialize(new[] { updated }, new JsonSerializerOptions
         {
@@ -132,8 +134,8 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
             PropertyNameCaseInsensitive = true
         });
         var saved = Assert.Single(roundTrip!);
-        Assert.Equal("Primary MasterMind database", saved.Description);
-        Assert.Equal("MasterMind", saved.Deck);
+        Assert.Equal("Lenel", saved.Description);
+        Assert.Equal("Lenel", saved.Deck);
     }
 
     [Fact]
@@ -177,6 +179,36 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.False(invalid.Online);
         Assert.True(invalid.NeedsAttention);
         Assert.Equal("Offline", invalid.Status);
+    }
+
+    [Fact]
+    public async Task Saved_server_description_is_shown_as_its_own_application()
+    {
+        var monitor = new StatusServerMonitor();
+        var overview = await monitor.ProbeAsync(
+        [
+            new StatusServerCatalog.Spec
+            {
+                Name = "FOXUSWDMSDB303",
+                IpAddress = "192.0.2.10",
+                Role = "App/DB",
+                Deck = "MasterMind",
+                Description = "Lenel"
+            },
+            new StatusServerCatalog.Spec
+            {
+                Name = "FOXUSWDMSAP654",
+                IpAddress = "192.0.2.11",
+                Role = "Application",
+                Deck = "Perspective",
+                Description = "Perspective"
+            }
+        ], CancellationToken.None);
+
+        Assert.Equal(2, overview.Decks.Count);
+        Assert.Contains(overview.Decks, deck => deck.Name == "Lenel" && deck.TotalServers == 1);
+        Assert.Contains(overview.Decks, deck => deck.Name == "Perspective" && deck.TotalServers == 1);
+        Assert.Equal("Lenel", overview.Servers.Single(server => server.Name == "FOXUSWDMSDB303").Deck);
     }
 
     [Fact]
@@ -350,22 +382,29 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
                 imported.RootElement.GetProperty("overview").GetProperty("servers").EnumerateArray(),
                 server => server.GetProperty("name").GetString() == "FOXUSWDMSDB303"
                           && server.GetProperty("description").GetString() == "Primary MasterMind database"
-                          && server.GetProperty("deck").GetString() == "MasterMind");
+                          && server.GetProperty("deck").GetString() == "Primary MasterMind database");
 
             using var document = JsonDocument.Parse(await _client.GetStringAsync("/api/server-status"));
             var servers = document.RootElement.GetProperty("servers").EnumerateArray().ToList();
+            var decks = document.RootElement.GetProperty("decks").EnumerateArray()
+                .Select(deck => deck.GetProperty("name").GetString())
+                .ToList();
             Assert.Equal(12, servers.Count);
+            Assert.Contains("Primary MasterMind database", decks);
+            Assert.Contains("MAS backup processor", decks);
+            Assert.Contains("MasterMind", decks);
+            Assert.Contains("Perspective", decks);
             Assert.Contains(
                 servers,
                 server => server.GetProperty("name").GetString() == "FOXUSWDMSDB303"
                           && server.GetProperty("description").GetString() == "Primary MasterMind database"
-                          && server.GetProperty("deck").GetString() == "MasterMind");
+                          && server.GetProperty("deck").GetString() == "Primary MasterMind database");
             Assert.Contains(
                 servers,
                 server => server.GetProperty("name").GetString() == "FOX2205442"
                           && server.GetProperty("description").GetString() == "MAS backup processor"
-                          && server.GetProperty("deck").GetString() == "MasterMind");
-            Assert.Equal(8, servers.Count(server => server.GetProperty("deck").GetString() == "MasterMind"));
+                          && server.GetProperty("deck").GetString() == "MAS backup processor");
+            Assert.Equal(6, servers.Count(server => server.GetProperty("deck").GetString() == "MasterMind"));
             Assert.Equal(4, servers.Count(server => server.GetProperty("deck").GetString() == "Perspective"));
         }
         finally

@@ -75,15 +75,14 @@ public sealed class StatusServerCatalog
 
     internal static Spec Merge(Spec existing, Spec incoming)
     {
-        var knownDeck = StatusServerCsvParser.TryKnownDeck(incoming.Deck)
-                        ?? StatusServerCsvParser.TryKnownDeck(incoming.Description);
+        var knownDeck = StatusServerCsvParser.ResolveApplication(incoming.Description, incoming.Deck, existing.Deck);
         return new Spec
         {
             Name = incoming.Name,
             IpAddress = First(incoming.IpAddress, existing.IpAddress) ?? existing.IpAddress,
             Role = First(incoming.Role, existing.Role) ?? existing.Role,
-            Deck = knownDeck ?? existing.Deck,
-            Description = incoming.Description ?? existing.Description,
+            Deck = knownDeck,
+            Description = incoming.Description ?? existing.Description ?? knownDeck,
             Domain = incoming.Domain ?? existing.Domain,
             Environment = incoming.Environment ?? existing.Environment,
             CatalogOs = incoming.CatalogOs ?? existing.CatalogOs,

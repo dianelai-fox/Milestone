@@ -882,14 +882,15 @@ function renderServerStatus() {
     }
     return true;
   });
-  const scope = state.statusDeck || "All decks";
+  const scope = state.statusDeck || "All applications";
+  const applicationNames = groups.map((deck) => deck.name).filter(Boolean);
   title.textContent = filter
     ? `${scope} · ${statusFilterLabel(filter)}`
-    : state.statusDeck || "MasterMind and Perspective";
-  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers. Import CSV updates MasterMind inventory. Each card shows function, domain, environment, OS, SQL, and online status.`;
+    : state.statusDeck || (applicationNames.length ? applicationNames.join(" · ") : "Server applications");
+  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers across ${groups.length} application${groups.length === 1 ? "" : "s"}. Import CSV updates Server Description and the other inventory columns.`;
   const grouped = [];
   visible.forEach((server) => {
-    const name = server.deck || "Servers";
+    const name = server.deck || server.description || "Servers";
     let group = grouped.find((item) => item.name === name);
     if (!group) {
       group = { name, servers: [] };

@@ -94,14 +94,15 @@ public sealed class StatusServerMonitor
             inventory = await TryReadInventoryAsync(spec.IpAddress, cancellationToken);
         }
 
+        var application = StatusServerCsvParser.ResolveApplication(spec.Description, spec.Deck);
         return new StatusServerInfo
         {
             Id = $"status:{spec.Name}",
             Name = spec.Name,
             IpAddress = spec.IpAddress,
             Role = spec.Role,
-            Deck = spec.Deck,
-            Description = spec.Description ?? spec.Deck,
+            Deck = application,
+            Description = spec.Description ?? application,
             Domain = spec.Domain,
             Environment = spec.Environment,
             Sql = spec.Sql,

@@ -52,9 +52,7 @@ public static class StatusServerCsvParser
 
             var description = Read(cells, descriptionIndex);
             var function = Read(cells, functionIndex);
-            var deck = TryKnownDeck(Read(cells, deckIndex))
-                       ?? TryKnownDeck(description)
-                       ?? "MasterMind";
+            var deck = ResolveApplication(description, Read(cells, deckIndex));
             items.Add(new StatusServerCatalog.Spec
             {
                 Name = name,
@@ -88,6 +86,28 @@ public static class StatusServerCsvParser
             CsvText.Escape(server.CatalogOs),
             CsvText.Escape(server.Sql))));
         return string.Join('\n', lines) + "\n";
+    }
+
+    internal static string ResolveApplication(string? description, string? deck, string fallback = "MasterMind")
+    {
+        var knownFromDescription = TryKnownDeck(description);
+        if (knownFromDescription is not null)
+        {
+            return knownFromDescription;
+        }
+
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            return description.Trim();
+        }
+
+        var knownFromDeck = TryKnownDeck(deck);
+        if (knownFromDeck is not null)
+        {
+            return knownFromDeck;
+        }
+
+        return string.IsNullOrWhiteSpace(deck) ? fallback : deck.Trim();
     }
 
     internal static string? TryKnownDeck(string? value)
