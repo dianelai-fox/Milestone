@@ -33,7 +33,9 @@ const state = {
   firmwareTab: "overview",
   securityServers: {},
   serverHighlightsOpen: true,
-  serverHealthFilter: ""
+  serverHealthFilter: "",
+  serverStatus: {},
+  statusFilter: ""
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -63,7 +65,10 @@ const managePageSizeSelect = document.getElementById("manage-page-size");
 const exportSites = document.getElementById("export-sites");
 const manageClearFilters = document.getElementById("manage-clear-filters");
 
-refreshButton.addEventListener("click", () => loadDashboard());
+refreshButton.addEventListener("click", () => {
+  loadDashboard();
+  loadServerStatus();
+});
 searchInput.addEventListener("input", () => resetPageAndRender());
 serverFilter.addEventListener("change", () => {
   state.inventoryView = "cameras";
@@ -255,6 +260,9 @@ function showView(name, options = {}) {
   }
   if (name === "security-servers" || name === "servers") {
     renderSecurityServers();
+  }
+  if (name === "server-status") {
+    loadServerStatus();
   }
   if (name === "connect") {
     loadConnectionSettings();
@@ -810,6 +818,86 @@ function renderFirmwareAlertedSites(rows) {
       </table>
     </article>
   `;
+}
+
+async function loadServerStatus() {
+  const copy = document.getElementById("status-copy");
+  try {
+    const response = await fetch("/api/server-status", { cache: "no-store" });
+    const data = await readJson(response);
+    if (!response.ok) {
+      throw new Error(data.error || `Server status API returned ${response.status}`);
+    }
+    state.serverStatus = data;
+    renderServerStatus();
+  } catch (error) {
+    if (copy) {
+      copy.textContent = `Could not load server status: ${error.message}`;
+    }
+  }
+}
+
+function renderServerStatus() {
+  const decks = document.getElementById("status-decks");
+  const body = document.getElementById("status-body");
+  const copy = document.getElementById("status-copy");
+  const title = document.getElementById("status-table-title");
+  if (!decks || !body || !copy || !title) {
+    return;
+  }
+  const overview = state.serverStatus ?? {};
+  const groups = overview.decks ?? [];
+  const servers = overview.servers ?? [];
+  const filter = state.statusFilter;
+  decks.innerHTML = groups.map((deck) => `
+    <article class="summary-card life-card status-deck">
+      <h3>${escapeHtml(deck.name)}</h3>
+      <div class="life-devices">
+        <div class="life-score">
+          <div class="value">${formatInt(deck.totalServers)}</div>
+          <div class="muted">Servers</div>
+        </div>
+        <div class="life-legend">
+          <button type="button" data-status-filter="online"><i class="dot teal"></i>Online: ${formatInt(deck.onlineCount)}</button>
+          <button type="button" data-status-filter="offline"><i class="dot red"></i>Offline: ${formatInt(deck.offlineCount)}</button>
+          <button type="button" data-status-filter="attention"><i class="dot orange"></i>Need attention: ${formatInt(deck.attentionCount)}</button>
+        </div>
+      </div>
+    </article>`).join("") || `<article class="summary-card life-card status-deck"><h3>MasterMind</h3><p class="muted">No servers are configured.</p></article>`;
+  const visible = servers.filter((server) => {
+    if (filter === "online") {
+      return server.online;
+    }
+    if (filter === "offline" || filter === "attention") {
+      return !server.online;
+    }
+    return true;
+  });
+  title.textContent = filter
+    ? `MasterMind servers · ${statusFilterLabel(filter)}`
+    : "MasterMind servers";
+  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers. Online is a live check of the listed IP address. Offline servers need attention.`;
+  body.innerHTML = visible.map((server) => `
+    <tr>
+      <td>${escapeHtml(server.name)}</td>
+      <td>${escapeHtml(server.ipAddress)}</td>
+      <td><span class="status ${server.online ? "on" : "off"}">${escapeHtml(server.status)}</span></td>
+    </tr>`).join("") || `<tr><td colspan="3" class="muted">No servers match this filter.</td></tr>`;
+  document.querySelectorAll("#view-server-status [data-status-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const next = button.getAttribute("data-status-filter") ?? "";
+      state.statusFilter = state.statusFilter === next ? "" : next;
+      renderServerStatus();
+    });
+  });
+}
+
+function statusFilterLabel(filter) {
+  return {
+    online: "Online",
+    offline: "Offline",
+    attention: "Need attention"
+  }[filter] ?? filter;
 }
 
 function renderSecurityServers() {
@@ -2657,3 +2745,4 @@ document.getElementById("encrypt-form")?.addEventListener("submit", async (event
 });
 
 loadDashboard();
+loadServerStatus();

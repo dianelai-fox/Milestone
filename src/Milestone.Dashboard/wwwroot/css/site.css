@@ -1202,6 +1202,7 @@ th {
   gap: 14px;
 }
 .server-card.attention { border-color: #f0c36d; }
+.status-deck { min-width: 320px; }
 .server-card-head {
   display: flex;
   align-items: flex-start;

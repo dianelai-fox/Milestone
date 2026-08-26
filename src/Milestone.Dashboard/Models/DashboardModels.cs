@@ -439,3 +439,30 @@ public sealed class XprotectConnectionRequest
     public bool UseDemoData { get; set; }
     public bool BypassSslValidation { get; set; }
 }
+
+public sealed class StatusServerInfo
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public required string IpAddress { get; init; }
+    public string Deck { get; init; } = "MasterMind";
+    public bool Online { get; init; }
+    public bool NeedsAttention => !Online;
+    public string Status => Online ? "Online" : "Offline";
+}
+
+public sealed class StatusServerDeck
+{
+    public required string Name { get; init; }
+    public int TotalServers { get; init; }
+    public int OnlineCount { get; init; }
+    public int OfflineCount { get; init; }
+    public int AttentionCount { get; init; }
+    public IReadOnlyList<StatusServerInfo> Servers { get; init; } = [];
+}
+
+public sealed class ServerStatusOverview
+{
+    public IReadOnlyList<StatusServerDeck> Decks { get; init; } = [];
+    public IReadOnlyList<StatusServerInfo> Servers { get; init; } = [];
+}

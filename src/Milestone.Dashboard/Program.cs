@@ -47,6 +47,8 @@ builder.Services.AddSingleton<LocationOverrideStore>();
 builder.Services.AddSingleton<SnapshotCache>();
 builder.Services.AddSingleton<AppSettingsPasswordWriter>();
 builder.Services.AddSingleton<XprotectConnectionTester>();
+builder.Services.AddSingleton<StatusServerCatalog>();
+builder.Services.AddSingleton<StatusServerMonitor>();
 builder.Services.AddSingleton<DemoVmsClient>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
@@ -255,6 +257,9 @@ app.MapGet("/api/dashboard", async (DashboardService dashboard, CancellationToke
         }
     });
 });
+
+app.MapGet("/api/server-status", async (StatusServerMonitor monitor, CancellationToken cancellationToken) =>
+    Results.Ok(await monitor.ProbeAsync(cancellationToken)));
 
 app.MapGet("/api/settings/password", (AppSettingsPasswordWriter writer, MilestoneOptions options) =>
     Results.Ok(new

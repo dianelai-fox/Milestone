@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260826e" />
+  <link rel="stylesheet" href="/css/site.css?v=20260826g" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -51,6 +51,12 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v6H4zm2 2v2h2V5zm4 0v2h8V5zM4 11h16v6H4zm2 2v2h2v-2zm4 0v2h8v-2zM4 19h16v2H4z"/></svg>
         </span>
         <span class="nav-label">Security Servers</span>
+      </button>
+      <button class="nav-btn" id="nav-server-status" data-view="server-status" title="Server Status">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v4H4zm0 6h16v4H4zm0 6h16v4H4zM6 6h2v0H6zm0 6h2v0H6zm0 6h2v0H6z"/></svg>
+        </span>
+        <span class="nav-label">Server Status</span>
       </button>
       <button class="nav-btn" data-view="storage" title="Storage">
         <span class="nav-icon">▣</span>
@@ -464,6 +470,35 @@
       </section>
       </div>
 
+      <div id="view-server-status" class="view" hidden>
+      <section class="life-page">
+        <div class="page-head">
+          <h1>Server Status</h1>
+        </div>
+        <section id="status-decks" class="summary-row life-summary"></section>
+        <section class="card">
+          <div class="panel-head">
+            <div>
+              <h2 id="status-table-title">MasterMind servers</h2>
+              <p class="muted" id="status-copy">Non-XProtect servers. Online is a live network check of the listed IP address.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Server Name</th>
+                  <th>IP Address</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="status-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+      </div>
+
       <div id="view-storage" class="view" hidden>
       <section class="card" id="storage-pies">
         <div class="panel-head">
@@ -556,6 +591,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260826e"></script>
+  <script src="/js/dashboard.js?v=20260826g"></script>
 </body>
 </html>
