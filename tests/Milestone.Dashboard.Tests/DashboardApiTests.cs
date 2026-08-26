@@ -102,6 +102,14 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(
             securityServers.GetProperty("servers").EnumerateArray(),
             server => server.GetProperty("enabled").GetBoolean() == false);
+        var lenel = securityServers.GetProperty("servers").EnumerateArray()
+            .Single(server => server.GetProperty("name").GetString() == "FOXUSWDMSIA297");
+        Assert.Equal("Lenel", lenel.GetProperty("role").GetString());
+        Assert.Equal("application", lenel.GetProperty("kind").GetString());
+        Assert.Equal("Online", lenel.GetProperty("status").GetString());
+        Assert.DoesNotContain(
+            document.RootElement.GetProperty("recordingServers").EnumerateArray(),
+            server => server.GetProperty("name").GetString() == "FOXUSWDMSIA297");
     }
 
     [Fact]

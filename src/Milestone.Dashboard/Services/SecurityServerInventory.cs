@@ -6,7 +6,8 @@ public static class SecurityServerInventory
 {
     public static SecurityServersOverview From(
         IEnumerable<RecordingServerInfo> servers,
-        IEnumerable<StorageVolume> storages)
+        IEnumerable<StorageVolume> storages,
+        IEnumerable<RecordingServerInfo>? managedServers = null)
     {
         var volumeLookup = storages
             .GroupBy(storage => storage.RecordingServerId ?? string.Empty, StringComparer.OrdinalIgnoreCase)
@@ -23,16 +24,32 @@ public static class SecurityServerInventory
             {
                 server.Role = "Recording server";
             }
+
+            server.Kind = "recording";
+            server.Source = string.IsNullOrWhiteSpace(server.Source) ? "XProtect" : server.Source;
+            server.StorageReported = true;
         }
 
-        var list = servers
+        foreach (var server in managedServers ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(server.Role))
+            {
+                server.Role = server.Application ?? "Application server";
+            }
+
+            server.Kind = string.IsNullOrWhiteSpace(server.Kind) ? "application" : server.Kind;
+            server.Source = string.IsNullOrWhiteSpace(server.Source) ? "Managed" : server.Source;
+        }
+
+        var list = servers.Concat(managedServers ?? [])
             .OrderBy(server => server.Enabled ? 1 : 0)
-            .ThenByDescending(server => server.EffectiveStorageUsagePercent)
+            .ThenByDescending(server => server.StorageReported ? server.EffectiveStorageUsagePercent : -1)
             .ThenBy(server => server.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var used = list.Sum(server => server.UsedSpaceMb);
-        var max = list.Sum(server => server.MaxSizeMb);
+        var measured = list.Where(server => server.StorageReported).ToList();
+        var used = measured.Sum(server => server.UsedSpaceMb);
+        var max = measured.Sum(server => server.MaxSizeMb);
         return new SecurityServersOverview
         {
             TotalServers = list.Count,
@@ -41,6 +58,9 @@ public static class SecurityServerInventory
             StorageHealthyCount = list.Count(server => server.StorageHealth == "Healthy"),
             StorageWarningCount = list.Count(server => server.StorageHealth == "Warning"),
             StorageCriticalCount = list.Count(server => server.StorageHealth == "Critical"),
+            StorageUnknownCount = list.Count(server => server.StorageHealth == "Not reported"),
+            RecordingServerCount = list.Count(server => server.IsRecordingServer),
+            ApplicationServerCount = list.Count(server => !server.IsRecordingServer),
             AttentionCount = list.Count(server => server.NeedsAttention),
             UsedSpaceMb = used,
             MaxSizeMb = max,

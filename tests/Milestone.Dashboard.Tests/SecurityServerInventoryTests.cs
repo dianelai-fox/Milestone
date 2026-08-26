@@ -48,6 +48,71 @@ public class SecurityServerInventoryTests
     }
 
     [Fact]
+    public void Includes_configured_application_servers_such_as_lenel()
+    {
+        var overview = SecurityServerInventory.From(
+        [
+            Server("rec1", "REC-01 Downtown", enabled: true, used: 400, max: 1000)
+        ],
+        [
+            Volume("s1", "rec1", 400, 1000)
+        ],
+        [
+            new RecordingServerInfo
+            {
+                Id = "managed:FOXUSWDMSIA297",
+                Name = "FOXUSWDMSIA297",
+                HostName = "FOXUSWDMSIA297",
+                Enabled = true,
+                Role = "Lenel",
+                Application = "Lenel",
+                Kind = "application",
+                Source = "Managed",
+                UsedSpaceMb = 184_320,
+                MaxSizeMb = 524_288,
+                VolumeCount = 2,
+                WorstVolumeUsagePercent = 48,
+                StorageReported = true
+            }
+        ]);
+
+        Assert.Equal(2, overview.TotalServers);
+        Assert.Equal(1, overview.RecordingServerCount);
+        Assert.Equal(1, overview.ApplicationServerCount);
+        var lenel = overview.Servers.Single(server => server.Name == "FOXUSWDMSIA297");
+        Assert.Equal("Lenel", lenel.Role);
+        Assert.Equal("Online", lenel.Status);
+        Assert.Equal("Healthy", lenel.StorageHealth);
+        Assert.False(lenel.IsRecordingServer);
+    }
+
+    [Fact]
+    public void Unreported_storage_is_not_treated_as_healthy()
+    {
+        var overview = SecurityServerInventory.From(
+            [],
+            [],
+            [
+                new RecordingServerInfo
+                {
+                    Id = "managed:FOXUSWDMSIA297",
+                    Name = "FOXUSWDMSIA297",
+                    Enabled = true,
+                    Role = "Lenel",
+                    Kind = "application",
+                    Source = "Managed",
+                    StorageReported = false
+                }
+            ]);
+
+        var server = Assert.Single(overview.Servers);
+        Assert.Equal("Not reported", server.StorageHealth);
+        Assert.Equal(1, overview.StorageUnknownCount);
+        Assert.Equal(0, overview.StorageHealthyCount);
+        Assert.False(server.NeedsAttention);
+    }
+
+    [Fact]
     public void Online_server_with_enough_storage_does_not_need_attention()
     {
         var overview = SecurityServerInventory.From(
