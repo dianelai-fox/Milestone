@@ -35,7 +35,8 @@ const state = {
   serverHighlightsOpen: true,
   serverHealthFilter: "",
   serverStatus: {},
-  statusFilter: ""
+  statusFilter: "",
+  statusDeck: ""
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -858,13 +859,16 @@ function renderServerStatus() {
           <div class="muted">Servers</div>
         </div>
         <div class="life-legend">
-          <button type="button" data-status-filter="online"><i class="dot teal"></i>Online: ${formatInt(deck.onlineCount)}</button>
-          <button type="button" data-status-filter="offline"><i class="dot red"></i>Offline: ${formatInt(deck.offlineCount)}</button>
-          <button type="button" data-status-filter="attention"><i class="dot orange"></i>Need attention: ${formatInt(deck.attentionCount)}</button>
+          <button type="button" data-status-filter="online" data-status-deck="${escapeHtml(deck.name)}"><i class="dot teal"></i>Online: ${formatInt(deck.onlineCount)}</button>
+          <button type="button" data-status-filter="offline" data-status-deck="${escapeHtml(deck.name)}"><i class="dot red"></i>Offline: ${formatInt(deck.offlineCount)}</button>
+          <button type="button" data-status-filter="attention" data-status-deck="${escapeHtml(deck.name)}"><i class="dot orange"></i>Need attention: ${formatInt(deck.attentionCount)}</button>
         </div>
       </div>
     </article>`).join("") || `<article class="summary-card life-card status-deck"><h3>MasterMind</h3><p class="muted">No servers are configured.</p></article>`;
   const visible = servers.filter((server) => {
+    if (state.statusDeck && server.deck !== state.statusDeck) {
+      return false;
+    }
     if (filter === "online") {
       return server.online;
     }
@@ -876,18 +880,33 @@ function renderServerStatus() {
     }
     return true;
   });
+  const scope = state.statusDeck || "All decks";
   title.textContent = filter
-    ? `MasterMind servers · ${statusFilterLabel(filter)}`
-    : "MasterMind servers";
-  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers. Each card shows role, IP, response, storage, memory, OS, and uptime when available.`;
-  grid.innerHTML = visible.map((server) => {
-    const storageTone = healthTone(server.storageHealth);
-    return `
+    ? `${scope} · ${statusFilterLabel(filter)}`
+    : state.statusDeck || "MasterMind and Perspective";
+  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers. Each card shows online status, role, IP, response, storage, memory, OS, and uptime when available.`;
+  const grouped = [];
+  visible.forEach((server) => {
+    const name = server.deck || "Servers";
+    let group = grouped.find((item) => item.name === name);
+    if (!group) {
+      group = { name, servers: [] };
+      grouped.push(group);
+    }
+    group.servers.push(server);
+  });
+  grid.innerHTML = grouped.map((group) => `
+    <section class="status-deck-group">
+      <h3>${escapeHtml(group.name)}</h3>
+      <div class="status-grid">
+        ${group.servers.map((server) => {
+          const storageTone = healthTone(server.storageHealth);
+          return `
     <article class="status-server-card ${server.needsAttention ? "attention" : ""}">
       <div class="server-card-head">
         <div>
           <div class="server-name">${escapeHtml(server.name)}</div>
-          <div class="muted">${escapeHtml(server.role ?? "Server")}</div>
+          <div class="muted">${escapeHtml(server.role ?? "Server")} · ${escapeHtml(server.deck ?? "")}</div>
           <div class="server-domain">${escapeHtml(server.ipAddress)}</div>
         </div>
         <span class="status ${server.online ? "on" : "off"}">${escapeHtml(server.status)}</span>
@@ -903,11 +922,20 @@ function renderServerStatus() {
         <div class="status-detail-wide"><dt>Detail</dt><dd>${escapeHtml(server.detail ?? "—")}</dd></div>
       </dl>
     </article>`;
-  }).join("") || `<p class="muted">No servers match this filter.</p>`;
+        }).join("")}
+      </div>
+    </section>`).join("") || `<p class="muted">No servers match this filter.</p>`;
   document.querySelectorAll("#view-server-status [data-status-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       const next = button.getAttribute("data-status-filter") ?? "";
-      state.statusFilter = state.statusFilter === next ? "" : next;
+      const deck = button.getAttribute("data-status-deck") ?? "";
+      if (state.statusFilter === next && state.statusDeck === deck) {
+        state.statusFilter = "";
+        state.statusDeck = "";
+      } else {
+        state.statusFilter = next;
+        state.statusDeck = deck;
+      }
       renderServerStatus();
     });
   });

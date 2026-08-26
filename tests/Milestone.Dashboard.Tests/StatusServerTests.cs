@@ -15,11 +15,12 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public void Catalog_has_the_eight_mastermind_servers()
+    public void Catalog_has_mastermind_and_perspective_servers()
     {
         var catalog = new StatusServerCatalog().List();
-        Assert.Equal(8, catalog.Count);
-        Assert.All(catalog, server => Assert.Equal("MasterMind", server.Deck));
+        Assert.Equal(12, catalog.Count);
+        Assert.Equal(8, catalog.Count(server => server.Deck == "MasterMind"));
+        Assert.Equal(4, catalog.Count(server => server.Deck == "Perspective"));
         Assert.Contains(catalog, server => server.Name == "FOXUSWDMSDB303" && server.IpAddress == "10.180.80.154");
         Assert.Contains(catalog, server => server.Name == "FOXUSWDMSDB304" && server.IpAddress == "10.180.80.155");
         Assert.Contains(catalog, server => server.Name == "FOXUSWDMSDB305" && server.IpAddress == "10.180.80.156");
@@ -28,9 +29,15 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(catalog, server => server.Name == "AZTEC-FOX-3.corp.fox" && server.IpAddress == "10.180.118.12");
         Assert.Contains(catalog, server => server.Name == "FOX2204376" && server.IpAddress == "10.138.201.11");
         Assert.Contains(catalog, server => server.Name == "FOX2205442" && server.IpAddress == "10.138.201.43");
+        Assert.Contains(catalog, server => server.Name == "FOXUSWDMSDB298" && server.IpAddress == "10.180.80.36" && server.Deck == "Perspective");
+        Assert.Contains(catalog, server => server.Name == "FOXUSWDMSAP654" && server.IpAddress == "10.180.80.37" && server.Deck == "Perspective");
+        Assert.Contains(catalog, server => server.Name == "FOXUSWDMSDB299" && server.IpAddress == "10.180.96.23" && server.Deck == "Perspective");
+        Assert.Contains(catalog, server => server.Name == "FOXUSWDMSAP655" && server.IpAddress == "10.180.96.24" && server.Deck == "Perspective");
         Assert.Equal("Database", catalog.Single(server => server.Name == "FOXUSWDMSDB303").Role);
         Assert.Equal("Application", catalog.Single(server => server.Name == "AZTEC-FOX-1.corp.fox").Role);
         Assert.Equal("Endpoint", catalog.Single(server => server.Name == "FOX2204376").Role);
+        Assert.Equal("Database", catalog.Single(server => server.Name == "FOXUSWDMSDB298").Role);
+        Assert.Equal("Application", catalog.Single(server => server.Name == "FOXUSWDMSAP654").Role);
     }
 
     [Theory]
@@ -126,25 +133,39 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task Server_status_api_returns_the_mastermind_deck()
+    public async Task Server_status_api_returns_mastermind_and_perspective_decks()
     {
         var response = await _client.GetAsync("/api/server-status");
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        var deck = document.RootElement.GetProperty("decks").EnumerateArray().Single();
-        Assert.Equal("MasterMind", deck.GetProperty("name").GetString());
-        Assert.Equal(8, deck.GetProperty("totalServers").GetInt32());
+        var decks = document.RootElement.GetProperty("decks").EnumerateArray().ToList();
+        Assert.Equal(2, decks.Count);
+        Assert.Equal("MasterMind", decks[0].GetProperty("name").GetString());
+        Assert.Equal("Perspective", decks[1].GetProperty("name").GetString());
+        var master = decks[0];
+        var perspective = decks[1];
+        Assert.Equal(8, master.GetProperty("totalServers").GetInt32());
+        Assert.Equal(4, perspective.GetProperty("totalServers").GetInt32());
         Assert.Equal(
-            8,
-            deck.GetProperty("onlineCount").GetInt32() + deck.GetProperty("offlineCount").GetInt32());
-        Assert.Equal(deck.GetProperty("offlineCount").GetInt32(), deck.GetProperty("attentionCount").GetInt32());
-        Assert.Equal(8, document.RootElement.GetProperty("servers").GetArrayLength());
+            master.GetProperty("onlineCount").GetInt32() + master.GetProperty("offlineCount").GetInt32(),
+            8);
+        Assert.Equal(master.GetProperty("offlineCount").GetInt32(), master.GetProperty("attentionCount").GetInt32());
+        Assert.Equal(
+            perspective.GetProperty("onlineCount").GetInt32() + perspective.GetProperty("offlineCount").GetInt32(),
+            4);
+        Assert.Equal(perspective.GetProperty("offlineCount").GetInt32(), perspective.GetProperty("attentionCount").GetInt32());
+        Assert.Equal(12, document.RootElement.GetProperty("servers").GetArrayLength());
         Assert.Contains(
             document.RootElement.GetProperty("servers").EnumerateArray(),
             server => server.GetProperty("name").GetString() == "FOXUSWDMSDB303"
                       && server.GetProperty("ipAddress").GetString() == "10.180.80.154"
                       && server.GetProperty("role").GetString() == "Database"
                       && server.GetProperty("detail").GetString()?.Length > 0);
+        Assert.Contains(
+            document.RootElement.GetProperty("servers").EnumerateArray(),
+            server => server.GetProperty("name").GetString() == "FOXUSWDMSAP655"
+                      && server.GetProperty("ipAddress").GetString() == "10.180.96.24"
+                      && server.GetProperty("deck").GetString() == "Perspective");
     }
 
     [Fact]
@@ -155,7 +176,13 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
             document.RootElement.GetProperty("securityServers").GetProperty("servers").EnumerateArray(),
             server => server.GetProperty("name").GetString() == "FOXUSWDMSDB303");
         Assert.DoesNotContain(
+            document.RootElement.GetProperty("securityServers").GetProperty("servers").EnumerateArray(),
+            server => server.GetProperty("name").GetString() == "FOXUSWDMSDB298");
+        Assert.DoesNotContain(
             document.RootElement.GetProperty("recordingServers").EnumerateArray(),
             server => server.GetProperty("name").GetString() == "AZTEC-FOX-1.corp.fox");
+        Assert.DoesNotContain(
+            document.RootElement.GetProperty("recordingServers").EnumerateArray(),
+            server => server.GetProperty("name").GetString() == "FOXUSWDMSAP655");
     }
 }

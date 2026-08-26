@@ -43,7 +43,13 @@ public sealed class StatusServerMonitor
                     Servers = list
                 };
             })
-            .OrderBy(deck => deck.Name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(deck => deck.Name switch
+            {
+                "MasterMind" => 0,
+                "Perspective" => 1,
+                _ => 2
+            })
+            .ThenBy(deck => deck.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new ServerStatusOverview

@@ -16,5 +16,13 @@ public sealed class StatusServerCatalog
         new("FOX2205442", "10.138.201.43", "Endpoint")
     ];
 
-    public IReadOnlyList<Spec> List() => MasterMind;
+    public static IReadOnlyList<Spec> Perspective { get; } =
+    [
+        new("FOXUSWDMSDB298", "10.180.80.36", "Database", "Perspective"),
+        new("FOXUSWDMSAP654", "10.180.80.37", "Application", "Perspective"),
+        new("FOXUSWDMSDB299", "10.180.96.23", "Database", "Perspective"),
+        new("FOXUSWDMSAP655", "10.180.96.24", "Application", "Perspective")
+    ];
+
+    public IReadOnlyList<Spec> List() => [.. MasterMind, .. Perspective];
 }
