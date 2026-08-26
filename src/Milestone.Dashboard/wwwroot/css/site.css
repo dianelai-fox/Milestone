@@ -1203,6 +1203,19 @@ th {
 }
 .server-card.attention { border-color: #f0c36d; }
 .status-deck { min-width: 320px; }
+.status-panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.status-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
 .status-deck-list { display: grid; gap: 8px; }
 .status-deck-group { display: grid; gap: 12px; margin-bottom: 22px; }
 .status-deck-group h3 { margin: 0; font-size: 18px; }

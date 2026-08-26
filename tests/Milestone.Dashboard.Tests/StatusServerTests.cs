@@ -1,16 +1,33 @@
 using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Milestone.Dashboard.Services;
 
 namespace Milestone.Dashboard.Tests;
 
 public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
 {
+    private const string MasterMindTemplate = """"
+        Server Name,IP Address,Server Description,Server Function,Domain,Environment,OS,SQL
+        FOXUSWDMSDB303,10.180.80.154,MasterMind,App/DB,corp.fox,Prod,Windows Server 2022,Microsoft SQL Server 2022
+        FOXUSWDMSDB304,10.180.80.155,MasterMind,App/DB,corp.fox,Prod,Windows Server 2022,Microsoft SQL Server 2022
+        FOXUSWDMSDB305,10.180.80.156,MasterMind,App/DB,corp.fox,QA,Windows Server 2022,Microsoft SQL Server 2022
+        AZTEC-FOX-1.corp.fox,10.180.118.10,MasterMind,Aztec Receivers,corp.fox,Prod,Linux,
+        AZTEC-FOX-2.corp.fox,10.180.118.11,MasterMind,Aztec Receivers,corp.fox,Prod,Linux,
+        AZTEC-FOX-3.corp.fox,10.180.118.12,MasterMind,Aztec Receivers,corp.fox,Prod,Linux,
+        FOX2204376,10.138.201.11,MasterMind,MAS Signal Processor,corp.fox,Prod,Windows 10,
+        FOX2205442,10.138.201.43,MasterMind,"MAS Signal Processor ""Backup""",corp.fox,Prod,Windows 11,
+        """";
+
+    private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
 
     public StatusServerTests(WebApplicationFactory<Program> factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -33,11 +50,46 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(catalog, server => server.Name == "FOXUSWDMSAP654" && server.IpAddress == "10.180.80.37" && server.Deck == "Perspective");
         Assert.Contains(catalog, server => server.Name == "FOXUSWDMSDB299" && server.IpAddress == "10.180.96.23" && server.Deck == "Perspective");
         Assert.Contains(catalog, server => server.Name == "FOXUSWDMSAP655" && server.IpAddress == "10.180.96.24" && server.Deck == "Perspective");
-        Assert.Equal("Database", catalog.Single(server => server.Name == "FOXUSWDMSDB303").Role);
-        Assert.Equal("Application", catalog.Single(server => server.Name == "AZTEC-FOX-1.corp.fox").Role);
-        Assert.Equal("Endpoint", catalog.Single(server => server.Name == "FOX2204376").Role);
+        Assert.Equal("App/DB", catalog.Single(server => server.Name == "FOXUSWDMSDB303").Role);
+        Assert.Equal("Aztec Receivers", catalog.Single(server => server.Name == "AZTEC-FOX-1.corp.fox").Role);
+        Assert.Equal("MAS Signal Processor", catalog.Single(server => server.Name == "FOX2204376").Role);
+        Assert.Equal("MAS Signal Processor \"Backup\"", catalog.Single(server => server.Name == "FOX2205442").Role);
         Assert.Equal("Database", catalog.Single(server => server.Name == "FOXUSWDMSDB298").Role);
         Assert.Equal("Application", catalog.Single(server => server.Name == "FOXUSWDMSAP654").Role);
+        Assert.Equal("Linux", catalog.Single(server => server.Name == "AZTEC-FOX-1.corp.fox").CatalogOs);
+        Assert.Equal("QA", catalog.Single(server => server.Name == "FOXUSWDMSDB305").Environment);
+    }
+
+    [Fact]
+    public void Parses_the_mastermind_server_template()
+    {
+        var rows = StatusServerCsvParser.Parse(MasterMindTemplate);
+        Assert.Equal(8, rows.Count);
+        Assert.All(rows, row => Assert.Equal("MasterMind", row.Deck));
+        var backup = rows.Single(row => row.Name == "FOX2205442");
+        Assert.Equal("10.138.201.43", backup.IpAddress);
+        Assert.Equal("MAS Signal Processor \"Backup\"", backup.Role);
+        Assert.Equal("Windows 11", backup.CatalogOs);
+        Assert.Null(backup.Sql);
+        var db = rows.Single(row => row.Name == "FOXUSWDMSDB303");
+        Assert.Equal("App/DB", db.Role);
+        Assert.Equal("Microsoft SQL Server 2022", db.Sql);
+        Assert.Equal("corp.fox", db.Domain);
+        var linux = rows.Single(row => row.Name == "AZTEC-FOX-1.corp.fox");
+        Assert.Equal("Aztec Receivers", linux.Role);
+        Assert.Equal("Linux", linux.CatalogOs);
+    }
+
+    [Fact]
+    public void Replacing_mastermind_from_csv_keeps_perspective()
+    {
+        var imported = StatusServerCsvParser.Parse(MasterMindTemplate);
+        var combined = new StatusServerCatalog().Combine(imported);
+        Assert.Equal(12, combined.Count);
+        Assert.Equal(8, combined.Count(server => server.Deck == "MasterMind"));
+        Assert.Equal(4, combined.Count(server => server.Deck == "Perspective"));
+        Assert.Equal("App/DB", combined.Single(server => server.Name == "FOXUSWDMSDB303").Role);
+        Assert.Contains(combined, server => server.Name == "FOXUSWDMSAP655" && server.Deck == "Perspective");
     }
 
     [Theory]
@@ -122,7 +174,7 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
             Id = "status:db",
             Name = "FOXUSWDMSDB303",
             IpAddress = "10.180.80.154",
-            Role = "Database",
+            Role = "App/DB",
             Online = true,
             StorageReported = true,
             StorageUsedPercent = 92
@@ -159,13 +211,63 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
             document.RootElement.GetProperty("servers").EnumerateArray(),
             server => server.GetProperty("name").GetString() == "FOXUSWDMSDB303"
                       && server.GetProperty("ipAddress").GetString() == "10.180.80.154"
-                      && server.GetProperty("role").GetString() == "Database"
+                      && server.GetProperty("role").GetString() == "App/DB"
+                      && server.GetProperty("sql").GetString() == "Microsoft SQL Server 2022"
                       && server.GetProperty("detail").GetString()?.Length > 0);
         Assert.Contains(
             document.RootElement.GetProperty("servers").EnumerateArray(),
             server => server.GetProperty("name").GetString() == "FOXUSWDMSAP655"
                       && server.GetProperty("ipAddress").GetString() == "10.180.96.24"
                       && server.GetProperty("deck").GetString() == "Perspective");
+        Assert.Contains(
+            document.RootElement.GetProperty("servers").EnumerateArray(),
+            server => server.GetProperty("name").GetString() == "AZTEC-FOX-1.corp.fox"
+                      && server.GetProperty("operatingSystem").GetString() == "Linux"
+                      && server.GetProperty("environment").GetString() == "Prod");
+    }
+
+    [Fact]
+    public async Task Server_status_template_matches_the_import_headers()
+    {
+        var response = await _client.GetAsync("/api/server-status/template");
+        response.EnsureSuccessStatusCode();
+        var csv = await response.Content.ReadAsStringAsync();
+        Assert.StartsWith("Server Name,IP Address,Server Description,Server Function,Domain,Environment,OS,SQL", csv);
+        Assert.Contains("FOXUSWDMSDB303", csv);
+        Assert.Contains("FOXUSWDMSAP655", csv);
+        Assert.Contains("MAS Signal Processor", csv);
+    }
+
+    [Fact]
+    public async Task Server_status_csv_import_updates_mastermind_and_keeps_perspective()
+    {
+        var store = _factory.Services.GetRequiredService<StatusServerInventoryStore>();
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var file = new StringContent(MasterMindTemplate, Encoding.UTF8, "text/csv");
+            file.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
+            content.Add(file, "file", "servers.csv");
+            var response = await _client.PostAsync("/api/server-status/import-csv?replace=true", content);
+            response.EnsureSuccessStatusCode();
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(8, document.RootElement.GetProperty("imported").GetInt32());
+            var overview = document.RootElement.GetProperty("overview");
+            Assert.Equal(12, overview.GetProperty("servers").GetArrayLength());
+            Assert.Contains(
+                overview.GetProperty("servers").EnumerateArray(),
+                server => server.GetProperty("name").GetString() == "FOX2205442"
+                          && server.GetProperty("role").GetString() == "MAS Signal Processor \"Backup\""
+                          && server.GetProperty("operatingSystem").GetString() == "Windows 11");
+            Assert.Contains(
+                overview.GetProperty("servers").EnumerateArray(),
+                server => server.GetProperty("name").GetString() == "FOXUSWDMSAP654"
+                          && server.GetProperty("deck").GetString() == "Perspective");
+        }
+        finally
+        {
+            await store.ClearAsync(CancellationToken.None);
+        }
     }
 
     [Fact]

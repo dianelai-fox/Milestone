@@ -15,7 +15,7 @@ public static class CsvLocationParser
             return items;
         }
 
-        var headers = Split(lines[0]).Select(header => header.Trim().TrimStart('\uFEFF').ToLowerInvariant()).ToList();
+        var headers = CsvText.Split(lines[0]).Select(header => header.Trim().TrimStart('\uFEFF').ToLowerInvariant()).ToList();
         int Index(params string[] names)
         {
             foreach (var name in names)
@@ -40,7 +40,7 @@ public static class CsvLocationParser
 
         foreach (var line in lines.Skip(1))
         {
-            var cells = Split(line);
+            var cells = CsvText.Split(line);
             var latitude = ReadDouble(cells, latIndex);
             var longitude = ReadDouble(cells, lonIndex);
             if (latitude is null || longitude is null)
@@ -87,38 +87,5 @@ public static class CsvLocationParser
             : null;
     }
 
-    internal static List<string> Split(string line)
-    {
-        var values = new List<string>();
-        var current = new System.Text.StringBuilder();
-        var quoted = false;
-        for (var i = 0; i < line.Length; i++)
-        {
-            var character = line[i];
-            if (character == '"')
-            {
-                if (quoted && i + 1 < line.Length && line[i + 1] == '"')
-                {
-                    current.Append('"');
-                    i++;
-                    continue;
-                }
-
-                quoted = !quoted;
-                continue;
-            }
-
-            if (character == ',' && !quoted)
-            {
-                values.Add(current.ToString());
-                current.Clear();
-                continue;
-            }
-
-            current.Append(character);
-        }
-
-        values.Add(current.ToString());
-        return values;
-    }
+    internal static List<string> Split(string line) => CsvText.Split(line);
 }

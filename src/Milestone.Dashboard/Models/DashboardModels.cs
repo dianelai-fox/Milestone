@@ -447,6 +447,10 @@ public sealed class StatusServerInfo
     public required string IpAddress { get; init; }
     public string Role { get; init; } = "Server";
     public string Deck { get; init; } = "MasterMind";
+    public string? Description { get; init; }
+    public string? Domain { get; init; }
+    public string? Environment { get; init; }
+    public string? Sql { get; init; }
     public bool Online { get; init; }
     public DateTimeOffset CheckedAt { get; init; } = DateTimeOffset.UtcNow;
     public int? LatencyMs { get; init; }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260826k" />
+  <link rel="stylesheet" href="/css/site.css?v=20260826m" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -477,12 +477,24 @@
         </div>
         <section id="status-decks" class="summary-row life-summary"></section>
         <section class="card">
-          <div class="panel-head">
+          <div class="panel-head status-panel-head">
             <div>
               <h2 id="status-table-title">MasterMind and Perspective</h2>
-              <p class="muted" id="status-copy">MasterMind and Perspective. Each card shows online status, role, IP, response, storage, memory, OS, uptime, and Last checked when the IIS server can read them.</p>
+              <p class="muted" id="status-copy">MasterMind and Perspective. Import a servers CSV to update names, IPs, function, domain, environment, OS, and SQL. Each card also shows online status and Last checked when the IIS server can reach the host.</p>
+            </div>
+            <div class="status-toolbar">
+              <label class="file-btn">
+                Import CSV
+                <input id="status-csv-import" type="file" accept=".csv,text/csv" hidden />
+              </label>
+              <label class="check-label">
+                <input id="status-csv-replace" type="checkbox" checked />
+                Replace servers in this file
+              </label>
+              <a id="status-csv-template" href="/api/server-status/template" download="servers.csv">Download CSV</a>
             </div>
           </div>
+          <p id="status-import-hint" class="muted" hidden></p>
           <div id="status-grid" class="status-deck-list"></div>
         </section>
       </section>
@@ -580,6 +592,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260826k"></script>
+  <script src="/js/dashboard.js?v=20260826m"></script>
 </body>
 </html>

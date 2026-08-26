@@ -58,6 +58,7 @@ const placeHint = document.getElementById("place-hint");
 const addressSearch = document.getElementById("address-search");
 const addressSearchButton = document.getElementById("address-search-btn");
 const csvImport = document.getElementById("csv-import");
+const statusCsvImport = document.getElementById("status-csv-import");
 const selectAll = document.getElementById("select-all");
 const manageSiteFilter = document.getElementById("manage-site-filter");
 const manageStatusFilter = document.getElementById("manage-status-filter");
@@ -116,6 +117,7 @@ addressSearch.addEventListener("keydown", (event) => {
   }
 });
 csvImport.addEventListener("change", importCsv);
+statusCsvImport?.addEventListener("change", importStatusCsv);
 manageSiteFilter.addEventListener("change", () => {
   state.managePage = 1;
   renderSites();
@@ -884,7 +886,7 @@ function renderServerStatus() {
   title.textContent = filter
     ? `${scope} · ${statusFilterLabel(filter)}`
     : state.statusDeck || "MasterMind and Perspective";
-  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers. Each card shows online status, role, IP, response, storage, memory, OS, and uptime when available.`;
+  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers. Import CSV updates MasterMind inventory. Each card shows function, domain, environment, OS, SQL, and online status.`;
   const grouped = [];
   visible.forEach((server) => {
     const name = server.deck || "Servers";
@@ -912,10 +914,14 @@ function renderServerStatus() {
         <span class="status ${server.online ? "on" : "off"}">${escapeHtml(server.status)}</span>
       </div>
       <dl class="status-details">
+        <div><dt>Function</dt><dd>${escapeHtml(server.role ?? "Server")}</dd></div>
+        <div><dt>Domain</dt><dd>${escapeHtml(server.domain ?? "—")}</dd></div>
+        <div><dt>Environment</dt><dd>${escapeHtml(server.environment ?? "—")}</dd></div>
+        <div><dt>OS</dt><dd>${escapeHtml(server.operatingSystem ?? "Not reported")}</dd></div>
+        <div><dt>SQL</dt><dd>${escapeHtml(server.sql ?? "—")}</dd></div>
         <div><dt>Response</dt><dd>${escapeHtml(formatStatusResponse(server))}</dd></div>
         <div><dt>Storage</dt><dd class="health ${storageTone}">${escapeHtml(formatStatusStorage(server))}</dd></div>
         <div><dt>Memory</dt><dd>${escapeHtml(server.memoryUsedPercent != null ? formatPercent(server.memoryUsedPercent) : "Not reported")}</dd></div>
-        <div><dt>OS</dt><dd>${escapeHtml(server.operatingSystem ?? "Not reported")}</dd></div>
         <div><dt>Uptime</dt><dd>${escapeHtml(server.uptime ?? "Not reported")}</dd></div>
         <div><dt>Last boot</dt><dd>${escapeHtml(formatDate(server.lastBoot) ?? "Not reported")}</dd></div>
         <div><dt>Last checked</dt><dd>${escapeHtml(formatDate(server.checkedAt) ?? "—")}</dd></div>
@@ -2460,6 +2466,60 @@ async function importCsv(event) {
     : "";
   placeHint.textContent = `Imported ${payload.saved} camera location(s).${removed}${cameras}${skipped}${invalid}${extra}`;
   await loadDashboard();
+}
+
+async function importStatusCsv(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  const hint = document.getElementById("status-import-hint");
+  if (!file) {
+    return;
+  }
+
+  if (hint) {
+    hint.hidden = false;
+    hint.textContent = "Importing server inventory…";
+  }
+
+  const replace = document.getElementById("status-csv-replace")?.checked !== false;
+  const form = new FormData();
+  form.append("file", file, file.name);
+  let response;
+  try {
+    response = await fetch(`/api/server-status/import-csv?replace=${replace}`, { method: "POST", body: form });
+  } catch (error) {
+    if (hint) {
+      hint.textContent = `Could not import servers: ${error.message}`;
+    }
+    return;
+  }
+
+  const raw = await response.text();
+  let payload = {};
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    payload = { error: raw ? raw.replace(/<[^>]+>/g, " ").trim().slice(0, 180) : `HTTP ${response.status}` };
+  }
+
+  if (!response.ok) {
+    if (hint) {
+      hint.textContent = payload.error || `Server CSV import failed (HTTP ${response.status}).`;
+    }
+    return;
+  }
+
+  if (payload.overview) {
+    state.serverStatus = payload.overview;
+    renderServerStatus();
+  } else {
+    await loadServerStatus();
+  }
+
+  if (hint) {
+    const decks = Array.isArray(payload.decks) && payload.decks.length ? payload.decks.join(", ") : "listed decks";
+    hint.textContent = `Imported ${payload.imported} server(s) for ${decks}. Online status is checked from this IIS server.`;
+  }
 }
 
 function parseCsv(text) {

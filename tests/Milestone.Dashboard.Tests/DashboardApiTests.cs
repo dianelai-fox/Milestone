@@ -251,7 +251,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Last checked", html);
         Assert.Contains("id=\"status-grid\"", html);
         Assert.Contains("MasterMind and Perspective", html);
-        Assert.Contains("memory, OS, uptime, and Last checked", html);
+        Assert.Contains("id=\"status-csv-import\"", html);
+        Assert.Contains("Replace servers in this file", html);
+        Assert.Contains("/api/server-status/template", html);
         Assert.Contains("id=\"demo-banner\"", html);
         Assert.Contains("UseDemoData", html);
         Assert.Contains("id=\"view-encrypt\"", html);
@@ -305,6 +307,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".status-server-card", css);
         Assert.Contains(".status-deck-list", css);
         Assert.Contains(".status-deck-group", css);
+        Assert.Contains(".status-toolbar", css);
         Assert.Contains(".demo-banner", css);
         Assert.Contains(".connect-actions", css);
     }

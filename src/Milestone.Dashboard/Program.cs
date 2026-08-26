@@ -48,6 +48,7 @@ builder.Services.AddSingleton<SnapshotCache>();
 builder.Services.AddSingleton<AppSettingsPasswordWriter>();
 builder.Services.AddSingleton<XprotectConnectionTester>();
 builder.Services.AddSingleton<StatusServerCatalog>();
+builder.Services.AddSingleton<StatusServerInventoryStore>();
 builder.Services.AddSingleton<StatusServerMonitor>();
 builder.Services.AddSingleton<DemoVmsClient>();
 builder.Services.AddScoped<DashboardService>();
@@ -260,6 +261,76 @@ app.MapGet("/api/dashboard", async (DashboardService dashboard, CancellationToke
 
 app.MapGet("/api/server-status", async (StatusServerMonitor monitor, CancellationToken cancellationToken) =>
     Results.Ok(await monitor.ProbeAsync(cancellationToken)));
+
+app.MapGet("/api/server-status/template", async (
+    StatusServerCatalog catalog,
+    StatusServerInventoryStore store,
+    CancellationToken cancellationToken) =>
+{
+    var servers = await store.ResolveAsync(catalog, cancellationToken);
+    var csv = StatusServerCsvParser.ToCsv(servers);
+    return Results.File(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv", "servers.csv");
+});
+
+app.MapPost("/api/server-status/import-csv", async (
+    HttpRequest request,
+    StatusServerCatalog catalog,
+    StatusServerInventoryStore store,
+    StatusServerMonitor monitor,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        string text;
+        if (request.HasFormContentType)
+        {
+            var form = await request.ReadFormAsync(cancellationToken);
+            var file = form.Files.GetFile("file") ?? form.Files.FirstOrDefault();
+            if (file is null || file.Length == 0)
+            {
+                return Results.BadRequest(new { error = "Choose a CSV file to import." });
+            }
+
+            using var reader = new StreamReader(file.OpenReadStream());
+            text = await reader.ReadToEndAsync(cancellationToken);
+        }
+        else
+        {
+            using var reader = new StreamReader(request.Body);
+            text = await reader.ReadToEndAsync(cancellationToken);
+        }
+
+        var imported = StatusServerCsvParser.Parse(text);
+        if (imported.Count == 0)
+        {
+            return Results.BadRequest(new
+            {
+                error = "No server rows were found. The CSV needs Server Name and IP Address columns."
+            });
+        }
+
+        var replace = true;
+        if (request.Query.TryGetValue("replace", out var replaceValue)
+            && bool.TryParse(replaceValue, out var parsed))
+        {
+            replace = parsed;
+        }
+
+        await store.ImportAsync(imported, replace, catalog, cancellationToken);
+        var overview = await monitor.ProbeAsync(cancellationToken);
+        return Results.Ok(new
+        {
+            imported = imported.Count,
+            replacedDecks = replace,
+            decks = imported.Select(server => server.Deck).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            overview
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { error = $"CSV import failed: {ex.Message}" }, statusCode: 500);
+    }
+});
 
 app.MapGet("/api/settings/password", (AppSettingsPasswordWriter writer, MilestoneOptions options) =>
     Results.Ok(new

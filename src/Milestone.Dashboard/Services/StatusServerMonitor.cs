@@ -15,9 +15,26 @@ public sealed class StatusServerMonitor
         (3389, "RDP")
     ];
 
+    private readonly StatusServerCatalog _catalog;
+    private readonly StatusServerInventoryStore? _store;
+
+    public StatusServerMonitor()
+        : this(new StatusServerCatalog())
+    {
+    }
+
+    public StatusServerMonitor(StatusServerCatalog catalog, StatusServerInventoryStore? store = null)
+    {
+        _catalog = catalog;
+        _store = store;
+    }
+
     public async Task<ServerStatusOverview> ProbeAsync(CancellationToken cancellationToken)
     {
-        return await ProbeAsync(new StatusServerCatalog().List(), cancellationToken);
+        var specs = _store is null
+            ? _catalog.List()
+            : await _store.ResolveAsync(_catalog, cancellationToken);
+        return await ProbeAsync(specs, cancellationToken);
     }
 
     public async Task<ServerStatusOverview> ProbeAsync(
@@ -84,13 +101,17 @@ public sealed class StatusServerMonitor
             IpAddress = spec.IpAddress,
             Role = spec.Role,
             Deck = spec.Deck,
+            Description = spec.Description ?? spec.Deck,
+            Domain = spec.Domain,
+            Environment = spec.Environment,
+            Sql = spec.Sql,
             Online = reach.Online,
             CheckedAt = checkedAt,
             LatencyMs = reach.LatencyMs,
             ProbePort = reach.Port,
             ProbeMethod = reach.Method,
             Detail = reach.Detail,
-            OperatingSystem = inventory?.OperatingSystem,
+            OperatingSystem = inventory?.OperatingSystem ?? spec.CatalogOs,
             LastBoot = inventory?.LastBoot,
             Uptime = inventory?.Uptime,
             MemoryUsedPercent = inventory?.MemoryUsedPercent,
