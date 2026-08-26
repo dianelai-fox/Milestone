@@ -1203,6 +1203,48 @@ th {
 }
 .server-card.attention { border-color: #f0c36d; }
 .status-deck { min-width: 280px; }
+.status-pie-card { margin-bottom: 16px; }
+.status-pie-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  flex-wrap: wrap;
+  padding: 4px 12px 20px;
+}
+.status-pie-legend {
+  display: grid;
+  gap: 10px;
+  min-width: 220px;
+}
+.status-pie-legend button.active { color: var(--teal); font-weight: 700; }
+.status-pie {
+  width: 196px;
+  height: 196px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.status-pie-inner {
+  width: 118px;
+  height: 118px;
+  background: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.15;
+}
+.status-pie-inner span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
 #status-decks.summary-row {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }

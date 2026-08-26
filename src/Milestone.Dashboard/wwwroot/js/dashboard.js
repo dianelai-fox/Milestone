@@ -842,6 +842,51 @@ async function loadServerStatus() {
   }
 }
 
+function renderStatusPie(servers) {
+  const host = document.getElementById("status-pie");
+  const copy = document.getElementById("status-pie-copy");
+  if (!host) {
+    return;
+  }
+  const online = servers.filter((server) => server.online).length;
+  const offline = servers.filter((server) => !server.online).length;
+  const attention = servers.filter((server) => server.needsAttention).length;
+  const healthy = servers.filter((server) => server.online && !server.needsAttention).length;
+  const onlineAttention = servers.filter((server) => server.online && server.needsAttention).length;
+  if (copy) {
+    copy.textContent = servers.length
+      ? `${servers.length} server${servers.length === 1 ? "" : "s"} across every application. Each host is counted once.`
+      : "No servers are configured.";
+  }
+  if (servers.length === 0) {
+    host.innerHTML = `<p class="muted">Import a CSV to see online, offline, and need attention.</p>`;
+    return;
+  }
+  const legend = [
+    { label: "Online", count: online, filter: "online", color: "var(--teal)" },
+    { label: "Offline", count: offline, filter: "offline", color: "var(--red)" },
+    { label: "Need attention", count: attention, filter: "attention", color: "var(--orange)" }
+  ];
+  const pieSlices = [
+    { count: healthy, color: "var(--teal)" },
+    { count: offline, color: "var(--red)" },
+    { count: onlineAttention, color: "var(--orange)" }
+  ];
+  const selected = !state.statusDeck ? state.statusFilter : "";
+  host.innerHTML = `
+    <div class="status-pie-legend">
+      ${legend.map((item) => `
+        <button type="button" class="ndaa-legend-row ${selected === item.filter ? "active" : ""}" data-status-filter="${item.filter}">
+          <span><i class="dot" style="background:${item.color}"></i>${item.label}</span>
+          <strong>${formatInt(item.count)}</strong>
+        </button>
+      `).join("")}
+    </div>
+    <div class="status-pie" style="background:${donutGradient(pieSlices, pieSlices.map((slice) => slice.color))}" role="img" aria-label="All servers: ${online} online, ${offline} offline, ${attention} need attention">
+      <div class="status-pie-inner">${formatInt(servers.length)}<span>Servers</span></div>
+    </div>`;
+}
+
 function renderServerStatus() {
   const decks = document.getElementById("status-decks");
   const copy = document.getElementById("status-copy");
@@ -854,6 +899,7 @@ function renderServerStatus() {
   const groups = overview.decks ?? [];
   const servers = overview.servers ?? [];
   const filter = state.statusFilter;
+  renderStatusPie(servers);
   decks.innerHTML = groups.map((deck) => `
     <article class="summary-card life-card status-deck">
       <h3>${escapeHtml(deck.name)}</h3>

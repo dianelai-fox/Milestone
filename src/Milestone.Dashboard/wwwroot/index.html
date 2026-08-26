@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260826s" />
+  <link rel="stylesheet" href="/css/site.css?v=20260826t" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -475,6 +475,15 @@
         <div class="page-head">
           <h1>Server Status</h1>
         </div>
+        <section id="status-pie-card" class="card status-pie-card">
+          <div class="panel-head">
+            <div>
+              <h2>All servers</h2>
+              <p class="muted" id="status-pie-copy">Online, offline, and need attention across every application.</p>
+            </div>
+          </div>
+          <div id="status-pie" class="status-pie-wrap"></div>
+        </section>
         <section id="status-decks" class="summary-row life-summary"></section>
         <section class="card">
           <div class="panel-head status-panel-head">
@@ -631,6 +640,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260826s"></script
+  <script src="/js/dashboard.js?v=20260826t"></script>
 </body>
 </html>

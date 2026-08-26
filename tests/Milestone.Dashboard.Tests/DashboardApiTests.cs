@@ -246,6 +246,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"view-server-status\"", html);
         Assert.Contains("id=\"nav-server-status\"", html);
         Assert.Contains("Server Status", html);
+        Assert.Contains("id=\"status-pie-card\"", html);
+        Assert.Contains("id=\"status-pie\"", html);
+        Assert.Contains("All servers", html);
         Assert.Contains("MasterMind", html);
         Assert.Contains("Perspective", html);
         Assert.Contains("Last checked", html);
@@ -257,6 +260,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Application", html);
         Assert.Contains("Server Description", html);
         Assert.Contains("id=\"status-table-card\"", html);
+        Assert.True(html.IndexOf("id=\"status-pie-card\"", StringComparison.Ordinal) < html.IndexOf("id=\"status-decks\"", StringComparison.Ordinal));
         Assert.True(html.IndexOf("id=\"status-decks\"", StringComparison.Ordinal) < html.IndexOf("id=\"status-table-card\"", StringComparison.Ordinal));
         Assert.True(html.IndexOf("id=\"status-table-card\"", StringComparison.Ordinal) < html.IndexOf("id=\"status-footer\"", StringComparison.Ordinal));
         Assert.Contains("One row per server", html);
@@ -292,10 +296,11 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("100", html);
         Assert.Contains("Group", html);
         Assert.Contains("/lib/leaflet/leaflet.js", html);
-        Assert.Contains("dashboard.js?v=20260826s", html);
+        Assert.Contains("dashboard.js?v=20260826t", html);
         var js = await _client.GetStringAsync("/js/dashboard.js");
         Assert.Contains("statusPageSize: 10", js);
         Assert.Contains("function renderStatusPager", js);
+        Assert.Contains("function renderStatusPie", js);
         Assert.DoesNotContain("status-deck-group", js);
     }
 
@@ -327,6 +332,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".status-rows-table", css);
         Assert.Contains(".status-table-block", css);
         Assert.Contains("#status-footer", css);
+        Assert.Contains(".status-pie-card", css);
+        Assert.Contains(".status-pie", css);
         Assert.Contains(".server-description", css);
         Assert.Contains(".demo-banner", css);
         Assert.Contains(".connect-actions", css);
