@@ -839,10 +839,10 @@ async function loadServerStatus() {
 
 function renderServerStatus() {
   const decks = document.getElementById("status-decks");
-  const body = document.getElementById("status-body");
+  const grid = document.getElementById("status-grid");
   const copy = document.getElementById("status-copy");
   const title = document.getElementById("status-table-title");
-  if (!decks || !body || !copy || !title) {
+  if (!decks || !grid || !copy || !title) {
     return;
   }
   const overview = state.serverStatus ?? {};
@@ -879,20 +879,31 @@ function renderServerStatus() {
   title.textContent = filter
     ? `MasterMind servers · ${statusFilterLabel(filter)}`
     : "MasterMind servers";
-  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers. Role, response time, storage, OS, and uptime are shown when the IIS server can read them.`;
-  body.innerHTML = visible.map((server) => `
-    <tr>
-      <td>${escapeHtml(server.name)}</td>
-      <td>${escapeHtml(server.role ?? "Server")}</td>
-      <td>${escapeHtml(server.ipAddress)}</td>
-      <td><span class="status ${server.online ? "on" : "off"}">${escapeHtml(server.status)}</span></td>
-      <td>${escapeHtml(formatStatusResponse(server))}</td>
-      <td>${escapeHtml(formatStatusStorage(server))}</td>
-      <td>${escapeHtml(server.operatingSystem ?? "—")}</td>
-      <td>${escapeHtml(server.uptime ?? "—")}</td>
-      <td>${escapeHtml(formatDate(server.checkedAt) ?? "—")}</td>
-      <td>${escapeHtml(server.detail ?? "—")}</td>
-    </tr>`).join("") || `<tr><td colspan="10" class="muted">No servers match this filter.</td></tr>`;
+  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers. Each card shows role, IP, response, storage, memory, OS, and uptime when available.`;
+  grid.innerHTML = visible.map((server) => {
+    const storageTone = healthTone(server.storageHealth);
+    return `
+    <article class="status-server-card ${server.needsAttention ? "attention" : ""}">
+      <div class="server-card-head">
+        <div>
+          <div class="server-name">${escapeHtml(server.name)}</div>
+          <div class="muted">${escapeHtml(server.role ?? "Server")}</div>
+          <div class="server-domain">${escapeHtml(server.ipAddress)}</div>
+        </div>
+        <span class="status ${server.online ? "on" : "off"}">${escapeHtml(server.status)}</span>
+      </div>
+      <dl class="status-details">
+        <div><dt>Response</dt><dd>${escapeHtml(formatStatusResponse(server))}</dd></div>
+        <div><dt>Storage</dt><dd class="health ${storageTone}">${escapeHtml(formatStatusStorage(server))}</dd></div>
+        <div><dt>Memory</dt><dd>${escapeHtml(server.memoryUsedPercent != null ? formatPercent(server.memoryUsedPercent) : "Not reported")}</dd></div>
+        <div><dt>OS</dt><dd>${escapeHtml(server.operatingSystem ?? "Not reported")}</dd></div>
+        <div><dt>Uptime</dt><dd>${escapeHtml(server.uptime ?? "Not reported")}</dd></div>
+        <div><dt>Last boot</dt><dd>${escapeHtml(formatDate(server.lastBoot) ?? "Not reported")}</dd></div>
+        <div><dt>Last checked</dt><dd>${escapeHtml(formatDate(server.checkedAt) ?? "—")}</dd></div>
+        <div class="status-detail-wide"><dt>Detail</dt><dd>${escapeHtml(server.detail ?? "—")}</dd></div>
+      </dl>
+    </article>`;
+  }).join("") || `<p class="muted">No servers match this filter.</p>`;
   document.querySelectorAll("#view-server-status [data-status-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       const next = button.getAttribute("data-status-filter") ?? "";

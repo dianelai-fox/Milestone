@@ -248,9 +248,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Server Status", html);
         Assert.Contains("MasterMind", html);
         Assert.Contains("Last checked", html);
-        Assert.Contains("<th>Role</th>", html);
-        Assert.Contains("<th>Response</th>", html);
-        Assert.Contains("<th>Detail</th>", html);
+        Assert.Contains("id=\"status-grid\"", html);
+        Assert.Contains("memory, OS, uptime, and Last checked", html);
         Assert.Contains("id=\"demo-banner\"", html);
         Assert.Contains("UseDemoData", html);
         Assert.Contains("id=\"view-encrypt\"", html);
@@ -300,6 +299,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".server-grid", css);
         Assert.Contains(".server-card", css);
         Assert.Contains(".status-deck", css);
+        Assert.Contains(".status-grid", css);
+        Assert.Contains(".status-server-card", css);
         Assert.Contains(".demo-banner", css);
         Assert.Contains(".connect-actions", css);
     }

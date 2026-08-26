@@ -1203,9 +1203,40 @@ th {
 }
 .server-card.attention { border-color: #f0c36d; }
 .status-deck { min-width: 320px; }
-#view-server-status .table-scroll { overflow-x: auto; }
-#view-server-status td { white-space: nowrap; }
-#view-server-status td:last-child { white-space: normal; min-width: 180px; }
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+.status-server-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px 18px;
+  background: #fff;
+  display: grid;
+  gap: 14px;
+}
+.status-server-card.attention { border-color: #f0c36d; }
+.status-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+  margin: 0;
+}
+.status-details div { min-width: 0; }
+.status-details dt {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.status-details dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+  word-break: break-word;
+}
+.status-detail-wide { grid-column: 1 / -1; }
 .server-card-head {
   display: flex;
   align-items: flex-start;

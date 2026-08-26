@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260826h" />
+  <link rel="stylesheet" href="/css/site.css?v=20260826i" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -480,28 +480,10 @@
           <div class="panel-head">
             <div>
               <h2 id="status-table-title">MasterMind servers</h2>
-              <p class="muted" id="status-copy">Non-XProtect servers. Online is a live network check of the listed IP address.</p>
+              <p class="muted" id="status-copy">Non-XProtect servers. Each card shows role, IP, response, storage, memory, OS, uptime, and Last checked when the IIS server can read them.</p>
             </div>
           </div>
-          <div class="table-wrap table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Server Name</th>
-                  <th>Role</th>
-                  <th>IP Address</th>
-                  <th>Status</th>
-                  <th>Response</th>
-                  <th>Storage</th>
-                  <th>OS</th>
-                  <th>Uptime</th>
-                  <th>Last checked</th>
-                  <th>Detail</th>
-                </tr>
-              </thead>
-              <tbody id="status-body"></tbody>
-            </table>
-          </div>
+          <div id="status-grid" class="status-grid"></div>
         </section>
       </section>
       </div>
@@ -598,6 +580,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260826h"></script>
+  <script src="/js/dashboard.js?v=20260826i"></script>
 </body>
 </html>
