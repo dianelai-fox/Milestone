@@ -172,7 +172,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"view-firmware\"", html);
         Assert.Contains("Outdated Firmware", html);
         Assert.Contains("firmware-highlights", html);
-        Assert.Contains("id=\"view-servers\"", html);
+        Assert.Contains("id=\"view-security-servers\"", html);
+        Assert.Contains("id=\"nav-security-servers\"", html);
         Assert.Contains("Security Servers", html);
         Assert.Contains("servers-grid", html);
         Assert.Contains("id=\"storage-pies\"", html);

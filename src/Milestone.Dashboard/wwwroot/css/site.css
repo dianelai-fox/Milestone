@@ -51,7 +51,8 @@ body {
   gap: 6px;
   padding: 16px 12px;
   z-index: 200;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   transition: width 0.2s ease, box-shadow 0.2s ease;
 }
 

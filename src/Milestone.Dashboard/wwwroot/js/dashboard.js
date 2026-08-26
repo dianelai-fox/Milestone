@@ -142,6 +142,11 @@ document.addEventListener("click", (event) => {
   if (!opener) {
     return;
   }
+  if (opener.dataset.open === "security-servers") {
+    event.preventDefault();
+    showSecurityServers();
+    return;
+  }
   if (opener.dataset.open === "servers") {
     showRecordingServers();
   } else if (opener.dataset.open === "cameras") {
@@ -152,8 +157,6 @@ document.addEventListener("click", (event) => {
     showStoragePies("");
   } else if (opener.dataset.open === "archives") {
     showStoragePies("Archive");
-  } else if (opener.dataset.open === "security-servers") {
-    showSecurityServers();
   }
 });
 document.addEventListener("click", (event) => {
@@ -212,6 +215,10 @@ document.querySelectorAll(".nav-btn").forEach((button) => {
     showView(button.dataset.view, { focus: button.dataset.focus });
   });
 });
+document.getElementById("nav-security-servers")?.addEventListener("click", (event) => {
+  event.preventDefault();
+  showSecurityServers();
+});
 
 function showView(name, options = {}) {
   document.querySelectorAll(".view").forEach((view) => {
@@ -245,7 +252,7 @@ function showView(name, options = {}) {
   if (name === "firmware") {
     renderFirmware();
   }
-  if (name === "servers") {
+  if (name === "security-servers" || name === "servers") {
     renderSecurityServers();
   }
   if (options.focus) {
@@ -787,6 +794,13 @@ function renderFirmwareAlertedSites(rows) {
 }
 
 function renderSecurityServers() {
+  const summary = document.getElementById("servers-summary");
+  const grid = document.getElementById("servers-grid");
+  const highlights = document.getElementById("servers-highlights");
+  const copy = document.getElementById("servers-copy");
+  if (!summary || !grid || !highlights || !copy) {
+    return;
+  }
   const overview = state.securityServers ?? {};
   const servers = overview.servers ?? state.recordingServers ?? [];
   const attention = overview.attentionServers ?? servers.filter((server) => server.needsAttention);
@@ -794,7 +808,7 @@ function renderSecurityServers() {
   const offline = overview.offlineCount ?? servers.length - online;
   const filter = state.serverHealthFilter;
   const visible = servers.filter((server) => matchesServerHealthFilter(server, filter));
-  document.getElementById("servers-summary").innerHTML = `
+  summary.innerHTML = `
     <article class="summary-card life-card">
       <h3>SERVERS</h3>
       <div class="life-devices">
@@ -846,7 +860,7 @@ function renderSecurityServers() {
       </div>
     </article>
   `;
-  document.getElementById("servers-highlights").innerHTML = `
+  highlights.innerHTML = `
     <article class="highlight-card">
       <h3>Servers needing attention</h3>
       <table class="alert-table">
@@ -875,10 +889,10 @@ function renderSecurityServers() {
       </ul>
     </article>
   `;
-  document.getElementById("servers-copy").textContent = filter
+  copy.textContent = filter
     ? `${visible.length} of ${servers.length} security servers · ${serverFilterLabel(filter)}. Click a server to see its cameras.`
     : `${servers.length} security servers from XProtect. Click a server name or camera count to see its cameras.`;
-  document.getElementById("servers-grid").innerHTML = visible.map((server) => {
+  grid.innerHTML = visible.map((server) => {
     const storagePercent = Number(server.effectiveStorageUsagePercent ?? server.storageUsagePercent ?? 0);
     const cpuPercent = server.cpuPercent;
     const storageTone = healthTone(server.storageHealth);
@@ -927,10 +941,10 @@ function renderSecurityServers() {
     </article>`;
   }).join("") || `<p class="muted">No security servers match this filter.</p>`;
 
-  document.querySelectorAll("#view-servers [data-server]").forEach((button) => {
+  document.querySelectorAll("#view-security-servers [data-server]").forEach((button) => {
     button.addEventListener("click", () => showCamerasForServer(button.getAttribute("data-server") ?? ""));
   });
-  document.querySelectorAll("#view-servers [data-server-filter]").forEach((button) => {
+  document.querySelectorAll("#view-security-servers [data-server-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       const next = button.getAttribute("data-server-filter") ?? "";
       state.serverHealthFilter = state.serverHealthFilter === next ? "" : next;
@@ -1261,7 +1275,7 @@ function showSecurityServers(filter) {
     state.serverHealthFilter = filter;
   }
   renderSecurityServers();
-  showView("servers");
+  showView("security-servers");
 }
 
 function showStoragePies(kind) {
