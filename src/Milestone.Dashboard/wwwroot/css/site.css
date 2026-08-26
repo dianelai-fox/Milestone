@@ -1253,6 +1253,18 @@ th {
   word-break: break-word;
 }
 .status-detail-wide { grid-column: 1 / -1; }
+.status-table-wrap {
+  max-height: calc(100vh - 280px);
+}
+.status-rows-table { min-width: 1680px; }
+.status-rows-table .name-cell { font-weight: 700; }
+.status-rows-table .detail-cell,
+.status-rows-table .os-cell {
+  white-space: normal;
+  min-width: 180px;
+  max-width: 280px;
+}
+.status-rows-table tr.attention td { background: #fffaf0; }
 .server-card-head {
   display: flex;
   align-items: flex-start;

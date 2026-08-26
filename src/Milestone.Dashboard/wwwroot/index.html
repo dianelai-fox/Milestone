@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260826m" />
+  <link rel="stylesheet" href="/css/site.css?v=20260826n" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -497,6 +497,39 @@
           <p id="status-import-hint" class="muted" hidden></p>
           <div id="status-grid" class="status-deck-list"></div>
         </section>
+        <section class="card" id="status-table-card">
+          <div class="panel-head">
+            <div>
+              <h2 id="status-rows-title">Server list</h2>
+              <p class="muted" id="status-rows-copy">One row per server.</p>
+            </div>
+          </div>
+          <div class="table-wrap table-scroll status-table-wrap">
+            <table class="status-rows-table">
+              <thead>
+                <tr>
+                  <th>Server Name</th>
+                  <th>IP Address</th>
+                  <th>Status</th>
+                  <th>Deck</th>
+                  <th>Function</th>
+                  <th>Domain</th>
+                  <th>Environment</th>
+                  <th>OS</th>
+                  <th>SQL</th>
+                  <th>Response</th>
+                  <th>Storage</th>
+                  <th>Memory</th>
+                  <th>Uptime</th>
+                  <th>Last boot</th>
+                  <th>Last checked</th>
+                  <th>Detail</th>
+                </tr>
+              </thead>
+              <tbody id="status-rows"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
       </div>
 
@@ -592,6 +625,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260826m"></script>
+  <script src="/js/dashboard.js?v=20260826n"></script>
 </body>
 </html>

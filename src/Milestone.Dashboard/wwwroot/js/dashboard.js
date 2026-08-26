@@ -931,6 +931,33 @@ function renderServerStatus() {
         }).join("")}
       </div>
     </section>`).join("") || `<p class="muted">No servers match this filter.</p>`;
+  const rows = document.getElementById("status-rows");
+  const rowsCopy = document.getElementById("status-rows-copy");
+  const ordered = grouped.flatMap((group) => group.servers);
+  if (rows) {
+    rows.innerHTML = ordered.map((server) => `
+      <tr class="${server.needsAttention ? "attention" : ""}">
+        <td class="name-cell">${escapeHtml(server.name)}</td>
+        <td>${escapeHtml(server.ipAddress)}</td>
+        <td><span class="status ${server.online ? "on" : "off"}">${escapeHtml(server.status)}</span></td>
+        <td>${escapeHtml(server.deck ?? "—")}</td>
+        <td>${escapeHtml(server.role ?? "Server")}</td>
+        <td>${escapeHtml(server.domain ?? "—")}</td>
+        <td>${escapeHtml(server.environment ?? "—")}</td>
+        <td class="os-cell">${escapeHtml(server.operatingSystem ?? "Not reported")}</td>
+        <td>${escapeHtml(server.sql ?? "—")}</td>
+        <td>${escapeHtml(formatStatusResponse(server))}</td>
+        <td class="health ${healthTone(server.storageHealth)}">${escapeHtml(formatStatusStorage(server))}</td>
+        <td>${escapeHtml(server.memoryUsedPercent != null ? formatPercent(server.memoryUsedPercent) : "Not reported")}</td>
+        <td>${escapeHtml(server.uptime ?? "Not reported")}</td>
+        <td>${escapeHtml(formatDate(server.lastBoot) ?? "Not reported")}</td>
+        <td>${escapeHtml(formatDate(server.checkedAt) ?? "—")}</td>
+        <td class="detail-cell">${escapeHtml(server.detail ?? "—")}</td>
+      </tr>`).join("") || `<tr><td colspan="16">No servers match this filter.</td></tr>`;
+  }
+  if (rowsCopy) {
+    rowsCopy.textContent = `${ordered.length} of ${servers.length} servers. One row per host.`;
+  }
   document.querySelectorAll("#view-server-status [data-status-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       const next = button.getAttribute("data-status-filter") ?? "";
