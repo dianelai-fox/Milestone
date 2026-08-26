@@ -69,11 +69,13 @@ Overrides are stored in `App_Data/location-overrides.json` on the web server.
 ## Host on IIS
 
 1. Install the [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) on the web server.
-2. Publish the site:
+2. Publish the site. Prefer `scripts/publish-iis.ps1` so the live `appsettings.json` is kept. A plain `dotnet publish` no longer overwrites that file.
 
    ```bash
-   dotnet publish src/Milestone.Dashboard -c Release -o C:\inetpub\xprotect-dashboard
+   scripts/publish-iis.ps1
    ```
+
+   If you publish with `dotnet publish` yourself, do not replace `C:\inetpub\xprotect-dashboard\appsettings.json`. That file is what switches **Demo data** to your live recording servers and cameras (`Milestone:UseDemoData` = `false`).
 
 3. In IIS, create a site or application pointed at that folder. The included `web.config` uses the ASP.NET Core Module.
 4. Grant the app-pool identity read access to the publish folder and write access to `App_Data` and `logs`.

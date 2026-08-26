@@ -14,6 +14,7 @@ const state = {
   placingCameraId: "",
   expandedCameraId: "",
   selectedCameraIds: new Set(),
+  source: "",
   sourceLabel: "Milestone",
   inventoryView: "cameras",
   manageMode: "table",
@@ -289,6 +290,7 @@ async function loadDashboard() {
     state.summary = data.summary ?? {};
     state.lifecycle = data.lifecycle ?? {};
     state.passwordRotation = data.passwordRotation ?? {};
+    state.source = data.source ?? "";
     state.firmware = data.firmware ?? {};
     state.securityServers = data.securityServers ?? {};
     state.siteName = data.siteName ?? "";
@@ -330,12 +332,18 @@ async function loadDashboard() {
 function renderSource(data) {
   const badge = document.getElementById("source-badge");
   const source = data.source ?? "unknown";
-  badge.textContent = source === "demo" ? "Demo data" : "Live";
-  badge.className = `badge ${source === "demo" ? "demo" : "live"}`;
-  state.sourceLabel = source === "demo" ? "Demo" : "Milestone Production";
+  const demo = String(source).startsWith("demo");
+  badge.textContent = demo ? "Demo data" : "Live";
+  badge.className = `badge ${demo ? "demo" : "live"}`;
+  state.source = source;
+  state.sourceLabel = demo ? "Demo" : "Milestone Production";
   document.getElementById("generated-at").textContent = data.generatedAt
     ? new Date(data.generatedAt).toLocaleString()
     : "";
+  const banner = document.getElementById("demo-banner");
+  if (banner) {
+    banner.hidden = !demo;
+  }
 }
 
 function counts() {
@@ -870,9 +878,12 @@ function renderSecurityServers() {
       </ul>
     </article>
   `;
-  copy.textContent = filter
-    ? `${visible.length} of ${servers.length} security servers · ${serverFilterLabel(filter)}. Click a server to see its cameras.`
-    : `${servers.length} security servers from XProtect. Click a server name or camera count to see its cameras.`;
+  const demo = String(state.source || "").startsWith("demo");
+  copy.textContent = demo
+    ? `${servers.length} sample recording servers. Set UseDemoData to false on IIS to load your live XProtect servers and cameras.`
+    : filter
+      ? `${visible.length} of ${servers.length} security servers · ${serverFilterLabel(filter)}. Click a server to see its cameras.`
+      : `${servers.length} recording servers from XProtect. Click a server name or camera count to see its cameras.`;
   grid.innerHTML = visible.map((server) => {
     const storagePercent = Number(server.effectiveStorageUsagePercent ?? server.storageUsagePercent ?? 0);
     const storageTone = healthTone(server.storageHealth);

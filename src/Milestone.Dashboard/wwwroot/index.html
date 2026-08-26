@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260825e" />
+  <link rel="stylesheet" href="/css/site.css?v=20260826b" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -72,6 +72,10 @@
     </header>
 
     <main>
+      <p id="demo-banner" class="demo-banner" hidden>
+        Showing sample cameras and recording servers, not your XProtect site.
+        On the IIS server keep your existing appsettings.json (do not replace it when you publish) and set Milestone:UseDemoData to false, then recycle the app pool.
+      </p>
       <p id="page-error" class="page-error" hidden></p>
       <section id="kpi-row" hidden></section>
 
@@ -484,6 +488,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260825e"></script>
+  <script src="/js/dashboard.js?v=20260826b"></script>
 </body>
 </html>

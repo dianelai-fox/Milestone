@@ -172,6 +172,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("firmware-highlights", html);
         Assert.Contains("id=\"view-security-servers\"", html);
         Assert.Contains("id=\"nav-security-servers\"", html);
+        Assert.Contains("id=\"demo-banner\"", html);
+        Assert.Contains("UseDemoData", html);
         Assert.Contains("Security Servers", html);
         Assert.Contains("servers-grid", html);
         Assert.Contains("id=\"storage-pies\"", html);
@@ -212,6 +214,18 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".risk-segments", css);
         Assert.Contains(".server-grid", css);
         Assert.Contains(".server-card", css);
+        Assert.Contains(".demo-banner", css);
+    }
+
+    [Fact]
+    public void Publish_does_not_replace_live_appsettings()
+    {
+        var repo = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var csproj = File.ReadAllText(Path.Combine(repo, "src", "Milestone.Dashboard", "Milestone.Dashboard.csproj"));
+        var publish = File.ReadAllText(Path.Combine(repo, "scripts", "publish-iis.ps1"));
+        Assert.Contains("CopyToPublishDirectory>Never", csproj);
+        Assert.Contains("Keeping live settings", publish);
+        Assert.Contains("Restore-LiveSettings", publish);
     }
 
     [Fact]
