@@ -7,23 +7,17 @@ public sealed class DashboardService
     private readonly IVmsClient _vmsClient;
     private readonly LocationOverrideStore _overrides;
     private readonly SnapshotCache _cache;
-    private readonly ManagedServerCatalog _managedServers;
-    private readonly ManagedServerMonitor _monitor;
     private readonly ILogger<DashboardService> _logger;
 
     public DashboardService(
         IVmsClient vmsClient,
         LocationOverrideStore overrides,
         SnapshotCache cache,
-        ManagedServerCatalog managedServers,
-        ManagedServerMonitor monitor,
         ILogger<DashboardService> logger)
     {
         _vmsClient = vmsClient;
         _overrides = overrides;
         _cache = cache;
-        _managedServers = managedServers;
-        _monitor = monitor;
         _logger = logger;
     }
 
@@ -35,7 +29,6 @@ public sealed class DashboardService
         {
             var snapshot = await _vmsClient.GetSnapshotAsync(cancellationToken);
             ApplyOverrides(snapshot, await _overrides.GetAllAsync(cancellationToken));
-            await AttachManagedServersAsync(snapshot, cancellationToken);
             AnnotateCameras(snapshot);
             await _cache.SaveAsync(snapshot, cancellationToken);
             return snapshot;
@@ -51,7 +44,6 @@ public sealed class DashboardService
 
             ApplyOverrides(cached, await _overrides.GetAllAsync(cancellationToken));
             cached.Source = $"{cached.Source}-cached";
-            await AttachManagedServersAsync(cached, cancellationToken);
             AnnotateCameras(cached);
             return cached;
         }
@@ -172,22 +164,7 @@ public sealed class DashboardService
         snapshot.Lifecycle = LifecycleInventory.FromCameras(snapshot.Cameras);
         snapshot.PasswordRotation = PasswordRotationInventory.FromCameras(snapshot.Cameras);
         snapshot.Firmware = FirmwareInventory.FromCameras(snapshot.Cameras);
-        snapshot.SecurityServers = SecurityServerInventory.From(
-            snapshot.RecordingServers,
-            snapshot.Storages,
-            snapshot.ManagedServers);
-    }
-
-    private async Task AttachManagedServersAsync(DashboardSnapshot snapshot, CancellationToken cancellationToken)
-    {
-        try
-        {
-            snapshot.ManagedServers = await _monitor.ProbeAsync(_managedServers.List(), cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Could not probe configured application servers.");
-        }
+        snapshot.SecurityServers = SecurityServerInventory.From(snapshot.RecordingServers, snapshot.Storages);
     }
 
     internal static void ApplyOverrides(
