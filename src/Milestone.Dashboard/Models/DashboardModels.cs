@@ -424,3 +424,9 @@ public sealed class SecurityServersOverview
     public IReadOnlyList<RecordingServerInfo> Servers { get; init; } = [];
     public IReadOnlyList<RecordingServerInfo> AttentionServers { get; init; } = [];
 }
+
+public sealed class EncryptPasswordRequest
+{
+    public string Password { get; set; } = string.Empty;
+    public bool Save { get; set; }
+}

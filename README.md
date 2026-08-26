@@ -89,6 +89,10 @@ The dashboard can store `Milestone:Password` as an encrypted value (`ENC:...`) i
 
 Do this **on the IIS web server** after you publish. The encrypted value only works on that same server.
 
+The easiest way is the **Encrypt password** page in the sidebar. Type the XProtect Basic user password, keep **Save into appsettings.json** checked, then recycle the app pool and press Ctrl+F5.
+
+The PowerShell script still works if you prefer it:
+
 1. Publish the new site (stop IIS first, then `scripts/publish-iis.ps1` or your usual publish).
 2. Open PowerShell **as Administrator** on the web server.
 3. Run:

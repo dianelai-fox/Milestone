@@ -45,6 +45,7 @@ catch (Exception)
 
 builder.Services.AddSingleton<LocationOverrideStore>();
 builder.Services.AddSingleton<SnapshotCache>();
+builder.Services.AddSingleton<AppSettingsPasswordWriter>();
 builder.Services.AddSingleton<DemoVmsClient>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
@@ -252,6 +253,46 @@ app.MapGet("/api/dashboard", async (DashboardService dashboard, CancellationToke
             zoom = milestoneOptions.DefaultZoom
         }
     });
+});
+
+app.MapGet("/api/settings/password", (AppSettingsPasswordWriter writer, MilestoneOptions options) =>
+    Results.Ok(new
+    {
+        encrypted = writer.PasswordIsEncrypted,
+        canWrite = writer.CanWrite,
+        useDemoData = options.UseDemoData
+    }));
+
+app.MapPost("/api/settings/password", (
+    EncryptPasswordRequest request,
+    AppSettingsPasswordWriter writer,
+    MilestoneOptions options,
+    IDataProtectionProvider dataProtection) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Password))
+    {
+        return Results.BadRequest(new { error = "Type the current XProtect Basic user password." });
+    }
+
+    var protector = dataProtection.CreateProtector(AppSecretProtector.Purpose);
+    var encrypted = AppSecretProtector.Protect(protector, request.Password);
+    var saved = false;
+    string? saveError = null;
+    if (request.Save)
+    {
+        try
+        {
+            writer.SaveEncrypted(encrypted);
+            options.Password = request.Password;
+            saved = true;
+        }
+        catch (Exception ex)
+        {
+            saveError = "Encrypted, but appsettings.json could not be updated. Paste the ENC: value into Milestone:Password. " + ex.Message;
+        }
+    }
+
+    return Results.Ok(new { encrypted, saved, saveError });
 });
 
 app.MapGet("/api/geocode", async (string q, IHttpClientFactory httpFactory, CancellationToken cancellationToken) =>

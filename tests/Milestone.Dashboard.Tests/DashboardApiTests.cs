@@ -105,6 +105,25 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task Encrypt_password_page_returns_enc_value_without_saving()
+    {
+        var response = await _client.PostAsJsonAsync("/api/settings/password", new
+        {
+            password = "FoxSecret!",
+            save = false
+        });
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(json);
+        Assert.StartsWith("ENC:", document.RootElement.GetProperty("encrypted").GetString());
+        Assert.False(document.RootElement.GetProperty("saved").GetBoolean());
+        Assert.DoesNotContain("FoxSecret!", json, StringComparison.Ordinal);
+
+        var status = await _client.GetAsync("/api/settings/password");
+        status.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
     public async Task Location_override_rejects_invalid_coordinates()
     {
         var response = await _client.PostAsJsonAsync("/api/locations", new
@@ -174,6 +193,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"nav-security-servers\"", html);
         Assert.Contains("id=\"demo-banner\"", html);
         Assert.Contains("UseDemoData", html);
+        Assert.Contains("id=\"view-encrypt\"", html);
+        Assert.Contains("Encrypt password", html);
+        Assert.Contains("encrypt-form", html);
         Assert.Contains("Security Servers", html);
         Assert.Contains("servers-grid", html);
         Assert.Contains("id=\"storage-pies\"", html);

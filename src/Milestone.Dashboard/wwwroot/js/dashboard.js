@@ -256,6 +256,9 @@ function showView(name, options = {}) {
   if (name === "security-servers" || name === "servers") {
     renderSecurityServers();
   }
+  if (name === "encrypt") {
+    loadEncryptStatus();
+  }
   if (options.focus) {
     document.getElementById(options.focus)?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
@@ -323,7 +326,11 @@ async function loadDashboard() {
   } catch (error) {
     document.getElementById("source-badge").textContent = "Unavailable";
     pageError.hidden = false;
-    pageError.textContent = `Could not load dashboard: ${error.message}`;
+    pageError.innerHTML = `Could not load dashboard: ${escapeHtml(error.message)}`;
+    if (/login|password|Username|GatewayBaseUrl/i.test(error.message)) {
+      pageError.innerHTML += ` <button class="link-btn" type="button" id="open-encrypt">Open Encrypt password</button>`;
+      document.getElementById("open-encrypt")?.addEventListener("click", () => showView("encrypt"));
+    }
   } finally {
     refreshButton.disabled = false;
   }
@@ -2439,5 +2446,64 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 }
+
+async function loadEncryptStatus() {
+  const status = document.getElementById("encrypt-status");
+  if (!status) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/settings/password", { cache: "no-store" });
+    if (!response.ok) {
+      return;
+    }
+    const data = await response.json();
+    const bits = [
+      data.encrypted ? "appsettings.json already has an ENC: password." : "appsettings.json currently has a plain password, or none.",
+      data.canWrite ? "This site can update appsettings.json." : "This site cannot write appsettings.json. You can still copy the ENC: value.",
+      data.useDemoData ? "UseDemoData is still true, so live XProtect login is off." : "UseDemoData is false."
+    ];
+    status.textContent = bits.join(" ");
+  } catch {
+    status.textContent = "Could not read password status.";
+  }
+}
+
+document.getElementById("encrypt-form")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const password = document.getElementById("encrypt-password");
+  const save = document.getElementById("encrypt-save");
+  const result = document.getElementById("encrypt-result");
+  const status = document.getElementById("encrypt-status");
+  const submit = document.getElementById("encrypt-submit");
+  if (!password || !result || !status || !submit) {
+    return;
+  }
+  submit.disabled = true;
+  status.textContent = "Encrypting…";
+  try {
+    const response = await fetch("/api/settings/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        password: password.value,
+        save: Boolean(save?.checked)
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `Encrypt failed (${response.status})`);
+    }
+    result.value = data.encrypted ?? "";
+    password.value = "";
+    status.textContent = data.saved
+      ? "Saved ENC: into appsettings.json. Recycle the app pool, then press Ctrl+F5."
+      : data.saveError || "Encrypted. Copy the ENC: value into Milestone:Password if it was not saved.";
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    submit.disabled = false;
+  }
+});
 
 loadDashboard();

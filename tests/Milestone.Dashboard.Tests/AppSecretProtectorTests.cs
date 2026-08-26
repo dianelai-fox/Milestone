@@ -28,6 +28,30 @@ public class AppSecretProtectorTests
         Assert.Equal("ENC:abc", AppSecretProtector.Protect(protector, "ENC:abc"));
     }
 
+    [Fact]
+    public void Writer_replaces_only_the_password_value()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "MilestoneDashboardTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        var path = Path.Combine(folder, "appsettings.json");
+        File.WriteAllText(path, """
+            {
+              "Milestone": {
+                "UseDemoData": false,
+                "Password": "plain"
+              }
+            }
+            """);
+
+        var writer = new AppSettingsPasswordWriter(path);
+        writer.SaveEncrypted("ENC:test-value");
+
+        Assert.False(AppSecretProtector.IsProtected("plain"));
+        Assert.True(writer.PasswordIsEncrypted);
+        Assert.Equal("ENC:test-value", writer.ReadPassword());
+        Assert.Contains("\"UseDemoData\": false", File.ReadAllText(path), StringComparison.OrdinalIgnoreCase);
+    }
+
     private static IDataProtector CreateProtector()
     {
         var services = new ServiceCollection();
