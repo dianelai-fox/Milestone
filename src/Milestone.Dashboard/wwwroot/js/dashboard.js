@@ -36,7 +36,9 @@ const state = {
   serverHealthFilter: "",
   serverStatus: {},
   statusFilter: "",
-  statusDeck: ""
+  statusDeck: "",
+  statusPage: 1,
+  statusPageSize: 10
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -842,10 +844,10 @@ async function loadServerStatus() {
 
 function renderServerStatus() {
   const decks = document.getElementById("status-decks");
-  const grid = document.getElementById("status-grid");
   const copy = document.getElementById("status-copy");
   const title = document.getElementById("status-table-title");
-  if (!decks || !grid || !copy || !title) {
+  const rows = document.getElementById("status-rows");
+  if (!decks || !copy || !title || !rows) {
     return;
   }
   const overview = state.serverStatus ?? {};
@@ -888,57 +890,12 @@ function renderServerStatus() {
     ? `${scope} · ${statusFilterLabel(filter)}`
     : state.statusDeck || (applicationNames.length ? applicationNames.join(" · ") : "Server applications");
   copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers across ${groups.length} application${groups.length === 1 ? "" : "s"}. Import CSV updates Server Description and the other inventory columns.`;
-  const grouped = [];
-  visible.forEach((server) => {
-    const name = server.deck || server.description || "Servers";
-    let group = grouped.find((item) => item.name === name);
-    if (!group) {
-      group = { name, servers: [] };
-      grouped.push(group);
-    }
-    group.servers.push(server);
-  });
-  grid.innerHTML = grouped.map((group) => `
-    <section class="status-deck-group">
-      <h3>${escapeHtml(group.name)}</h3>
-      <div class="status-grid">
-        ${group.servers.map((server) => {
-          const storageTone = healthTone(server.storageHealth);
-          return `
-    <article class="status-server-card ${server.needsAttention ? "attention" : ""}">
-      <div class="server-card-head">
-        <div>
-          <div class="server-name">${escapeHtml(server.name)}</div>
-          <div class="muted">${escapeHtml(server.role ?? "Server")} · ${escapeHtml(server.deck ?? "")}</div>
-          ${server.description && server.description !== server.deck ? `<div class="server-description">${escapeHtml(server.description)}</div>` : ""}
-          <div class="server-domain">${escapeHtml(server.ipAddress)}</div>
-        </div>
-        <span class="status ${server.online ? "on" : "off"}">${escapeHtml(server.status)}</span>
-      </div>
-      <dl class="status-details">
-        <div><dt>Description</dt><dd>${escapeHtml(server.description ?? server.deck ?? "—")}</dd></div>
-        <div><dt>Function</dt><dd>${escapeHtml(server.role ?? "Server")}</dd></div>
-        <div><dt>Domain</dt><dd>${escapeHtml(server.domain ?? "—")}</dd></div>
-        <div><dt>Environment</dt><dd>${escapeHtml(server.environment ?? "—")}</dd></div>
-        <div><dt>OS</dt><dd>${escapeHtml(server.operatingSystem ?? "Not reported")}</dd></div>
-        <div><dt>SQL</dt><dd>${escapeHtml(server.sql ?? "—")}</dd></div>
-        <div><dt>Response</dt><dd>${escapeHtml(formatStatusResponse(server))}</dd></div>
-        <div><dt>Storage</dt><dd class="health ${storageTone}">${escapeHtml(formatStatusStorage(server))}</dd></div>
-        <div><dt>Memory</dt><dd>${escapeHtml(server.memoryUsedPercent != null ? formatPercent(server.memoryUsedPercent) : "Not reported")}</dd></div>
-        <div><dt>Uptime</dt><dd>${escapeHtml(server.uptime ?? "Not reported")}</dd></div>
-        <div><dt>Last boot</dt><dd>${escapeHtml(formatDate(server.lastBoot) ?? "Not reported")}</dd></div>
-        <div><dt>Last checked</dt><dd>${escapeHtml(formatDate(server.checkedAt) ?? "—")}</dd></div>
-        <div class="status-detail-wide"><dt>Detail</dt><dd>${escapeHtml(server.detail ?? "—")}</dd></div>
-      </dl>
-    </article>`;
-        }).join("")}
-      </div>
-    </section>`).join("") || `<p class="muted">No servers match this filter.</p>`;
-  const rows = document.getElementById("status-rows");
-  const rowsCopy = document.getElementById("status-rows-copy");
-  const ordered = grouped.flatMap((group) => group.servers);
-  if (rows) {
-    rows.innerHTML = ordered.map((server) => `
+  const pageSize = state.statusPageSize || 10;
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  state.statusPage = Math.min(Math.max(state.statusPage, 1), pageCount);
+  const start = (state.statusPage - 1) * pageSize;
+  const pageRows = visible.slice(start, start + pageSize);
+  rows.innerHTML = pageRows.map((server) => `
       <tr class="${server.needsAttention ? "attention" : ""}">
         <td class="name-cell">${escapeHtml(server.name)}</td>
         <td>${escapeHtml(server.ipAddress)}</td>
@@ -958,10 +915,17 @@ function renderServerStatus() {
         <td>${escapeHtml(formatDate(server.checkedAt) ?? "—")}</td>
         <td class="detail-cell">${escapeHtml(server.detail ?? "—")}</td>
       </tr>`).join("") || `<tr><td colspan="17">No servers match this filter.</td></tr>`;
-  }
+  const rowsCopy = document.getElementById("status-rows-copy");
   if (rowsCopy) {
-    rowsCopy.textContent = `${ordered.length} of ${servers.length} servers. One row per host.`;
+    rowsCopy.textContent = visible.length
+      ? `Showing ${start + 1}-${Math.min(start + pageRows.length, visible.length)} of ${visible.length} servers. 10 rows per page.`
+      : "No servers match this filter.";
   }
+  const range = document.getElementById("status-page-range");
+  if (range) {
+    range.textContent = `${visible.length} items`;
+  }
+  renderStatusPager(pageCount);
   document.querySelectorAll("#view-server-status [data-status-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       const next = button.getAttribute("data-status-filter") ?? "";
@@ -973,6 +937,45 @@ function renderServerStatus() {
         state.statusFilter = next;
         state.statusDeck = deck;
       }
+      state.statusPage = 1;
+      renderServerStatus();
+    });
+  });
+}
+
+function renderStatusPager(pageCount) {
+  const nav = document.getElementById("status-page-nav");
+  if (!nav) {
+    return;
+  }
+  const pages = [];
+  const current = state.statusPage;
+  const push = (page, label = String(page), active = false) => {
+    pages.push(`<button type="button" class="page-btn ${active ? "active" : ""}" data-status-page="${page}">${label}</button>`);
+  };
+  push(Math.max(1, current - 1), "‹");
+  const windowStart = Math.max(1, Math.min(current - 2, pageCount - 4));
+  const windowEnd = Math.min(pageCount, windowStart + 4);
+  if (windowStart > 1) {
+    push(1);
+    if (windowStart > 2) {
+      pages.push(`<span class="page-gap">…</span>`);
+    }
+  }
+  for (let page = windowStart; page <= windowEnd; page += 1) {
+    push(page, String(page), page === current);
+  }
+  if (windowEnd < pageCount) {
+    if (windowEnd < pageCount - 1) {
+      pages.push(`<span class="page-gap">…</span>`);
+    }
+    push(pageCount);
+  }
+  push(Math.min(pageCount, current + 1), "›");
+  nav.innerHTML = pages.join("");
+  nav.querySelectorAll("[data-status-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.statusPage = Number(button.getAttribute("data-status-page")) || 1;
       renderServerStatus();
     });
   });

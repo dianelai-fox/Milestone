@@ -1258,7 +1258,11 @@ th {
 .status-detail-wide { grid-column: 1 / -1; }
 .status-table-block { margin: 8px 0 22px; }
 .status-table-wrap {
-  max-height: min(420px, 46vh);
+  max-height: none;
+  overflow-y: hidden;
+}
+#status-footer {
+  margin-top: 0;
 }
 .status-rows-table { min-width: 1680px; }
 .status-rows-table .name-cell { font-weight: 700; }
