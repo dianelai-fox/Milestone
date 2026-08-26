@@ -10,6 +10,7 @@ public sealed class DemoVmsClient : IVmsClient
     {
         var rec1 = "a18c2e60-1c3b-4d0a-9f11-0f5f1d8c1001";
         var rec2 = "a18c2e60-1c3b-4d0a-9f11-0f5f1d8c1002";
+        var rec3 = "a18c2e60-1c3b-4d0a-9f11-0f5f1d8c1003";
 
         var cameras = new List<CameraInfo>
         {
@@ -94,6 +95,21 @@ public sealed class DemoVmsClient : IVmsClient
                 LockedUsedSpaceMb = 40_960,
                 RetainMinutes = 86_400,
                 EncryptionMethod = "Light"
+            },
+            new()
+            {
+                Id = "s05",
+                Name = "Warehouse Recording",
+                RecordingServerId = rec3,
+                RecordingServerName = "REC-03 Warehouse",
+                DiskPath = @"F:\MediaDatabase",
+                Kind = "Recording",
+                MaxSizeMb = 2_097_152,
+                UsedSpaceMb = 1_966_080,
+                LockedUsedSpaceMb = 8_192,
+                RetainMinutes = 4_320,
+                IsDefault = true,
+                EncryptionMethod = "None"
             }
         };
 
@@ -106,7 +122,8 @@ public sealed class DemoVmsClient : IVmsClient
                 HostName = "rec01.campus.local",
                 CameraCount = cameras.Count(c => c.RecordingServerId == rec1),
                 UsedSpaceMb = storages.Where(s => s.RecordingServerId == rec1).Sum(s => s.UsedSpaceMb),
-                MaxSizeMb = storages.Where(s => s.RecordingServerId == rec1).Sum(s => s.MaxSizeMb)
+                MaxSizeMb = storages.Where(s => s.RecordingServerId == rec1).Sum(s => s.MaxSizeMb),
+                CpuPercent = 36
             },
             new()
             {
@@ -115,7 +132,18 @@ public sealed class DemoVmsClient : IVmsClient
                 HostName = "rec02.campus.local",
                 CameraCount = cameras.Count(c => c.RecordingServerId == rec2),
                 UsedSpaceMb = storages.Where(s => s.RecordingServerId == rec2).Sum(s => s.UsedSpaceMb),
-                MaxSizeMb = storages.Where(s => s.RecordingServerId == rec2).Sum(s => s.MaxSizeMb)
+                MaxSizeMb = storages.Where(s => s.RecordingServerId == rec2).Sum(s => s.MaxSizeMb),
+                CpuPercent = 81
+            },
+            new()
+            {
+                Id = rec3,
+                Name = "REC-03 Warehouse",
+                HostName = "rec03.campus.local",
+                Enabled = false,
+                CameraCount = cameras.Count(c => c.RecordingServerId == rec3),
+                UsedSpaceMb = storages.Where(s => s.RecordingServerId == rec3).Sum(s => s.UsedSpaceMb),
+                MaxSizeMb = storages.Where(s => s.RecordingServerId == rec3).Sum(s => s.MaxSizeMb)
             }
         };
 

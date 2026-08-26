@@ -29,7 +29,10 @@ const state = {
   passwordHighlightsOpen: true,
   firmware: {},
   firmwareHighlightsOpen: true,
-  firmwareTab: "overview"
+  firmwareTab: "overview",
+  securityServers: {},
+  serverHighlightsOpen: true,
+  serverHealthFilter: ""
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -149,6 +152,8 @@ document.addEventListener("click", (event) => {
     showStoragePies("");
   } else if (opener.dataset.open === "archives") {
     showStoragePies("Archive");
+  } else if (opener.dataset.open === "security-servers") {
+    showSecurityServers();
   }
 });
 document.addEventListener("click", (event) => {
@@ -186,6 +191,11 @@ document.getElementById("firmware-highlights-toggle")?.addEventListener("click",
   state.firmwareHighlightsOpen = !state.firmwareHighlightsOpen;
   document.getElementById("firmware-highlights-card")?.classList.toggle("collapsed", !state.firmwareHighlightsOpen);
   document.getElementById("firmware-highlights-toggle")?.setAttribute("aria-expanded", String(state.firmwareHighlightsOpen));
+});
+document.getElementById("servers-highlights-toggle")?.addEventListener("click", () => {
+  state.serverHighlightsOpen = !state.serverHighlightsOpen;
+  document.getElementById("servers-highlights-card")?.classList.toggle("collapsed", !state.serverHighlightsOpen);
+  document.getElementById("servers-highlights-toggle")?.setAttribute("aria-expanded", String(state.serverHighlightsOpen));
 });
 selectAll.addEventListener("change", () => {
   const { pageRows } = pagedCameras();
@@ -235,6 +245,9 @@ function showView(name, options = {}) {
   if (name === "firmware") {
     renderFirmware();
   }
+  if (name === "servers") {
+    renderSecurityServers();
+  }
   if (options.focus) {
     document.getElementById(options.focus)?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
@@ -270,6 +283,7 @@ async function loadDashboard() {
     state.lifecycle = data.lifecycle ?? {};
     state.passwordRotation = data.passwordRotation ?? {};
     state.firmware = data.firmware ?? {};
+    state.securityServers = data.securityServers ?? {};
     state.siteName = data.siteName ?? "";
     state.mapCenter = data.mapCenter ?? state.mapCenter;
     renderSource(data);
@@ -291,6 +305,7 @@ async function loadDashboard() {
     renderLifecycle();
     renderPasswords();
     renderFirmware();
+    renderSecurityServers();
     try {
       renderMap(state.cameras);
     } catch (mapError) {
@@ -359,11 +374,12 @@ function renderOverview() {
         <span><i class="dot orange"></i>${data.unmapped} Unmapped</span>
       </div>
     </article>
-    <article class="summary-card clickable ${state.inventoryView === "servers" ? "selected" : ""}" data-open="servers" title="Show all recording servers">
-      <h3>Recording servers</h3>
+    <article class="summary-card clickable" data-open="security-servers" title="Open Security Servers">
+      <h3>Security servers</h3>
       <div class="value">${data.servers}</div>
       <div class="legend">
         <span><i class="dot teal"></i>${data.serversOnline} Online</span>
+        <span><i class="dot red"></i>${data.servers - data.serversOnline} Offline</span>
         <span><i class="dot gray"></i>${data.storage} storage volumes</span>
       </div>
       <div class="card-action">View all ${data.servers} servers →</div>
@@ -382,7 +398,7 @@ function renderDeviceTypes() {
     [data.unmapped, "Unmapped"]
   ];
   document.getElementById("device-types").innerHTML = items.map(([count, label]) => {
-    const open = label === "Recording Server" ? "servers"
+    const open = label === "Recording Server" ? "security-servers"
       : label === "Camera" ? "cameras"
       : label === "Storage" ? "storage"
       : label === "Archive" ? "archives"
@@ -770,6 +786,224 @@ function renderFirmwareAlertedSites(rows) {
   `;
 }
 
+function renderSecurityServers() {
+  const overview = state.securityServers ?? {};
+  const servers = overview.servers ?? state.recordingServers ?? [];
+  const attention = overview.attentionServers ?? servers.filter((server) => server.needsAttention);
+  const online = overview.onlineCount ?? servers.filter((server) => server.enabled !== false).length;
+  const offline = overview.offlineCount ?? servers.length - online;
+  const filter = state.serverHealthFilter;
+  const visible = servers.filter((server) => matchesServerHealthFilter(server, filter));
+  document.getElementById("servers-summary").innerHTML = `
+    <article class="summary-card life-card">
+      <h3>SERVERS</h3>
+      <div class="life-devices">
+        <div class="life-score">
+          <div class="value">${formatInt(overview.totalServers ?? servers.length)}</div>
+          <div class="muted">Managed recording servers</div>
+        </div>
+        <div class="life-legend">
+          <button type="button" data-server-filter="online"><i class="dot teal"></i>Online: ${formatInt(online)}</button>
+          <button type="button" data-server-filter="offline"><i class="dot red"></i>Offline: ${formatInt(offline)}</button>
+          <button type="button" data-server-filter="attention"><i class="dot orange"></i>Needs attention: ${formatInt(overview.attentionCount ?? attention.length)}</button>
+          <div class="total">Total servers: ${formatInt(overview.totalServers ?? servers.length)}</div>
+        </div>
+      </div>
+    </article>
+    <article class="summary-card life-card">
+      <h3>STORAGE</h3>
+      <div class="life-status">
+        <button type="button" class="life-badge fresh" data-server-filter="storage-ok">
+          <span>ENOUGH SPACE</span>
+          <strong>${formatInt(overview.storageHealthyCount)}</strong>
+        </button>
+        <button type="button" class="life-badge soon" data-server-filter="storage-warn">
+          <span>WARNING</span>
+          <strong>${formatInt(overview.storageWarningCount)}</strong>
+        </button>
+        <button type="button" class="life-badge eos" data-server-filter="storage-critical">
+          <span>CRITICAL</span>
+          <strong>${formatInt(overview.storageCriticalCount)}</strong>
+        </button>
+      </div>
+      <div class="muted server-capacity">${formatMb(overview.usedSpaceMb)} used of ${formatMb(overview.maxSizeMb)} · ${formatPercent(overview.storageUsagePercent)}</div>
+    </article>
+    <article class="summary-card life-card">
+      <h3>CPU</h3>
+      <div class="life-status">
+        <button type="button" class="life-badge current" data-server-filter="cpu-ok">
+          <span>HEALTHY</span>
+          <strong>${formatInt(overview.cpuHealthyCount)}</strong>
+        </button>
+        <button type="button" class="life-badge soon" data-server-filter="cpu">
+          <span>HIGH CPU</span>
+          <strong>${formatInt(overview.cpuAttentionCount)}</strong>
+        </button>
+        <button type="button" class="life-badge na" data-server-filter="cpu-na">
+          <span>NOT REPORTED</span>
+          <strong>${formatInt(overview.cpuUnreportedCount)}</strong>
+        </button>
+      </div>
+    </article>
+  `;
+  document.getElementById("servers-highlights").innerHTML = `
+    <article class="highlight-card">
+      <h3>Servers needing attention</h3>
+      <table class="alert-table">
+        <thead>
+          <tr><th>Server</th><th>Status</th><th>Storage</th><th>CPU</th></tr>
+        </thead>
+        <tbody>
+          ${attention.length === 0
+            ? `<tr><td colspan="4" class="muted">All servers are online with enough storage and CPU.</td></tr>`
+            : attention.map((server) => `
+              <tr>
+                <td><button class="link-btn" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button></td>
+                <td><span class="status ${server.enabled === false ? "off" : "on"}">${escapeHtml(server.status ?? (server.enabled === false ? "Offline" : "Online"))}</span></td>
+                <td>${escapeHtml(server.storageHealth ?? "—")} · ${formatPercent(server.effectiveStorageUsagePercent ?? server.storageUsagePercent)}</td>
+                <td>${escapeHtml(cpuLabel(server))}</td>
+              </tr>`).join("")}
+        </tbody>
+      </table>
+    </article>
+    <article class="highlight-card">
+      <h3>How this page is scored</h3>
+      <ul class="server-notes">
+        <li>Online / Offline comes from the XProtect recording server enabled state.</li>
+        <li>Storage uses the tightest volume on each server. Warning starts at 75% and critical at 90%.</li>
+        <li>XProtect Config API does not report CPU. Demo data includes sample CPU. Live servers show Not reported unless a status source provides it.</li>
+      </ul>
+    </article>
+  `;
+  document.getElementById("servers-copy").textContent = filter
+    ? `${visible.length} of ${servers.length} security servers · ${serverFilterLabel(filter)}. Click a server to see its cameras.`
+    : `${servers.length} security servers from XProtect. Click a server name or camera count to see its cameras.`;
+  document.getElementById("servers-grid").innerHTML = visible.map((server) => {
+    const storagePercent = Number(server.effectiveStorageUsagePercent ?? server.storageUsagePercent ?? 0);
+    const cpuPercent = server.cpuPercent;
+    const storageTone = healthTone(server.storageHealth);
+    const cpuTone = healthTone(server.cpuHealth);
+    return `
+    <article class="server-card ${server.needsAttention ? "attention" : ""}">
+      <div class="server-card-head">
+        <div>
+          <button class="link-btn server-name" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button>
+          <div class="muted">${escapeHtml(server.role ?? "Recording server")} · ${escapeHtml(server.hostName ?? "Host not reported")}</div>
+        </div>
+        <span class="status ${server.enabled === false ? "off" : "on"}">${escapeHtml(server.status ?? (server.enabled === false ? "Offline" : "Online"))}</span>
+      </div>
+      <div class="server-metrics">
+        <button class="server-metric" type="button" data-server="${escapeHtml(server.id)}" title="Show cameras on this server">
+          <span class="label">Cameras</span>
+          <strong>${formatInt(server.cameraCount)}</strong>
+        </button>
+        <div class="server-metric">
+          <span class="label">Volumes</span>
+          <strong>${formatInt(server.volumeCount)}</strong>
+        </div>
+      </div>
+      <div class="server-bar-block">
+        <div class="server-bar-label">
+          <span>Storage</span>
+          <span class="health ${storageTone}">${escapeHtml(server.storageHealth ?? "Healthy")} · ${formatPercent(storagePercent)}</span>
+        </div>
+        <div class="server-bar" title="${formatPercent(storagePercent)} used on the tightest volume">
+          <span class="${storageTone}" style="width:${Math.min(storagePercent, 100)}%"></span>
+        </div>
+        <div class="muted">${formatMb(server.usedSpaceMb)} used of ${formatMb(server.maxSizeMb)}</div>
+      </div>
+      <div class="server-bar-block">
+        <div class="server-bar-label">
+          <span>CPU</span>
+          <span class="health ${cpuTone}">${escapeHtml(cpuLabel(server))}</span>
+        </div>
+        ${cpuPercent == null
+          ? `<div class="server-bar empty"><span></span></div><div class="muted">Not reported by XProtect</div>`
+          : `<div class="server-bar" title="${formatPercent(cpuPercent)} CPU">
+               <span class="${cpuTone}" style="width:${Math.min(Number(cpuPercent), 100)}%"></span>
+             </div>
+             <div class="muted">${formatPercent(cpuPercent)} of available CPU</div>`}
+      </div>
+    </article>`;
+  }).join("") || `<p class="muted">No security servers match this filter.</p>`;
+
+  document.querySelectorAll("#view-servers [data-server]").forEach((button) => {
+    button.addEventListener("click", () => showCamerasForServer(button.getAttribute("data-server") ?? ""));
+  });
+  document.querySelectorAll("#view-servers [data-server-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const next = button.getAttribute("data-server-filter") ?? "";
+      state.serverHealthFilter = state.serverHealthFilter === next ? "" : next;
+      renderSecurityServers();
+    });
+  });
+}
+
+function matchesServerHealthFilter(server, filter) {
+  if (!filter) {
+    return true;
+  }
+  if (filter === "online") {
+    return server.enabled !== false;
+  }
+  if (filter === "offline") {
+    return server.enabled === false;
+  }
+  if (filter === "attention") {
+    return Boolean(server.needsAttention);
+  }
+  if (filter === "storage-ok") {
+    return (server.storageHealth ?? "Healthy") === "Healthy";
+  }
+  if (filter === "storage-warn") {
+    return server.storageHealth === "Warning";
+  }
+  if (filter === "storage-critical") {
+    return server.storageHealth === "Critical";
+  }
+  if (filter === "cpu-ok") {
+    return server.cpuHealth === "Healthy";
+  }
+  if (filter === "cpu") {
+    return server.cpuHealth === "Warning" || server.cpuHealth === "Critical";
+  }
+  if (filter === "cpu-na") {
+    return server.cpuHealth === "Not reported" || server.cpuPercent == null;
+  }
+  return true;
+}
+
+function serverFilterLabel(filter) {
+  return {
+    online: "Online",
+    offline: "Offline",
+    attention: "Needs attention",
+    "storage-ok": "Enough storage",
+    "storage-warn": "Storage warning",
+    "storage-critical": "Storage critical",
+    "cpu-ok": "Healthy CPU",
+    cpu: "High CPU",
+    "cpu-na": "CPU not reported"
+  }[filter] ?? filter;
+}
+
+function cpuLabel(server) {
+  if (server.cpuPercent == null) {
+    return "Not reported";
+  }
+  return `${server.cpuHealth ?? "Healthy"} · ${formatPercent(server.cpuPercent)}`;
+}
+
+function healthTone(value) {
+  if (value === "Critical" || value === "Offline") {
+    return "critical";
+  }
+  if (value === "Warning" || value === "Not reported") {
+    return value === "Not reported" ? "na" : "warn";
+  }
+  return "ok";
+}
+
 function renderFirmwareDetails(rows) {
   document.getElementById("firmware-detail-body").innerHTML = rows.map((row) => `
     <tr>
@@ -1020,6 +1254,14 @@ function renderMaintenance() {
       <strong>${value}</strong>
     </div>
   `).join("");
+}
+
+function showSecurityServers(filter) {
+  if (filter !== undefined) {
+    state.serverHealthFilter = filter;
+  }
+  renderSecurityServers();
+  showView("servers");
 }
 
 function showStoragePies(kind) {

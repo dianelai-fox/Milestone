@@ -1117,6 +1117,92 @@ th {
 #firmware-details-panel[hidden],
 #firmware-overview-panel[hidden] { display: none !important; }
 
+.servers-highlights { grid-template-columns: minmax(320px, 1.4fr) minmax(280px, 1fr); }
+.server-capacity { margin-top: 14px; }
+.server-notes {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.server-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+.server-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px 18px;
+  background: #fff;
+  display: grid;
+  gap: 14px;
+}
+.server-card.attention { border-color: #f0c36d; }
+.server-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.server-name { font-size: 16px; font-weight: 700; }
+.server-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.server-metric {
+  border: 1px solid var(--line);
+  background: #f7fafc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+button.server-metric { cursor: pointer; }
+button.server-metric:hover { border-color: var(--teal); }
+.server-metric .label {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.server-metric strong { font-size: 22px; }
+.server-bar-block { display: grid; gap: 6px; }
+.server-bar-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.server-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #edf1f4;
+  overflow: hidden;
+}
+.server-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+.server-bar span.ok { background: var(--teal); }
+.server-bar span.warn { background: var(--orange); }
+.server-bar span.critical { background: var(--pink); }
+.server-bar span.na { background: var(--gray); }
+.server-bar.empty { background: #eef1f4; }
+.health.ok { color: #147f75; }
+.health.warn { color: #b47600; }
+.health.critical { color: #c43b61; }
+.health.na { color: #6b7784; }
+
 @media (max-width: 1200px) {
-  .summary-row, .middle-row, .bottom-row, .device-row, .highlights-grid, .life-devices, .ndaa-highlights-grid, .pw-devices { grid-template-columns: 1fr; }
+  .summary-row, .middle-row, .bottom-row, .device-row, .highlights-grid, .life-devices, .ndaa-highlights-grid, .pw-devices, .servers-highlights, .server-grid { grid-template-columns: 1fr; }
 }

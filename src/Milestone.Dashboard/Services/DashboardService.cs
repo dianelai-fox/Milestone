@@ -164,6 +164,7 @@ public sealed class DashboardService
         snapshot.Lifecycle = LifecycleInventory.FromCameras(snapshot.Cameras);
         snapshot.PasswordRotation = PasswordRotationInventory.FromCameras(snapshot.Cameras);
         snapshot.Firmware = FirmwareInventory.FromCameras(snapshot.Cameras);
+        snapshot.SecurityServers = SecurityServerInventory.From(snapshot.RecordingServers, snapshot.Storages);
     }
 
     internal static void ApplyOverrides(

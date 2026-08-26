@@ -235,6 +235,7 @@ app.MapGet("/api/dashboard", async (DashboardService dashboard, CancellationToke
         lifecycle = snapshot.Lifecycle,
         passwordRotation = snapshot.PasswordRotation,
         firmware = snapshot.Firmware,
+        securityServers = snapshot.SecurityServers,
         mapCenter = new
         {
             latitude = snapshot.ResolveMapCenter()?.Latitude ?? milestoneOptions.DefaultLatitude,

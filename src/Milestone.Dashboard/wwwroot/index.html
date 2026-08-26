@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260825b" />
+  <link rel="stylesheet" href="/css/site.css?v=20260825c" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -45,6 +45,12 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4zm1 6h4v8.2l2.4-1.4.9 1.6L12 20.5 6.7 17.4l.9-1.6L10 17.2z"/></svg>
         </span>
         <span class="nav-label">Outdated Firmware</span>
+      </button>
+      <button class="nav-btn" data-view="servers" title="Security Servers">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v6H4zm2 2v2h2V5zm4 0v2h8V5zM4 11h16v6H4zm2 2v2h2v-2zm4 0v2h8v-2zM4 19h16v2H4z"/></svg>
+        </span>
+        <span class="nav-label">Security Servers</span>
       </button>
       <button class="nav-btn" data-view="storage" title="Storage">
         <span class="nav-icon">▣</span>
@@ -417,6 +423,31 @@
       </section>
       </div>
 
+      <div id="view-servers" class="view" hidden>
+      <section class="life-page">
+        <div class="page-head">
+          <h1>Security Servers</h1>
+        </div>
+        <section id="servers-summary" class="summary-row life-summary"></section>
+        <section class="card highlights-card" id="servers-highlights-card">
+          <button class="highlights-toggle" id="servers-highlights-toggle" type="button" aria-expanded="true">
+            Highlights
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div id="servers-highlights" class="highlights-grid servers-highlights"></div>
+        </section>
+        <section class="card">
+          <div class="panel-head">
+            <div>
+              <h2>All security servers</h2>
+              <p class="muted" id="servers-copy">Online status, storage headroom, and CPU for every recording server.</p>
+            </div>
+          </div>
+          <div id="servers-grid" class="server-grid"></div>
+        </section>
+      </section>
+      </div>
+
       <div id="view-storage" class="view" hidden>
       <section class="card" id="storage-pies">
         <div class="panel-head">
@@ -453,6 +484,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260825b"></script>
+  <script src="/js/dashboard.js?v=20260825c"></script>
 </body>
 </html>

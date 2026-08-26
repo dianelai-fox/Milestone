@@ -103,6 +103,22 @@ public sealed class RecordingServerInfo
     public int CameraCount { get; init; }
     public long UsedSpaceMb { get; init; }
     public long MaxSizeMb { get; init; }
+    public string Role { get; set; } = "Recording server";
+    public int VolumeCount { get; set; }
+    public double? CpuPercent { get; set; }
+    public double WorstVolumeUsagePercent { get; set; }
+
+    public string Status => Enabled ? "Online" : "Offline";
+    public double StorageUsagePercent => StorageMetrics.UsagePercent(UsedSpaceMb, MaxSizeMb);
+    public string StorageHealth => ServerHealth.Storage(EffectiveStorageUsagePercent);
+    public string CpuHealth => ServerHealth.Cpu(CpuPercent);
+    public bool NeedsAttention =>
+        !Enabled
+        || ServerHealth.IsStorageAttention(EffectiveStorageUsagePercent)
+        || ServerHealth.IsCpuAttention(CpuPercent);
+
+    public double EffectiveStorageUsagePercent =>
+        VolumeCount > 0 ? WorstVolumeUsagePercent : StorageUsagePercent;
 }
 
 public sealed class SiteInfo
@@ -140,6 +156,7 @@ public sealed class DashboardSnapshot
     public LifecycleOverview Lifecycle { get; set; } = new();
     public PasswordRotationOverview PasswordRotation { get; set; } = new();
     public FirmwareOverview Firmware { get; set; } = new();
+    public SecurityServersOverview SecurityServers { get; set; } = new();
 
     public DashboardSummary Summary => DashboardSummary.From(this);
 
@@ -200,6 +217,27 @@ public sealed class DashboardSummary
             StorageUsagePercent = StorageMetrics.UsagePercent(used, max)
         };
     }
+}
+
+public static class ServerHealth
+{
+    public const double WarningPercent = 75;
+    public const double CriticalPercent = 90;
+
+    public static string Storage(double percent) =>
+        percent >= CriticalPercent ? "Critical"
+        : percent >= WarningPercent ? "Warning"
+        : "Healthy";
+
+    public static string Cpu(double? percent) =>
+        percent is null ? "Not reported"
+        : percent >= CriticalPercent ? "Critical"
+        : percent >= WarningPercent ? "Warning"
+        : "Healthy";
+
+    public static bool IsStorageAttention(double percent) => percent >= WarningPercent;
+
+    public static bool IsCpuAttention(double? percent) => percent is >= WarningPercent;
 }
 
 public static class StorageMetrics
@@ -381,4 +419,23 @@ public sealed class FirmwareDetailRow
     public string? SuggestedFirmware { get; init; }
     public string? Status { get; init; }
     public string? Vulnerability { get; init; }
+}
+
+public sealed class SecurityServersOverview
+{
+    public int TotalServers { get; init; }
+    public int OnlineCount { get; init; }
+    public int OfflineCount { get; init; }
+    public int StorageHealthyCount { get; init; }
+    public int StorageWarningCount { get; init; }
+    public int StorageCriticalCount { get; init; }
+    public int CpuHealthyCount { get; init; }
+    public int CpuAttentionCount { get; init; }
+    public int CpuUnreportedCount { get; init; }
+    public int AttentionCount { get; init; }
+    public long UsedSpaceMb { get; init; }
+    public long MaxSizeMb { get; init; }
+    public double StorageUsagePercent { get; init; }
+    public IReadOnlyList<RecordingServerInfo> Servers { get; init; } = [];
+    public IReadOnlyList<RecordingServerInfo> AttentionServers { get; init; } = [];
 }

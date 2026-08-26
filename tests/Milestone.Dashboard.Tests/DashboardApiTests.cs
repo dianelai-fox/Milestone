@@ -87,6 +87,23 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
             firmware.GetProperty("totalDevices").GetInt32());
         Assert.True(firmware.GetProperty("nonCompliantCount").GetInt32() >= 1);
         Assert.True(firmware.GetProperty("details").GetArrayLength() >= 1);
+        var securityServers = document.RootElement.GetProperty("securityServers");
+        Assert.True(securityServers.GetProperty("totalServers").GetInt32() >= 2);
+        Assert.Equal(
+            securityServers.GetProperty("onlineCount").GetInt32()
+            + securityServers.GetProperty("offlineCount").GetInt32(),
+            securityServers.GetProperty("totalServers").GetInt32());
+        Assert.True(securityServers.GetProperty("servers").GetArrayLength() >= 2);
+        var firstServer = securityServers.GetProperty("servers").EnumerateArray().First();
+        Assert.False(string.IsNullOrWhiteSpace(firstServer.GetProperty("status").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(firstServer.GetProperty("storageHealth").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(firstServer.GetProperty("cpuHealth").GetString()));
+        Assert.Contains(
+            securityServers.GetProperty("servers").EnumerateArray(),
+            server => server.GetProperty("cpuPercent").ValueKind is JsonValueKind.Number);
+        Assert.Contains(
+            securityServers.GetProperty("servers").EnumerateArray(),
+            server => server.GetProperty("enabled").GetBoolean() == false);
     }
 
     [Fact]
@@ -155,6 +172,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("id=\"view-firmware\"", html);
         Assert.Contains("Outdated Firmware", html);
         Assert.Contains("firmware-highlights", html);
+        Assert.Contains("id=\"view-servers\"", html);
+        Assert.Contains("Security Servers", html);
+        Assert.Contains("servers-grid", html);
         Assert.Contains("id=\"storage-pies\"", html);
         Assert.Contains("Replace previous locations", html);
         Assert.Contains("storage-pie-grid", html);
@@ -191,6 +211,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".ndaa-highlights-card", css);
         Assert.Contains(".pw-gauge", css);
         Assert.Contains(".risk-segments", css);
+        Assert.Contains(".server-grid", css);
+        Assert.Contains(".server-card", css);
     }
 
     [Fact]
