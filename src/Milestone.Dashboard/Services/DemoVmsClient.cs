@@ -122,8 +122,7 @@ public sealed class DemoVmsClient : IVmsClient
                 HostName = "rec01.campus.local",
                 CameraCount = cameras.Count(c => c.RecordingServerId == rec1),
                 UsedSpaceMb = storages.Where(s => s.RecordingServerId == rec1).Sum(s => s.UsedSpaceMb),
-                MaxSizeMb = storages.Where(s => s.RecordingServerId == rec1).Sum(s => s.MaxSizeMb),
-                CpuPercent = 36
+                MaxSizeMb = storages.Where(s => s.RecordingServerId == rec1).Sum(s => s.MaxSizeMb)
             },
             new()
             {
@@ -132,8 +131,7 @@ public sealed class DemoVmsClient : IVmsClient
                 HostName = "rec02.campus.local",
                 CameraCount = cameras.Count(c => c.RecordingServerId == rec2),
                 UsedSpaceMb = storages.Where(s => s.RecordingServerId == rec2).Sum(s => s.UsedSpaceMb),
-                MaxSizeMb = storages.Where(s => s.RecordingServerId == rec2).Sum(s => s.MaxSizeMb),
-                CpuPercent = 81
+                MaxSizeMb = storages.Where(s => s.RecordingServerId == rec2).Sum(s => s.MaxSizeMb)
             },
             new()
             {

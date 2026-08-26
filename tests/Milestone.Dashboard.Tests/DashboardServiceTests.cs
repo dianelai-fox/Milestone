@@ -112,7 +112,6 @@ public class DemoVmsClientTests
         Assert.Contains(snapshot.Cameras, camera => camera.Labels.Count > 0);
         Assert.Contains(snapshot.Cameras, camera => camera.CustomProperties.ContainsKey("Owner"));
         Assert.Contains(snapshot.Cameras, camera => camera.PtzEnabled == true);
-        Assert.Contains(snapshot.RecordingServers, server => server.CpuPercent is not null);
         Assert.Contains(snapshot.RecordingServers, server => server.Enabled == false);
     }
 }

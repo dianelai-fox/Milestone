@@ -842,40 +842,22 @@ function renderSecurityServers() {
       </div>
       <div class="muted server-capacity">${formatMb(overview.usedSpaceMb)} used of ${formatMb(overview.maxSizeMb)} · ${formatPercent(overview.storageUsagePercent)}</div>
     </article>
-    <article class="summary-card life-card">
-      <h3>CPU</h3>
-      <div class="life-status">
-        <button type="button" class="life-badge current" data-server-filter="cpu-ok">
-          <span>HEALTHY</span>
-          <strong>${formatInt(overview.cpuHealthyCount)}</strong>
-        </button>
-        <button type="button" class="life-badge soon" data-server-filter="cpu">
-          <span>HIGH CPU</span>
-          <strong>${formatInt(overview.cpuAttentionCount)}</strong>
-        </button>
-        <button type="button" class="life-badge na" data-server-filter="cpu-na">
-          <span>NOT REPORTED</span>
-          <strong>${formatInt(overview.cpuUnreportedCount)}</strong>
-        </button>
-      </div>
-    </article>
   `;
   highlights.innerHTML = `
     <article class="highlight-card">
       <h3>Servers needing attention</h3>
       <table class="alert-table">
         <thead>
-          <tr><th>Server</th><th>Status</th><th>Storage</th><th>CPU</th></tr>
+          <tr><th>Server</th><th>Status</th><th>Storage</th></tr>
         </thead>
         <tbody>
           ${attention.length === 0
-            ? `<tr><td colspan="4" class="muted">All servers are online with enough storage and CPU.</td></tr>`
+            ? `<tr><td colspan="3" class="muted">All servers are online with enough storage.</td></tr>`
             : attention.map((server) => `
               <tr>
                 <td><button class="link-btn" type="button" data-server="${escapeHtml(server.id)}">${escapeHtml(server.name)}</button></td>
                 <td><span class="status ${server.enabled === false ? "off" : "on"}">${escapeHtml(server.status ?? (server.enabled === false ? "Offline" : "Online"))}</span></td>
                 <td>${escapeHtml(server.storageHealth ?? "—")} · ${formatPercent(server.effectiveStorageUsagePercent ?? server.storageUsagePercent)}</td>
-                <td>${escapeHtml(cpuLabel(server))}</td>
               </tr>`).join("")}
         </tbody>
       </table>
@@ -885,7 +867,6 @@ function renderSecurityServers() {
       <ul class="server-notes">
         <li>Online / Offline comes from the XProtect recording server enabled state.</li>
         <li>Storage uses the tightest volume on each server. Warning starts at 75% and critical at 90%.</li>
-        <li>XProtect Config API does not report CPU. Demo data includes sample CPU. Live servers show Not reported unless a status source provides it.</li>
       </ul>
     </article>
   `;
@@ -894,9 +875,7 @@ function renderSecurityServers() {
     : `${servers.length} security servers from XProtect. Click a server name or camera count to see its cameras.`;
   grid.innerHTML = visible.map((server) => {
     const storagePercent = Number(server.effectiveStorageUsagePercent ?? server.storageUsagePercent ?? 0);
-    const cpuPercent = server.cpuPercent;
     const storageTone = healthTone(server.storageHealth);
-    const cpuTone = healthTone(server.cpuHealth);
     return `
     <article class="server-card ${server.needsAttention ? "attention" : ""}">
       <div class="server-card-head">
@@ -925,18 +904,6 @@ function renderSecurityServers() {
           <span class="${storageTone}" style="width:${Math.min(storagePercent, 100)}%"></span>
         </div>
         <div class="muted">${formatMb(server.usedSpaceMb)} used of ${formatMb(server.maxSizeMb)}</div>
-      </div>
-      <div class="server-bar-block">
-        <div class="server-bar-label">
-          <span>CPU</span>
-          <span class="health ${cpuTone}">${escapeHtml(cpuLabel(server))}</span>
-        </div>
-        ${cpuPercent == null
-          ? `<div class="server-bar empty"><span></span></div><div class="muted">Not reported by XProtect</div>`
-          : `<div class="server-bar" title="${formatPercent(cpuPercent)} CPU">
-               <span class="${cpuTone}" style="width:${Math.min(Number(cpuPercent), 100)}%"></span>
-             </div>
-             <div class="muted">${formatPercent(cpuPercent)} of available CPU</div>`}
       </div>
     </article>`;
   }).join("") || `<p class="muted">No security servers match this filter.</p>`;
@@ -975,15 +942,6 @@ function matchesServerHealthFilter(server, filter) {
   if (filter === "storage-critical") {
     return server.storageHealth === "Critical";
   }
-  if (filter === "cpu-ok") {
-    return server.cpuHealth === "Healthy";
-  }
-  if (filter === "cpu") {
-    return server.cpuHealth === "Warning" || server.cpuHealth === "Critical";
-  }
-  if (filter === "cpu-na") {
-    return server.cpuHealth === "Not reported" || server.cpuPercent == null;
-  }
   return true;
 }
 
@@ -994,18 +952,8 @@ function serverFilterLabel(filter) {
     attention: "Needs attention",
     "storage-ok": "Enough storage",
     "storage-warn": "Storage warning",
-    "storage-critical": "Storage critical",
-    "cpu-ok": "Healthy CPU",
-    cpu: "High CPU",
-    "cpu-na": "CPU not reported"
+    "storage-critical": "Storage critical"
   }[filter] ?? filter;
-}
-
-function cpuLabel(server) {
-  if (server.cpuPercent == null) {
-    return "Not reported";
-  }
-  return `${server.cpuHealth ?? "Healthy"} · ${formatPercent(server.cpuPercent)}`;
 }
 
 function healthTone(value) {

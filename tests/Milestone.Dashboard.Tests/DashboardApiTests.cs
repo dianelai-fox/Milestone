@@ -97,10 +97,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         var firstServer = securityServers.GetProperty("servers").EnumerateArray().First();
         Assert.False(string.IsNullOrWhiteSpace(firstServer.GetProperty("status").GetString()));
         Assert.False(string.IsNullOrWhiteSpace(firstServer.GetProperty("storageHealth").GetString()));
-        Assert.False(string.IsNullOrWhiteSpace(firstServer.GetProperty("cpuHealth").GetString()));
-        Assert.Contains(
-            securityServers.GetProperty("servers").EnumerateArray(),
-            server => server.GetProperty("cpuPercent").ValueKind is JsonValueKind.Number);
+        Assert.False(firstServer.TryGetProperty("cpuPercent", out _));
+        Assert.False(firstServer.TryGetProperty("cpuHealth", out _));
         Assert.Contains(
             securityServers.GetProperty("servers").EnumerateArray(),
             server => server.GetProperty("enabled").GetBoolean() == false);
