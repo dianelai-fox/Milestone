@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260826e" />
+  <link rel="stylesheet" href="/css/site.css?v=20260826f" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -51,6 +51,12 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v6H4zm2 2v2h2V5zm4 0v2h8V5zM4 11h16v6H4zm2 2v2h2v-2zm4 0v2h8v-2zM4 19h16v2H4z"/></svg>
         </span>
         <span class="nav-label">Security Servers</span>
+      </button>
+      <button class="nav-btn" id="nav-server-status" data-view="server-status" title="Server Status">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v4H4zm0 6h16v4H4zm0 6h16v4H4zm2 1.2h2.2v1.6H6zm0-6h2.2v1.6H6zm0-6h2.2v1.6H6z"/></svg>
+        </span>
+        <span class="nav-label">Server Status</span>
       </button>
       <button class="nav-btn" data-view="storage" title="Storage">
         <span class="nav-icon">▣</span>
@@ -460,6 +466,38 @@
             </div>
           </div>
           <div id="servers-grid" class="server-grid"></div>
+        </section>
+      </section>
+      </div>
+
+      <div id="view-server-status" class="view" hidden>
+      <section class="life-page">
+        <div class="page-head">
+          <h1>Server Status</h1>
+        </div>
+        <section id="host-status-summary" class="summary-row life-summary"></section>
+        <section class="card">
+          <div class="panel-head">
+            <div>
+              <h2>Monitored servers</h2>
+              <p class="muted" id="host-status-copy">Online or offline from name, hostname, and IP.</p>
+            </div>
+            <button id="host-status-refresh" type="button">Check now</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="host-status-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Server name</th>
+                  <th>Hostname</th>
+                  <th>IP address</th>
+                  <th>Role</th>
+                </tr>
+              </thead>
+              <tbody id="host-status-body"></tbody>
+            </table>
+          </div>
         </section>
       </section>
       </div>

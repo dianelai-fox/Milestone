@@ -48,6 +48,9 @@ builder.Services.AddSingleton<SnapshotCache>();
 builder.Services.AddSingleton<AppSettingsPasswordWriter>();
 builder.Services.AddSingleton<XprotectConnectionTester>();
 builder.Services.AddSingleton<DemoVmsClient>();
+builder.Services.AddSingleton<MonitoredServerCatalog>();
+builder.Services.AddSingleton<MonitoredServerProbe>();
+builder.Services.AddSingleton<ServerStatusService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
 {
@@ -253,6 +256,32 @@ app.MapGet("/api/dashboard", async (DashboardService dashboard, CancellationToke
             longitude = snapshot.ResolveMapCenter()?.Longitude ?? milestoneOptions.DefaultLongitude,
             zoom = milestoneOptions.DefaultZoom
         }
+    });
+});
+
+app.MapGet("/api/server-status", async (ServerStatusService serverStatus, CancellationToken cancellationToken) =>
+{
+    var overview = await serverStatus.GetOverviewAsync(cancellationToken);
+    return Results.Ok(new
+    {
+        overview.TotalServers,
+        overview.OnlineCount,
+        overview.OfflineCount,
+        overview.Source,
+        checkedAt = overview.CheckedAt,
+        servers = overview.Servers.Select(server => new
+        {
+            server.Id,
+            server.Name,
+            server.HostName,
+            server.IpAddress,
+            server.Role,
+            server.Online,
+            status = server.Status,
+            server.ReachableVia,
+            server.CheckedAt,
+            server.IsDemo
+        })
     });
 });
 

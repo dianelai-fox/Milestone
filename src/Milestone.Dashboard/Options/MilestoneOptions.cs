@@ -28,6 +28,12 @@ public sealed class MilestoneOptions
 
     public int DefaultZoom { get; set; } = 13;
 
+    /// <summary>
+    /// Hosts to show on the Server Status page (name, hostname, IP).
+    /// Online/offline is probed from the web server.
+    /// </summary>
+    public List<MonitoredServerSpec> MonitoredServers { get; set; } = [];
+
     public string ResolvedTokenUrl()
     {
         var urls = XprotectAuth.TokenUrlCandidates(GatewayBaseUrl, TokenUrl);
@@ -36,4 +42,25 @@ public sealed class MilestoneOptions
 
     public string ResolvedApiBaseUrl() =>
         $"{XprotectAuth.NormalizeGatewayBaseUrl(GatewayBaseUrl)}/api/rest/v1";
+}
+
+public sealed class MonitoredServerSpec
+{
+    public string Name { get; set; } = string.Empty;
+    public string? HostName { get; set; }
+    public string? IpAddress { get; set; }
+    public string Role { get; set; } = "Server";
+    public int[] ProbePorts { get; set; } = [445, 3389, 80, 443];
+
+    public string DisplayName() =>
+        string.IsNullOrWhiteSpace(Name)
+            ? (HostName ?? IpAddress ?? string.Empty).Trim()
+            : Name.Trim();
+
+    public IReadOnlyList<string> ProbeTargets() =>
+        new[] { IpAddress, HostName, Name }
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 }

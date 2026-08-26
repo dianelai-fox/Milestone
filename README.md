@@ -8,6 +8,8 @@ A web dashboard for Milestone XProtect that shows camera locations on a map and 
 - Local location overrides for cameras that are not mapped yet
 - Storage usage for recording and archive volumes
 - Camera inventory in a device table: status, labels, vendor, model, IP, firmware, lifecycle/EOS, NDAA, password age, and notes
+- Security Servers page for XProtect recording-server online status and storage
+- Server Status page for any hosts you configure (name, hostname, IP) with live online/offline checks
 - Optional SQL Server cache so the last snapshot still shows if the management server is briefly unavailable
 
 The dashboard does **not** query the XProtect `Surveillance` database. Milestone stores configuration there, but that schema is unsupported for integrations. Live data comes from the [MIP VMS RESTful Configuration API](https://doc.developer.milestonesys.com/mipvmsapi/api/config-rest/v1/) through the API Gateway.
@@ -143,3 +145,21 @@ For many cameras, click **Download CSV**, fill `latitude` and `longitude`, then 
 If you later set a camera GIS point in Management Client (`POINT (LONGITUDE LATITUDE)`), the dashboard uses that value unless a local override exists.
 
 To change the starting map view when nothing is mapped yet, set `Milestone:DefaultLatitude`, `DefaultLongitude`, and `DefaultZoom` in `appsettings.json`.
+
+## Monitor servers (online / offline)
+
+Open **Server Status** in the sidebar. That page is separate from **Security Servers** (XProtect recording servers). Add the hosts you already track by name, hostname, and IP:
+
+```json
+"MonitoredServers": [
+  {
+    "Name": "FOXUSWDMSIA297",
+    "HostName": "LENELNEWAPP.INT.APPS.FOX",
+    "IpAddress": "10.0.0.10",
+    "Role": "Lenel application"
+  }
+]
+```
+
+Put that under `Milestone` in `appsettings.json` on the IIS server (or copy `monitored-servers.example.json` to `App_Data/monitored-servers.json`). The site probes IP/hostname from the web server (common ports, then ping) and shows Online or Offline. Demo mode shows sample rows until you add real hosts.
+

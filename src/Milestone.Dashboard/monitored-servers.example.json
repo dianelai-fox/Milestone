@@ -1,0 +1,8 @@
+[
+  {
+    "Name": "EXAMPLE-SERVER",
+    "HostName": "server.example.local",
+    "IpAddress": "10.0.0.20",
+    "Role": "Application server"
+  }
+]

@@ -105,6 +105,26 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task Server_status_endpoint_returns_name_hostname_and_ip()
+    {
+        var response = await _client.GetAsync("/api/server-status");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(document.RootElement.GetProperty("totalServers").GetInt32() >= 2);
+        Assert.Equal(
+            document.RootElement.GetProperty("onlineCount").GetInt32()
+            + document.RootElement.GetProperty("offlineCount").GetInt32(),
+            document.RootElement.GetProperty("totalServers").GetInt32());
+        Assert.Equal("demo", document.RootElement.GetProperty("source").GetString());
+        var server = document.RootElement.GetProperty("servers").EnumerateArray().First();
+        Assert.False(string.IsNullOrWhiteSpace(server.GetProperty("name").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(server.GetProperty("hostName").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(server.GetProperty("ipAddress").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(server.GetProperty("status").GetString()));
+    }
+
+    [Fact]
     public async Task Encrypt_password_page_returns_enc_value_without_saving()
     {
         var response = await _client.PostAsJsonAsync("/api/settings/password", new

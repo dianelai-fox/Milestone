@@ -425,6 +425,31 @@ public sealed class SecurityServersOverview
     public IReadOnlyList<RecordingServerInfo> AttentionServers { get; init; } = [];
 }
 
+public sealed class MonitoredServerInfo
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public string? HostName { get; init; }
+    public string? IpAddress { get; init; }
+    public string Role { get; init; } = "Server";
+    public bool Online { get; init; }
+    public string? ReachableVia { get; init; }
+    public string? CheckedAt { get; init; }
+    public bool IsDemo { get; init; }
+
+    public string Status => Online ? "Online" : "Offline";
+}
+
+public sealed class ServerStatusOverview
+{
+    public int TotalServers { get; init; }
+    public int OnlineCount { get; init; }
+    public int OfflineCount { get; init; }
+    public string Source { get; init; } = "configured";
+    public DateTimeOffset CheckedAt { get; init; } = DateTimeOffset.UtcNow;
+    public IReadOnlyList<MonitoredServerInfo> Servers { get; init; } = [];
+}
+
 public sealed class EncryptPasswordRequest
 {
     public string Password { get; set; } = string.Empty;

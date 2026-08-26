@@ -421,7 +421,14 @@ button, select, input {
 
 button { cursor: pointer; }
 
-.panel-head { margin-bottom: 10px; }
+.panel-head {
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
 .table-head, .filters, .map-toolbar {
   display: flex;
   justify-content: space-between;

@@ -33,7 +33,10 @@ const state = {
   firmwareTab: "overview",
   securityServers: {},
   serverHighlightsOpen: true,
-  serverHealthFilter: ""
+  serverHealthFilter: "",
+  hostStatus: {},
+  hostStatusFilter: "",
+  hostStatusLoading: false
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -255,6 +258,9 @@ function showView(name, options = {}) {
   }
   if (name === "security-servers" || name === "servers") {
     renderSecurityServers();
+  }
+  if (name === "server-status" || name === "hosts") {
+    loadServerStatus();
   }
   if (name === "connect") {
     loadConnectionSettings();
@@ -987,6 +993,116 @@ function healthTone(value) {
   }
   return "ok";
 }
+
+async function loadServerStatus(force = false) {
+  if (state.hostStatusLoading) {
+    return;
+  }
+  if (!force && state.hostStatus?.servers?.length) {
+    renderServerStatus();
+    return;
+  }
+
+  state.hostStatusLoading = true;
+  const copy = document.getElementById("host-status-copy");
+  const body = document.getElementById("host-status-body");
+  if (copy) {
+    copy.textContent = "Checking which servers are online…";
+  }
+  if (body) {
+    body.innerHTML = `<tr><td colspan="5" class="muted">Checking reachability…</td></tr>`;
+  }
+
+  try {
+    const response = await fetch("/api/server-status", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Server status API returned ${response.status}`);
+    }
+    state.hostStatus = await response.json();
+    renderServerStatus();
+  } catch (error) {
+    if (copy) {
+      copy.textContent = error.message;
+    }
+    if (body) {
+      body.innerHTML = `<tr><td colspan="5" class="muted">${escapeHtml(error.message)}</td></tr>`;
+    }
+  } finally {
+    state.hostStatusLoading = false;
+  }
+}
+
+function renderServerStatus() {
+  const summary = document.getElementById("host-status-summary");
+  const body = document.getElementById("host-status-body");
+  const copy = document.getElementById("host-status-copy");
+  if (!summary || !body || !copy) {
+    return;
+  }
+
+  const overview = state.hostStatus ?? {};
+  const servers = overview.servers ?? [];
+  const filter = state.hostStatusFilter;
+  const visible = servers.filter((server) => {
+    if (filter === "online") {
+      return server.online !== false;
+    }
+    if (filter === "offline") {
+      return server.online === false;
+    }
+    return true;
+  });
+  const online = overview.onlineCount ?? servers.filter((server) => server.online !== false).length;
+  const offline = overview.offlineCount ?? servers.length - online;
+  const source = overview.source ?? "";
+  const checked = overview.checkedAt ? new Date(overview.checkedAt).toLocaleString() : "";
+
+  summary.innerHTML = `
+    <article class="summary-card life-card">
+      <h3>SERVER STATUS</h3>
+      <div class="life-devices">
+        <div class="life-score">
+          <div class="value">${formatInt(overview.totalServers ?? servers.length)}</div>
+          <div class="muted">Configured hosts</div>
+        </div>
+        <div class="life-legend">
+          <button type="button" data-host-filter="online"><i class="dot teal"></i>Online: ${formatInt(online)}</button>
+          <button type="button" data-host-filter="offline"><i class="dot red"></i>Offline: ${formatInt(offline)}</button>
+          <div class="total">Total servers: ${formatInt(overview.totalServers ?? servers.length)}</div>
+        </div>
+      </div>
+    </article>
+  `;
+
+  if (servers.length === 0) {
+    copy.textContent = "No monitored servers yet. Add Name, HostName, and IpAddress under Milestone:MonitoredServers in appsettings.json, or create App_Data/monitored-servers.json.";
+    body.innerHTML = `<tr><td colspan="5" class="muted">Add servers to Milestone:MonitoredServers, then click Check now.</td></tr>`;
+  } else {
+    copy.textContent = source === "demo"
+      ? `${servers.length} sample servers (demo). Add your hosts to Milestone:MonitoredServers to probe live online/offline status.`
+      : filter
+        ? `${visible.length} of ${servers.length} servers · ${filter === "offline" ? "Offline" : "Online"}${checked ? ` · Checked ${checked}` : ""}`
+        : `${servers.length} servers · online or offline from hostname/IP probe${checked ? ` · Checked ${checked}` : ""}`;
+    body.innerHTML = visible.map((server) => `
+      <tr>
+        <td><span class="status ${server.online === false ? "off" : "on"}">${escapeHtml(server.status ?? (server.online === false ? "Offline" : "Online"))}</span></td>
+        <td><strong>${escapeHtml(server.name)}</strong></td>
+        <td>${escapeHtml(server.hostName ?? "—")}</td>
+        <td>${escapeHtml(server.ipAddress ?? "—")}</td>
+        <td>${escapeHtml(server.role ?? "Server")}</td>
+      </tr>`).join("") || `<tr><td colspan="5" class="muted">No servers match this filter.</td></tr>`;
+  }
+
+  document.querySelectorAll("#view-server-status [data-host-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const next = button.getAttribute("data-host-filter") ?? "";
+      state.hostStatusFilter = state.hostStatusFilter === next ? "" : next;
+      renderServerStatus();
+    });
+  });
+}
+
+document.getElementById("host-status-refresh")?.addEventListener("click", () => loadServerStatus(true));
 
 function renderFirmwareDetails(rows) {
   document.getElementById("firmware-detail-body").innerHTML = rows.map((row) => `
