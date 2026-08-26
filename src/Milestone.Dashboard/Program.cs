@@ -18,6 +18,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 var milestoneOptions = builder.Configuration.GetSection(MilestoneOptions.SectionName).Get<MilestoneOptions>()
                        ?? new MilestoneOptions();
+milestoneOptions.GatewayBaseUrl = XprotectAuth.NormalizeGatewayBaseUrl(milestoneOptions.GatewayBaseUrl);
+milestoneOptions.Username = milestoneOptions.Username.Trim();
+milestoneOptions.ClientId = string.IsNullOrWhiteSpace(milestoneOptions.ClientId)
+    ? "GrantValidatorClient"
+    : milestoneOptions.ClientId.Trim();
+if (!string.IsNullOrWhiteSpace(milestoneOptions.TokenUrl))
+{
+    milestoneOptions.TokenUrl = milestoneOptions.TokenUrl.Trim();
+}
 builder.Services.AddSingleton(milestoneOptions);
 
 var keysDirectory = AppSecretProtector.KeysDirectory(builder.Environment.ContentRootPath);

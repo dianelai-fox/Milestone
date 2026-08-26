@@ -380,29 +380,85 @@ public sealed class MilestoneApiClient : IVmsClient
                 return;
             }
 
-            using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            var configError = XprotectAuth.Validate(_options);
+            if (configError is not null)
             {
-                ["grant_type"] = "password",
-                ["username"] = _options.Username,
-                ["password"] = _options.Password,
-                ["client_id"] = _options.ClientId
-            });
-            using var response = await _httpClient.PostAsync(_options.ResolvedTokenUrl(), content, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException(
-                    $"XProtect login failed (HTTP {(int)response.StatusCode}). Check Username, Password, GatewayBaseUrl, and that UseDemoData is false only after those values work.");
+                throw new InvalidOperationException(configError);
             }
-            using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
-            _accessToken = document.RootElement.GetProperty("access_token").GetString();
-            var expiresIn = document.RootElement.TryGetProperty("expires_in", out var expires)
-                ? expires.GetInt32()
-                : 3600;
-            _tokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(expiresIn);
+
+            var identityProvider = await TryReadIdentityProviderAsync(cancellationToken);
+            var tokenUrls = XprotectAuth.TokenUrlCandidates(
+                _options.GatewayBaseUrl,
+                _options.TokenUrl,
+                identityProvider);
+            string? lastError = null;
+            foreach (var tokenUrl in tokenUrls)
+            {
+                using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["grant_type"] = "password",
+                    ["username"] = _options.Username.Trim(),
+                    ["password"] = _options.Password,
+                    ["client_id"] = string.IsNullOrWhiteSpace(_options.ClientId)
+                        ? "GrantValidatorClient"
+                        : _options.ClientId.Trim()
+                });
+                using var response = await _httpClient.PostAsync(tokenUrl, content, cancellationToken);
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                if (response.IsSuccessStatusCode)
+                {
+                    using var document = JsonDocument.Parse(body);
+                    _accessToken = document.RootElement.GetProperty("access_token").GetString();
+                    var expiresIn = document.RootElement.TryGetProperty("expires_in", out var expires)
+                        ? expires.GetInt32()
+                        : 3600;
+                    _tokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(expiresIn);
+                    return;
+                }
+
+                var errorCode = XprotectAuth.ReadErrorCode(body);
+                lastError = XprotectAuth.Explain((int)response.StatusCode, tokenUrl, body);
+                _logger.LogWarning("XProtect token request failed at {TokenUrl} with {Status} {Error}",
+                    tokenUrl, (int)response.StatusCode, errorCode ?? "unknown");
+                if (!XprotectAuth.ShouldTryNextTokenUrl((int)response.StatusCode, errorCode))
+                {
+                    break;
+                }
+            }
+
+            throw new InvalidOperationException(lastError ?? "XProtect login failed.");
         }
         finally
         {
             _tokenLock.Release();
+        }
+    }
+
+    private async Task<string?> TryReadIdentityProviderAsync(CancellationToken cancellationToken)
+    {
+        var root = XprotectAuth.NormalizeGatewayBaseUrl(_options.GatewayBaseUrl);
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var response = await _httpClient.GetAsync($"{root}/api/.well-known/uris", cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+            return document.RootElement.TryGetProperty("IdentityProvider", out var idp)
+                ? idp.GetString()
+                : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not read /api/.well-known/uris");
+            return null;
         }
     }
 }

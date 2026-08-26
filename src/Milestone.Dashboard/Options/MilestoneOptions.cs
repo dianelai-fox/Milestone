@@ -1,3 +1,5 @@
+using Milestone.Dashboard.Services;
+
 namespace Milestone.Dashboard.Options;
 
 public sealed class MilestoneOptions
@@ -28,13 +30,10 @@ public sealed class MilestoneOptions
 
     public string ResolvedTokenUrl()
     {
-        if (!string.IsNullOrWhiteSpace(TokenUrl))
-        {
-            return TokenUrl.TrimEnd('/');
-        }
-
-        return $"{GatewayBaseUrl.TrimEnd('/')}/API/IDP/connect/token";
+        var urls = XprotectAuth.TokenUrlCandidates(GatewayBaseUrl, TokenUrl);
+        return urls.Count > 0 ? urls[0] : string.Empty;
     }
 
-    public string ResolvedApiBaseUrl() => $"{GatewayBaseUrl.TrimEnd('/')}/api/rest/v1";
+    public string ResolvedApiBaseUrl() =>
+        $"{XprotectAuth.NormalizeGatewayBaseUrl(GatewayBaseUrl)}/api/rest/v1";
 }
