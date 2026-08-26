@@ -316,8 +316,8 @@ app.MapPost("/api/server-status/import-csv", async (
             replace = parsed;
         }
 
-        await store.ImportAsync(imported, replace, catalog, cancellationToken);
-        var overview = await monitor.ProbeAsync(cancellationToken);
+        var saved = await store.ImportAsync(imported, replace, catalog, cancellationToken);
+        var overview = await monitor.ProbeAsync(saved, cancellationToken);
         return Results.Ok(new
         {
             imported = imported.Count,

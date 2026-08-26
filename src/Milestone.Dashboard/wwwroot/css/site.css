@@ -1272,6 +1272,7 @@ th {
   gap: 12px;
 }
 .server-name { font-size: 16px; font-weight: 700; }
+.server-description { margin-top: 2px; font-size: 13px; font-weight: 600; }
 .server-metrics {
   display: grid;
   grid-template-columns: 1fr 1fr;

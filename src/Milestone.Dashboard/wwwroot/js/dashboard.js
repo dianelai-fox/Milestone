@@ -909,11 +909,13 @@ function renderServerStatus() {
         <div>
           <div class="server-name">${escapeHtml(server.name)}</div>
           <div class="muted">${escapeHtml(server.role ?? "Server")} · ${escapeHtml(server.deck ?? "")}</div>
+          ${server.description && server.description !== server.deck ? `<div class="server-description">${escapeHtml(server.description)}</div>` : ""}
           <div class="server-domain">${escapeHtml(server.ipAddress)}</div>
         </div>
         <span class="status ${server.online ? "on" : "off"}">${escapeHtml(server.status)}</span>
       </div>
       <dl class="status-details">
+        <div><dt>Description</dt><dd>${escapeHtml(server.description ?? server.deck ?? "—")}</dd></div>
         <div><dt>Function</dt><dd>${escapeHtml(server.role ?? "Server")}</dd></div>
         <div><dt>Domain</dt><dd>${escapeHtml(server.domain ?? "—")}</dd></div>
         <div><dt>Environment</dt><dd>${escapeHtml(server.environment ?? "—")}</dd></div>
@@ -941,6 +943,7 @@ function renderServerStatus() {
         <td>${escapeHtml(server.ipAddress)}</td>
         <td><span class="status ${server.online ? "on" : "off"}">${escapeHtml(server.status)}</span></td>
         <td>${escapeHtml(server.deck ?? "—")}</td>
+        <td>${escapeHtml(server.description ?? "—")}</td>
         <td>${escapeHtml(server.role ?? "Server")}</td>
         <td>${escapeHtml(server.domain ?? "—")}</td>
         <td>${escapeHtml(server.environment ?? "—")}</td>
@@ -953,7 +956,7 @@ function renderServerStatus() {
         <td>${escapeHtml(formatDate(server.lastBoot) ?? "Not reported")}</td>
         <td>${escapeHtml(formatDate(server.checkedAt) ?? "—")}</td>
         <td class="detail-cell">${escapeHtml(server.detail ?? "—")}</td>
-      </tr>`).join("") || `<tr><td colspan="16">No servers match this filter.</td></tr>`;
+      </tr>`).join("") || `<tr><td colspan="17">No servers match this filter.</td></tr>`;
   }
   if (rowsCopy) {
     rowsCopy.textContent = `${ordered.length} of ${servers.length} servers. One row per host.`;

@@ -12,7 +12,8 @@ public static class StatusServerCsvParser
             return items;
         }
 
-        var headers = CsvText.Split(lines[0])
+        var delimiter = DetectDelimiter(lines[0]);
+        var headers = CsvText.Split(lines[0], delimiter)
             .Select(header => Normalize(header.Trim().TrimStart('\uFEFF')))
             .ToList();
         int Index(params string[] names)
@@ -31,7 +32,8 @@ public static class StatusServerCsvParser
 
         var nameIndex = Index("server name", "servername", "name");
         var ipIndex = Index("ip address", "ipaddress", "ip");
-        var descriptionIndex = Index("server description", "description", "deck");
+        var descriptionIndex = Index("server description", "description");
+        var deckIndex = Index("deck");
         var functionIndex = Index("server function", "function", "role");
         var domainIndex = Index("domain");
         var environmentIndex = Index("environment");
@@ -40,7 +42,7 @@ public static class StatusServerCsvParser
 
         foreach (var line in lines.Skip(1))
         {
-            var cells = CsvText.Split(line);
+            var cells = CsvText.Split(line, delimiter);
             var name = Read(cells, nameIndex);
             var ip = Read(cells, ipIndex);
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(ip))
@@ -50,17 +52,21 @@ public static class StatusServerCsvParser
 
             var description = Read(cells, descriptionIndex);
             var function = Read(cells, functionIndex);
-            var deck = string.IsNullOrWhiteSpace(description) ? "MasterMind" : description;
-            items.Add(new StatusServerCatalog.Spec(
-                name,
-                ip,
-                string.IsNullOrWhiteSpace(function) ? InferRole(name) : function,
-                deck,
-                description ?? deck,
-                Read(cells, domainIndex),
-                Read(cells, environmentIndex),
-                Read(cells, osIndex),
-                Read(cells, sqlIndex)));
+            var deck = TryKnownDeck(Read(cells, deckIndex))
+                       ?? TryKnownDeck(description)
+                       ?? "MasterMind";
+            items.Add(new StatusServerCatalog.Spec
+            {
+                Name = name,
+                IpAddress = ip,
+                Role = string.IsNullOrWhiteSpace(function) ? InferRole(name) : function,
+                Deck = deck,
+                Description = description ?? deck,
+                Domain = Read(cells, domainIndex),
+                Environment = Read(cells, environmentIndex),
+                CatalogOs = Read(cells, osIndex),
+                Sql = Read(cells, sqlIndex)
+            });
         }
 
         return items;
@@ -84,6 +90,27 @@ public static class StatusServerCsvParser
         return string.Join('\n', lines) + "\n";
     }
 
+    internal static string? TryKnownDeck(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var compact = new string([.. value.Where(character => !char.IsWhiteSpace(character))]);
+        if (compact.Equals("Perspective", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Perspective";
+        }
+
+        if (compact.Equals("MasterMind", StringComparison.OrdinalIgnoreCase))
+        {
+            return "MasterMind";
+        }
+
+        return null;
+    }
+
     internal static string InferRole(string name)
     {
         if (name.Contains("DB", StringComparison.OrdinalIgnoreCase))
@@ -97,6 +124,13 @@ public static class StatusServerCsvParser
         }
 
         return "Server";
+    }
+
+    private static char DetectDelimiter(string header)
+    {
+        var commas = CsvText.Split(header, ',').Count;
+        var semicolons = CsvText.Split(header, ';').Count;
+        return semicolons > commas ? ';' : ',';
     }
 
     private static string Normalize(string value) =>

@@ -7,14 +7,17 @@ public sealed class StatusServerInventoryStore
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
     };
 
     private readonly string _path;
     private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly ILogger<StatusServerInventoryStore> _logger;
 
     public StatusServerInventoryStore(IWebHostEnvironment environment, ILogger<StatusServerInventoryStore> logger)
     {
+        _logger = logger;
         _path = ResolvePath(environment, logger);
     }
 
@@ -86,21 +89,28 @@ public sealed class StatusServerInventoryStore
             }
 
             IReadOnlyList<StatusServerCatalog.Spec> next;
+            var byName = current.ToDictionary(server => server.Name, StringComparer.OrdinalIgnoreCase);
+            foreach (var row in imported)
+            {
+                byName[row.Name] = byName.TryGetValue(row.Name, out var existing)
+                    ? StatusServerCatalog.Merge(existing, row)
+                    : row;
+            }
+
             if (replaceDecks)
             {
-                var decks = imported
-                    .Select(server => server.Deck)
+                var importedNames = imported
+                    .Select(server => server.Name)
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                next = [.. imported, .. current.Where(server => !decks.Contains(server.Deck))];
+                var importedDecks = imported
+                    .Select(server => byName[server.Name].Deck)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                next = byName.Values
+                    .Where(server => importedNames.Contains(server.Name) || !importedDecks.Contains(server.Deck))
+                    .ToList();
             }
             else
             {
-                var byName = current.ToDictionary(server => server.Name, StringComparer.OrdinalIgnoreCase);
-                foreach (var row in imported)
-                {
-                    byName[row.Name] = row;
-                }
-
                 next = byName.Values.ToList();
             }
 
@@ -145,8 +155,9 @@ public sealed class StatusServerInventoryStore
                         ?? [];
             return items.Where(item => !string.IsNullOrWhiteSpace(item.Name)).ToList();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Could not read server status inventory from {Path}", _path);
             return [];
         }
     }
@@ -157,5 +168,6 @@ public sealed class StatusServerInventoryStore
     {
         await using var stream = File.Create(_path);
         await JsonSerializer.SerializeAsync(stream, servers, JsonOptions, cancellationToken);
+        await stream.FlushAsync(cancellationToken);
     }
 }

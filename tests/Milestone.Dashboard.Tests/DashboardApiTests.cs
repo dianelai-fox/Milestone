@@ -251,6 +251,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Last checked", html);
         Assert.Contains("id=\"status-grid\"", html);
         Assert.Contains("id=\"status-rows\"", html);
+        Assert.Contains("Server Description", html);
         Assert.Contains("id=\"status-table-card\"", html);
         Assert.Contains("One row per server", html);
         Assert.Contains("MasterMind and Perspective", html);
@@ -312,6 +313,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(".status-deck-group", css);
         Assert.Contains(".status-toolbar", css);
         Assert.Contains(".status-rows-table", css);
+        Assert.Contains(".server-description", css);
         Assert.Contains(".demo-banner", css);
         Assert.Contains(".connect-actions", css);
     }

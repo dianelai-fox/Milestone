@@ -78,6 +78,62 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         var linux = rows.Single(row => row.Name == "AZTEC-FOX-1.corp.fox");
         Assert.Equal("Aztec Receivers", linux.Role);
         Assert.Equal("Linux", linux.CatalogOs);
+        Assert.Equal("MasterMind", db.Description);
+    }
+
+    [Fact]
+    public void Free_text_server_description_stays_on_the_mastermind_deck()
+    {
+        var csv = MasterMindTemplate.Replace(
+            "FOXUSWDMSDB303,10.180.80.154,MasterMind,App/DB",
+            "FOXUSWDMSDB303,10.180.80.154,Primary MasterMind database,App/DB");
+        csv = csv.Replace(
+            "FOX2205442,10.138.201.43,MasterMind,",
+            "FOX2205442,10.138.201.43,MAS backup processor,");
+        var rows = StatusServerCsvParser.Parse(csv);
+        var db = rows.Single(row => row.Name == "FOXUSWDMSDB303");
+        Assert.Equal("MasterMind", db.Deck);
+        Assert.Equal("Primary MasterMind database", db.Description);
+        var backup = rows.Single(row => row.Name == "FOX2205442");
+        Assert.Equal("MasterMind", backup.Deck);
+        Assert.Equal("MAS backup processor", backup.Description);
+        Assert.Equal(8, rows.Count(row => row.Deck == "MasterMind"));
+    }
+
+    [Fact]
+    public void Inventory_json_keeps_updated_server_description()
+    {
+        var original = new StatusServerCatalog.Spec
+        {
+            Name = "FOXUSWDMSDB303",
+            IpAddress = "10.180.80.154",
+            Role = "App/DB",
+            Deck = "MasterMind",
+            Description = "MasterMind"
+        };
+        var updated = StatusServerCatalog.Merge(original, new StatusServerCatalog.Spec
+        {
+            Name = "FOXUSWDMSDB303",
+            IpAddress = "10.180.80.154",
+            Role = "App/DB",
+            Deck = "MasterMind",
+            Description = "Primary MasterMind database"
+        });
+        Assert.Equal("MasterMind", updated.Deck);
+        Assert.Equal("Primary MasterMind database", updated.Description);
+
+        var json = JsonSerializer.Serialize(new[] { updated }, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+        var roundTrip = JsonSerializer.Deserialize<List<StatusServerCatalog.Spec>>(json, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
+        });
+        var saved = Assert.Single(roundTrip!);
+        Assert.Equal("Primary MasterMind database", saved.Description);
+        Assert.Equal("MasterMind", saved.Deck);
     }
 
     [Fact]
@@ -108,8 +164,8 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         var monitor = new StatusServerMonitor();
         var overview = await monitor.ProbeAsync(
         [
-            new StatusServerCatalog.Spec("online-lab", "127.0.0.1", "Lab"),
-            new StatusServerCatalog.Spec("bad-ip", "not-an-ip", "Lab")
+            new StatusServerCatalog.Spec { Name = "online-lab", IpAddress = "127.0.0.1", Role = "Lab" },
+            new StatusServerCatalog.Spec { Name = "bad-ip", IpAddress = "not-an-ip", Role = "Lab" }
         ], CancellationToken.None);
 
         var deck = Assert.Single(overview.Decks);
@@ -129,7 +185,7 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         var monitor = new StatusServerMonitor();
         var overview = await monitor.ProbeAsync(
         [
-            new StatusServerCatalog.Spec("doc-net", "192.0.2.1", "Lab")
+            new StatusServerCatalog.Spec { Name = "doc-net", IpAddress = "192.0.2.1", Role = "Lab" }
         ], CancellationToken.None);
 
         var server = Assert.Single(overview.Servers);
@@ -263,6 +319,54 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
                 overview.GetProperty("servers").EnumerateArray(),
                 server => server.GetProperty("name").GetString() == "FOXUSWDMSAP654"
                           && server.GetProperty("deck").GetString() == "Perspective");
+        }
+        finally
+        {
+            await store.ClearAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task Server_status_csv_import_updates_server_description_on_existing_hosts()
+    {
+        var store = _factory.Services.GetRequiredService<StatusServerInventoryStore>();
+        try
+        {
+            var csv = MasterMindTemplate
+                .Replace(
+                    "FOXUSWDMSDB303,10.180.80.154,MasterMind,App/DB",
+                    "FOXUSWDMSDB303,10.180.80.154,Primary MasterMind database,App/DB")
+                .Replace(
+                    "FOX2205442,10.138.201.43,MasterMind,",
+                    "FOX2205442,10.138.201.43,MAS backup processor,");
+            using var content = new MultipartFormDataContent();
+            var file = new StringContent(csv, Encoding.UTF8, "text/csv");
+            file.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
+            content.Add(file, "file", "servers.csv");
+            var import = await _client.PostAsync("/api/server-status/import-csv?replace=true", content);
+            import.EnsureSuccessStatusCode();
+            using var imported = JsonDocument.Parse(await import.Content.ReadAsStringAsync());
+            Assert.Contains(
+                imported.RootElement.GetProperty("overview").GetProperty("servers").EnumerateArray(),
+                server => server.GetProperty("name").GetString() == "FOXUSWDMSDB303"
+                          && server.GetProperty("description").GetString() == "Primary MasterMind database"
+                          && server.GetProperty("deck").GetString() == "MasterMind");
+
+            using var document = JsonDocument.Parse(await _client.GetStringAsync("/api/server-status"));
+            var servers = document.RootElement.GetProperty("servers").EnumerateArray().ToList();
+            Assert.Equal(12, servers.Count);
+            Assert.Contains(
+                servers,
+                server => server.GetProperty("name").GetString() == "FOXUSWDMSDB303"
+                          && server.GetProperty("description").GetString() == "Primary MasterMind database"
+                          && server.GetProperty("deck").GetString() == "MasterMind");
+            Assert.Contains(
+                servers,
+                server => server.GetProperty("name").GetString() == "FOX2205442"
+                          && server.GetProperty("description").GetString() == "MAS backup processor"
+                          && server.GetProperty("deck").GetString() == "MasterMind");
+            Assert.Equal(8, servers.Count(server => server.GetProperty("deck").GetString() == "MasterMind"));
+            Assert.Equal(4, servers.Count(server => server.GetProperty("deck").GetString() == "Perspective"));
         }
         finally
         {

@@ -2,7 +2,7 @@ namespace Milestone.Dashboard.Services;
 
 internal static class CsvText
 {
-    public static List<string> Split(string line)
+    public static List<string> Split(string line, char delimiter = ',')
     {
         var values = new List<string>();
         var current = new System.Text.StringBuilder();
@@ -23,7 +23,7 @@ internal static class CsvText
                 continue;
             }
 
-            if (character == ',' && !quoted)
+            if (character == delimiter && !quoted)
             {
                 values.Add(current.ToString());
                 current.Clear();
