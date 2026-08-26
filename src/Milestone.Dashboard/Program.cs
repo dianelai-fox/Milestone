@@ -535,7 +535,19 @@ app.MapPost("/api/locations", async (LocationOverrideRequest request, DashboardS
     return Results.Ok(request);
 });
 
-app.MapFallbackToFile("index.html");
+app.MapFallback(async (HttpContext context) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new { error = "Not found." });
+        return;
+    }
+
+    context.Response.ContentType = "text/html";
+    await context.Response.SendFileAsync(Path.Combine(app.Environment.WebRootPath, "index.html"));
+});
 
 app.Run();
 

@@ -128,6 +128,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var response = await _client.GetAsync("/api/settings/connection");
         response.EnsureSuccessStatusCode();
+        Assert.Contains("json", response.Content.Headers.ContentType?.MediaType, StringComparison.OrdinalIgnoreCase);
         var json = await response.Content.ReadAsStringAsync();
         using var document = JsonDocument.Parse(json);
         Assert.True(document.RootElement.GetProperty("useDemoData").GetBoolean());
@@ -135,6 +136,16 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.True(document.RootElement.TryGetProperty("passwordSet", out _));
         Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("gatewayBaseUrl").GetString()));
         Assert.DoesNotContain("ENC:", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Unknown_api_path_returns_json_not_html()
+    {
+        var response = await _client.GetAsync("/api/does-not-exist");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Contains("json", response.Content.Headers.ContentType?.MediaType, StringComparison.OrdinalIgnoreCase);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("Not found.", document.RootElement.GetProperty("error").GetString());
     }
 
     [Fact]

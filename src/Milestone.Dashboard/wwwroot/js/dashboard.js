@@ -2443,6 +2443,20 @@ function formatMb(value) {
   return gb < 1024 ? `${gb.toFixed(1)} GB` : `${(gb / 1024).toFixed(2)} TB`;
 }
 
+async function readJson(response) {
+  const text = await response.text();
+  if (!text) {
+    throw new Error(`Request failed (${response.status}).`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(response.ok
+      ? "The server returned a page instead of JSON. Republish this site, then press Ctrl+F5."
+      : `Request failed (${response.status}).`);
+  }
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -2471,7 +2485,7 @@ async function loadConnectionSettings() {
     if (!response.ok) {
       return;
     }
-    const data = await response.json();
+    const data = await readJson(response);
     const gateway = document.getElementById("connect-gateway");
     const username = document.getElementById("connect-username");
     const password = document.getElementById("connect-password");
@@ -2517,16 +2531,15 @@ async function testXprotectConnection() {
   status.dataset.locked = "1";
   status.textContent = "Testing XProtect login…";
   try {
-    const response = await fetch("/api/settings/connection/test", {
+    const data = await readJson(await fetch("/api/settings/connection/test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(connectPayload())
-    });
-    const data = await response.json();
+    }));
     if (data.ok) {
       status.textContent = data.message || "XProtect login succeeded.";
     } else {
-      status.textContent = data.error || data.message || `Login test failed (${response.status}).`;
+      status.textContent = data.error || data.message || "Login test failed.";
     }
   } catch (error) {
     status.textContent = error.message;
@@ -2556,7 +2569,7 @@ document.getElementById("connect-form")?.addEventListener("submit", async (event
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(connectPayload())
     });
-    const data = await response.json();
+    const data = await readJson(response);
     if (!response.ok && !data.saved) {
       throw new Error(data.error || data.saveError || `Save failed (${response.status})`);
     }
