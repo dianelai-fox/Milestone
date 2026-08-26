@@ -45,6 +45,8 @@ catch (Exception)
 
 builder.Services.AddSingleton<LocationOverrideStore>();
 builder.Services.AddSingleton<SnapshotCache>();
+builder.Services.AddSingleton<MonitoredServerCatalog>();
+builder.Services.AddSingleton<MonitoredServerMonitor>();
 builder.Services.AddSingleton<AppSettingsPasswordWriter>();
 builder.Services.AddSingleton<XprotectConnectionTester>();
 builder.Services.AddSingleton<DemoVmsClient>();
@@ -136,6 +138,50 @@ app.UseStaticFiles(new StaticFileOptions
             context.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
         }
     }
+});
+
+app.MapGet("/api/server-status", async (
+    MonitoredServerCatalog catalog,
+    MonitoredServerMonitor monitor,
+    CancellationToken cancellationToken) =>
+{
+    var overview = await monitor.ProbeAsync(catalog.List(), cancellationToken);
+    return Results.Ok(overview);
+});
+
+app.MapPost("/api/server-status", async (
+    MonitoredServerRequest request,
+    MonitoredServerCatalog catalog,
+    MonitoredServerMonitor monitor,
+    CancellationToken cancellationToken) =>
+{
+    try
+    {
+        await catalog.SaveAsync(ToMonitoredSpec(request), cancellationToken);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+
+    var overview = await monitor.ProbeAsync(catalog.List(), cancellationToken);
+    return Results.Ok(overview);
+});
+
+app.MapDelete("/api/server-status/{name}", async (
+    string name,
+    MonitoredServerCatalog catalog,
+    MonitoredServerMonitor monitor,
+    CancellationToken cancellationToken) =>
+{
+    var removed = await catalog.RemoveAsync(Uri.UnescapeDataString(name), cancellationToken);
+    if (!removed)
+    {
+        return Results.NotFound(new { error = "That saved server was not found. Configured servers stay until you remove them from appsettings.json." });
+    }
+
+    var overview = await monitor.ProbeAsync(catalog.List(), cancellationToken);
+    return Results.Ok(overview);
 });
 
 app.MapGet("/api/health", async (DashboardService dashboard, CancellationToken cancellationToken) =>
@@ -634,5 +680,15 @@ static string Csv(string? value)
 
     return $"\"{value.Replace("\"", "\"\"")}\"";
 }
+
+static MonitoredServerSpec ToMonitoredSpec(MonitoredServerRequest request) =>
+    new()
+    {
+        Name = request.Name?.Trim() ?? string.Empty,
+        HostName = string.IsNullOrWhiteSpace(request.HostName) ? null : request.HostName.Trim(),
+        IpAddress = string.IsNullOrWhiteSpace(request.IpAddress) ? null : request.IpAddress.Trim(),
+        Role = string.IsNullOrWhiteSpace(request.Role) ? "Server" : request.Role.Trim(),
+        Source = "saved"
+    };
 
 public partial class Program;

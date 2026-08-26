@@ -212,7 +212,9 @@ main { padding: 20px 24px 40px; }
 .encrypt-form button,
 #encrypt-submit,
 #connect-save,
-#connect-test {
+#connect-test,
+#status-add,
+#status-refresh {
   width: fit-content;
   background: var(--teal);
   color: #fff;
@@ -422,6 +424,12 @@ button, select, input {
 button { cursor: pointer; }
 
 .panel-head { margin-bottom: 10px; }
+#view-server-status .panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
 .table-head, .filters, .map-toolbar {
   display: flex;
   justify-content: space-between;
@@ -1263,6 +1271,40 @@ button.server-metric:hover { border-color: var(--teal); }
 .health.critical { color: #c43b61; }
 .health.na { color: #6b7784; }
 
+.status-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  margin: 8px 0 4px;
+}
+.status-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.status-form input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--text);
+  font-weight: 500;
+}
+#status-add { height: 42px; }
+#status-refresh {
+  background: #fff;
+  color: var(--teal);
+  border: 1px solid var(--teal);
+}
+#status-body .status {
+  align-items: center;
+  gap: 6px;
+}
+
 @media (max-width: 1200px) {
-  .summary-row, .middle-row, .bottom-row, .device-row, .highlights-grid, .life-devices, .ndaa-highlights-grid, .pw-devices, .servers-highlights, .server-grid { grid-template-columns: 1fr; }
+  .summary-row, .middle-row, .bottom-row, .device-row, .highlights-grid, .life-devices, .ndaa-highlights-grid, .pw-devices, .servers-highlights, .server-grid, .status-form { grid-template-columns: 1fr; }
 }

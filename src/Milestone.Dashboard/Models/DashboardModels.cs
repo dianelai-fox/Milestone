@@ -439,3 +439,52 @@ public sealed class XprotectConnectionRequest
     public bool UseDemoData { get; set; }
     public bool BypassSslValidation { get; set; }
 }
+
+public sealed class MonitoredServerRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string? HostName { get; set; }
+    public string? IpAddress { get; set; }
+    public string? Role { get; set; }
+}
+
+public sealed class MonitoredServerStatus
+{
+    public required string Id { get; init; }
+    public required string Name { get; init; }
+    public string? HostName { get; init; }
+    public string? IpAddress { get; init; }
+    public string Role { get; init; } = "Server";
+    public string Source { get; init; } = "saved";
+    public bool Online { get; init; }
+    public bool CanRemove { get; init; }
+    public string? ReachableOn { get; init; }
+    public DateTimeOffset CheckedAt { get; init; } = DateTimeOffset.UtcNow;
+
+    public string Status => Online ? "Online" : "Offline";
+}
+
+public sealed class ServerStatusOverview
+{
+    public int TotalServers { get; init; }
+    public int OnlineCount { get; init; }
+    public int OfflineCount { get; init; }
+    public DateTimeOffset GeneratedAt { get; init; } = DateTimeOffset.UtcNow;
+    public IReadOnlyList<MonitoredServerStatus> Servers { get; init; } = [];
+
+    public static ServerStatusOverview From(IEnumerable<MonitoredServerStatus> servers)
+    {
+        var list = servers
+            .OrderBy(server => server.Online ? 1 : 0)
+            .ThenBy(server => server.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return new ServerStatusOverview
+        {
+            TotalServers = list.Count,
+            OnlineCount = list.Count(server => server.Online),
+            OfflineCount = list.Count(server => !server.Online),
+            GeneratedAt = DateTimeOffset.UtcNow,
+            Servers = list
+        };
+    }
+}

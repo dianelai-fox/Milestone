@@ -33,7 +33,10 @@ const state = {
   firmwareTab: "overview",
   securityServers: {},
   serverHighlightsOpen: true,
-  serverHealthFilter: ""
+  serverHealthFilter: "",
+  serverStatus: { servers: [] },
+  serverStatusFilter: "",
+  serverStatusLoaded: false
 };
 
 const refreshButton = document.getElementById("refresh-btn");
@@ -63,7 +66,10 @@ const managePageSizeSelect = document.getElementById("manage-page-size");
 const exportSites = document.getElementById("export-sites");
 const manageClearFilters = document.getElementById("manage-clear-filters");
 
-refreshButton.addEventListener("click", () => loadDashboard());
+refreshButton.addEventListener("click", () => {
+  loadDashboard();
+  loadServerStatus();
+});
 searchInput.addEventListener("input", () => resetPageAndRender());
 serverFilter.addEventListener("change", () => {
   state.inventoryView = "cameras";
@@ -255,6 +261,10 @@ function showView(name, options = {}) {
   }
   if (name === "security-servers" || name === "servers") {
     renderSecurityServers();
+  }
+  if (name === "server-status") {
+    renderServerStatus();
+    loadServerStatus();
   }
   if (name === "connect") {
     loadConnectionSettings();
@@ -1246,6 +1256,186 @@ function showSecurityServers(filter) {
   }
   renderSecurityServers();
   showView("security-servers");
+}
+
+function applyServerStatus(data) {
+  state.serverStatus = data ?? { servers: [] };
+  state.serverStatusLoaded = true;
+  renderServerStatus();
+}
+
+async function loadServerStatus() {
+  const refresh = document.getElementById("status-refresh");
+  const copy = document.getElementById("status-copy");
+  if (refresh) {
+    refresh.disabled = true;
+  }
+  try {
+    const response = await fetch("/api/server-status", { cache: "no-store" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || `Server status API returned ${response.status}`);
+    }
+    applyServerStatus(data);
+  } catch (error) {
+    if (copy) {
+      copy.textContent = `Could not check servers: ${error.message}`;
+    }
+  } finally {
+    if (refresh) {
+      refresh.disabled = false;
+    }
+  }
+}
+
+function renderServerStatus() {
+  const summary = document.getElementById("status-summary");
+  const body = document.getElementById("status-body");
+  const copy = document.getElementById("status-copy");
+  if (!summary || !body || !copy) {
+    return;
+  }
+  const overview = state.serverStatus ?? {};
+  const servers = overview.servers ?? [];
+  const filter = state.serverStatusFilter;
+  const visible = servers.filter((server) => {
+    if (filter === "online") {
+      return server.online;
+    }
+    if (filter === "offline") {
+      return !server.online;
+    }
+    return true;
+  });
+  const online = overview.onlineCount ?? servers.filter((server) => server.online).length;
+  const offline = overview.offlineCount ?? servers.length - online;
+  summary.innerHTML = `
+    <article class="summary-card life-card">
+      <h3>SERVERS</h3>
+      <div class="life-devices">
+        <div class="life-score">
+          <div class="value">${formatInt(overview.totalServers ?? servers.length)}</div>
+          <div class="muted">Monitored servers</div>
+        </div>
+        <div class="life-legend">
+          <button type="button" data-status-filter="online"><i class="dot teal"></i>Online: ${formatInt(online)}</button>
+          <button type="button" data-status-filter="offline"><i class="dot red"></i>Offline: ${formatInt(offline)}</button>
+          <div class="total">Total servers: ${formatInt(overview.totalServers ?? servers.length)}</div>
+        </div>
+      </div>
+    </article>
+    <article class="summary-card life-card">
+      <h3>HOW STATUS IS CHECKED</h3>
+      <ul class="server-notes">
+        <li>Each server is checked by IP first, then host name.</li>
+        <li>Online means the host answered on a common port (RDP, SMB, HTTP, SSH) or ICMP ping.</li>
+        <li>Add more servers with name, host name, and IP. Saved servers are kept in App_Data on this web server.</li>
+      </ul>
+    </article>
+  `;
+  copy.textContent = !state.serverStatusLoaded
+    ? "Checking hosts…"
+    : filter
+      ? `${visible.length} of ${servers.length} servers · ${filter}.`
+      : servers.length === 0
+        ? "No servers yet. Add a name plus a host name or IP address."
+        : `${online} online · ${offline} offline · ${servers.length} servers.`;
+  body.innerHTML = visible.map((server) => `
+    <tr>
+      <td>
+        <span class="status ${server.online ? "on" : "off"}">
+          <i class="status-dot ${server.online ? "" : "off"}"></i>
+          ${escapeHtml(server.status ?? (server.online ? "Online" : "Offline"))}
+        </span>
+      </td>
+      <td class="name-cell">${escapeHtml(server.name)}</td>
+      <td>${escapeHtml(server.hostName || "—")}</td>
+      <td>${escapeHtml(server.ipAddress || "—")}</td>
+      <td>${escapeHtml(server.role || "Server")}</td>
+      <td>${server.canRemove
+        ? `<button class="link-btn" type="button" data-remove-server="${escapeHtml(server.name)}">Remove</button>`
+        : `<span class="muted">Configured</span>`}</td>
+    </tr>
+  `).join("") || `<tr><td colspan="6" class="muted">${servers.length === 0 ? "Add a server to start monitoring." : "No servers match this filter."}</td></tr>`;
+
+  summary.querySelectorAll("[data-status-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const next = button.getAttribute("data-status-filter") ?? "";
+      state.serverStatusFilter = state.serverStatusFilter === next ? "" : next;
+      renderServerStatus();
+    });
+  });
+  body.querySelectorAll("[data-remove-server]").forEach((button) => {
+    button.addEventListener("click", () => removeMonitoredServer(button.getAttribute("data-remove-server") ?? ""));
+  });
+}
+
+async function addMonitoredServer(event) {
+  event.preventDefault();
+  const error = document.getElementById("status-form-error");
+  const submit = document.getElementById("status-add");
+  const name = document.getElementById("status-name")?.value.trim() ?? "";
+  const hostName = document.getElementById("status-hostname")?.value.trim() ?? "";
+  const ipAddress = document.getElementById("status-ip")?.value.trim() ?? "";
+  const role = document.getElementById("status-role")?.value.trim() ?? "";
+  if (error) {
+    error.hidden = true;
+  }
+  if (!name) {
+    if (error) {
+      error.hidden = false;
+      error.textContent = "Enter a server name.";
+    }
+    return;
+  }
+  if (!hostName && !ipAddress) {
+    if (error) {
+      error.hidden = false;
+      error.textContent = "Enter a host name or IP address.";
+    }
+    return;
+  }
+  if (submit) {
+    submit.disabled = true;
+  }
+  try {
+    const response = await fetch("/api/server-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, hostName, ipAddress, role })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || `Could not save server (${response.status})`);
+    }
+    document.getElementById("status-form")?.reset();
+    applyServerStatus(data);
+  } catch (err) {
+    if (error) {
+      error.hidden = false;
+      error.textContent = err.message;
+    }
+  } finally {
+    if (submit) {
+      submit.disabled = false;
+    }
+  }
+}
+
+async function removeMonitoredServer(name) {
+  if (!name) {
+    return;
+  }
+  const response = await fetch(`/api/server-status/${encodeURIComponent(name)}`, { method: "DELETE" });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const copy = document.getElementById("status-copy");
+    if (copy) {
+      copy.textContent = data.error || `Could not remove ${name}.`;
+    }
+    return;
+  }
+  applyServerStatus(data);
 }
 
 function showStoragePies(kind) {
@@ -2657,3 +2847,6 @@ document.getElementById("encrypt-form")?.addEventListener("submit", async (event
 });
 
 loadDashboard();
+loadServerStatus();
+document.getElementById("status-form")?.addEventListener("submit", addMonitoredServer);
+document.getElementById("status-refresh")?.addEventListener("click", () => loadServerStatus());

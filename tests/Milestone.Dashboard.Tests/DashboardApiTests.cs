@@ -105,6 +105,28 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task Server_status_endpoint_returns_name_host_and_online_flag()
+    {
+        var response = await _client.GetAsync("/api/server-status");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(document.RootElement.GetProperty("totalServers").GetInt32() >= 1);
+        Assert.Equal(
+            document.RootElement.GetProperty("onlineCount").GetInt32()
+            + document.RootElement.GetProperty("offlineCount").GetInt32(),
+            document.RootElement.GetProperty("totalServers").GetInt32());
+        var servers = document.RootElement.GetProperty("servers").EnumerateArray().ToList();
+        var lenel = Assert.Single(servers, server => server.GetProperty("name").GetString() == "FOXUSWDMSIA297");
+        Assert.Equal("LENELNEWAPP.INT.APPS.FOX", lenel.GetProperty("hostName").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(lenel.GetProperty("status").GetString()));
+        Assert.True(lenel.TryGetProperty("online", out _));
+        var dashboard = Assert.Single(servers, server => server.GetProperty("name").GetString() == "Dashboard host");
+        Assert.Equal("127.0.0.1", dashboard.GetProperty("ipAddress").GetString());
+        Assert.True(dashboard.GetProperty("online").GetBoolean());
+    }
+
+    [Fact]
     public async Task Encrypt_password_page_returns_enc_value_without_saving()
     {
         var response = await _client.PostAsJsonAsync("/api/settings/password", new
@@ -243,6 +265,10 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("firmware-highlights", html);
         Assert.Contains("id=\"view-security-servers\"", html);
         Assert.Contains("id=\"nav-security-servers\"", html);
+        Assert.Contains("id=\"view-server-status\"", html);
+        Assert.Contains("id=\"nav-server-status\"", html);
+        Assert.Contains("Server Status", html);
+        Assert.Contains("id=\"status-body\"", html);
         Assert.Contains("id=\"demo-banner\"", html);
         Assert.Contains("UseDemoData", html);
         Assert.Contains("id=\"view-encrypt\"", html);

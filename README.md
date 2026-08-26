@@ -8,6 +8,7 @@ A web dashboard for Milestone XProtect that shows camera locations on a map and 
 - Local location overrides for cameras that are not mapped yet
 - Storage usage for recording and archive volumes
 - Camera inventory in a device table: status, labels, vendor, model, IP, firmware, lifecycle/EOS, NDAA, password age, and notes
+- Server Status page for hosts you monitor by name, host name, and IP (online or offline)
 - Optional SQL Server cache so the last snapshot still shows if the management server is briefly unavailable
 
 The dashboard does **not** query the XProtect `Surveillance` database. Milestone stores configuration there, but that schema is unsupported for integrations. Live data comes from the [MIP VMS RESTful Configuration API](https://doc.developer.milestonesys.com/mipvmsapi/api/config-rest/v1/) through the API Gateway.
@@ -143,3 +144,26 @@ For many cameras, click **Download CSV**, fill `latitude` and `longitude`, then 
 If you later set a camera GIS point in Management Client (`POINT (LONGITUDE LATITUDE)`), the dashboard uses that value unless a local override exists.
 
 To change the starting map view when nothing is mapped yet, set `Milestone:DefaultLatitude`, `DefaultLongitude`, and `DefaultZoom` in `appsettings.json`.
+
+## Monitor servers (online / offline)
+
+Open **Server Status** in the sidebar. The page shows each host as **Online** or **Offline**, with server name, host name, and IP address.
+
+Add servers on that page, or list them in `appsettings.json`:
+
+```json
+"MonitoredServers": [
+  {
+    "Name": "FOXUSWDMSIA297",
+    "HostName": "LENELNEWAPP.INT.APPS.FOX",
+    "IpAddress": "10.20.30.40",
+    "Role": "Lenel application"
+  }
+]
+```
+
+Host name or IP is enough. The site checks the IP first, then the host name, using common ports (RDP, SMB, HTTP, SSH) and ICMP ping. Servers added on the page are stored in `App_Data/monitored-servers.json` on the web server.
+
+While **Use demo data** is on, the page also includes this website (`127.0.0.1`) as a sample online host.
+
+This is separate from **Security Servers**, which is the XProtect recording-server inventory.
