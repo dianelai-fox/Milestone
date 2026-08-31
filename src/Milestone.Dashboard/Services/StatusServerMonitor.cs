@@ -260,15 +260,32 @@ public sealed class StatusServerMonitor
         }
 
         var filter = string.Join(" OR ", names.Select(name => $"Name='{name}'"));
+        var script =
+            "$h='" + ipAddress + "'\n" +
+            "$filter=\"" + filter + "\"\n" +
+            "function Read-Services([string]$Protocol) {\n" +
+            "  $opt = New-CimSessionOption -Protocol $Protocol\n" +
+            "  $session = New-CimSession -ComputerName $h -SessionOption $opt -OperationTimeoutSec 4\n" +
+            "  try {\n" +
+            "    @(Get-CimInstance -CimSession $session -ClassName Win32_Service -Filter $filter | Select-Object Name,State,DisplayName)\n" +
+            "  } finally { Remove-CimSession $session }\n" +
+            "}\n" +
+            "$result = $null\n" +
+            "foreach ($protocol in @('Dcom','Wsman')) {\n" +
+            "  try {\n" +
+            "    $result = Read-Services $protocol\n" +
+            "    if ($result) { break }\n" +
+            "  } catch { }\n" +
+            "}\n" +
+            "if (-not $result) { throw 'No service data' }\n" +
+            "$result | ConvertTo-Json -Depth 3\n";
         try
         {
             var start = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments =
-                    "-NoProfile -NonInteractive -Command \"$h='" + ipAddress
-                    + "'; @(Get-CimInstance -ComputerName $h -ClassName Win32_Service -Filter \\\"" + filter
-                    + "\\\" | Select-Object Name,State,DisplayName) | ConvertTo-Json -Depth 3\"",
+                Arguments = "-NoProfile -NonInteractive -EncodedCommand "
+                    + Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(script)),
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -282,7 +299,7 @@ public sealed class StatusServerMonitor
 
             var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(TimeSpan.FromSeconds(8));
+            timeout.CancelAfter(TimeSpan.FromSeconds(12));
             await process.WaitForExitAsync(timeout.Token);
             return process.ExitCode == 0 ? ParseServicesJson(names, output) : null;
         }

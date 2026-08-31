@@ -89,6 +89,35 @@ On a **new web server**, HTTP 500.19 error `0x8007000d` on `C:\inetpub\xprotect-
 
 Windows authentication to XProtect is not used. Use an XProtect Basic user, and prefer HTTPS between the web server and the API Gateway.
 
+## Grant IIS permission to read Windows services
+
+Server Status can list SQL/IIS service state only when the **XProtectDashboard** app pool is allowed to query `Win32_Service` on that host. **No access** means the host answered SMB/RDP, but CIM/WMI was denied.
+
+Do this once.
+
+1. On the **IIS web server**, open PowerShell as Administrator and print the account to grant:
+
+   ```powershell
+   cd C:\Users\dianela\Milestone
+   powershell -ExecutionPolicy Bypass -File .\scripts\grant-remote-service-access.ps1 -ShowIisIdentity
+   ```
+
+   If the app pool is still **ApplicationPoolIdentity**, the account is the IIS computer account, for example `CORP\WEBSERVER$`.
+
+2. On **each monitored Windows server**, open PowerShell as Administrator and grant that account (use the value from step 1):
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File \\path\to\Milestone\scripts\grant-remote-service-access.ps1 -Account "CORP\WEBSERVER$"
+   ```
+
+   That adds the account to **Distributed COM Users** and **Remote Management Users**, turns on the WMI/WinRM firewall rules, and grants **Remote Enable** on `root\cimv2`.
+
+3. Recycle the **XProtectDashboard** app pool and press Ctrl+F5. SQL/IIS pills should change from **No access** to **Running** or **Stopped**.
+
+Linux hosts (Aztec receivers) stay **None**. Do not run the grant script on those.
+
+If your security team will not allow the IIS computer account, set the app pool to a domain service account and pass that account in `-Account`. Do not put the XProtect password in this script.
+
 ## Encrypt the password in appsettings.json
 
 The dashboard can store `Milestone:Password` as an encrypted value (`ENC:...`) instead of plain text. Decrypt happens only when the site starts.

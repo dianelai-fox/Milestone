@@ -297,7 +297,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("100", html);
         Assert.Contains("Group", html);
         Assert.Contains("/lib/leaflet/leaflet.js", html);
-        Assert.Contains("dashboard.js?v=20260826v", html);
+        Assert.Contains("dashboard.js?v=20260826w", html);
         var js = await _client.GetStringAsync("/js/dashboard.js");
         Assert.Contains("statusPageSize: 10", js);
         Assert.Contains("function renderStatusPager", js);
@@ -353,6 +353,10 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Restore-LiveSettings", publish);
         Assert.Contains("AspNetCoreModuleV2", publish);
         Assert.Contains("0x8007000d", publish);
+        var grant = File.ReadAllText(Path.Combine(repo, "scripts", "grant-remote-service-access.ps1"));
+        Assert.Contains("ShowIisIdentity", grant);
+        Assert.Contains("root\\cimv2", grant);
+        Assert.Contains("Distributed COM Users", grant);
     }
 
     [Fact]
