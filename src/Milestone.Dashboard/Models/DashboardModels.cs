@@ -463,12 +463,27 @@ public sealed class StatusServerInfo
     public double? MemoryUsedPercent { get; init; }
     public double? StorageUsedPercent { get; init; }
     public bool StorageReported { get; init; }
+    public IReadOnlyList<StatusServiceInfo> Services { get; init; } = [];
     public string StorageHealth => StorageReported && StorageUsedPercent is { } percent
         ? ServerHealth.Storage(percent)
         : "Not reported";
     public bool NeedsAttention =>
-        !Online || (StorageReported && StorageUsedPercent is { } percent && ServerHealth.IsStorageAttention(percent));
+        !Online
+        || Services.Any(service => service.NeedsAttention)
+        || (StorageReported && StorageUsedPercent is { } percent && ServerHealth.IsStorageAttention(percent));
     public string Status => Online ? "Online" : "Offline";
+}
+
+public sealed class StatusServiceInfo
+{
+    public required string Name { get; init; }
+    public string DisplayName { get; init; } = "";
+    public required string Status { get; init; }
+    public string? Detail { get; init; }
+    public bool Running => Status.Equals("Running", StringComparison.OrdinalIgnoreCase);
+    public bool NeedsAttention =>
+        Status.Equals("Stopped", StringComparison.OrdinalIgnoreCase)
+        || Status.Equals("Not found", StringComparison.OrdinalIgnoreCase);
 }
 
 public sealed class StatusServerDeck

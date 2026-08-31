@@ -13,6 +13,7 @@ public sealed class StatusServerCatalog
         public string? Environment { get; set; }
         public string? CatalogOs { get; set; }
         public string? Sql { get; set; }
+        public List<string> Services { get; set; } = [];
     }
 
     public static IReadOnlyList<Spec> MasterMind { get; } =
@@ -116,7 +117,8 @@ public sealed class StatusServerCatalog
             Domain = incoming.Domain ?? existing.Domain,
             Environment = incoming.Environment ?? existing.Environment,
             CatalogOs = incoming.CatalogOs ?? existing.CatalogOs,
-            Sql = incoming.Sql ?? existing.Sql
+            Sql = incoming.Sql ?? existing.Sql,
+            Services = incoming.Services.Count > 0 ? incoming.Services : existing.Services
         };
     }
 

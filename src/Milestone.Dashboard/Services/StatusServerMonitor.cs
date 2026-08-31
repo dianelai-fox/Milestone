@@ -95,6 +95,25 @@ public sealed class StatusServerMonitor
         }
 
         var application = StatusServerCsvParser.ResolveApplication(spec.Description, spec.Deck);
+        var watched = StatusServerServices.Watched(spec);
+        IReadOnlyList<StatusServiceInfo> services = [];
+        if (watched.Count > 0)
+        {
+            if (!reach.Online)
+            {
+                services = StatusServerServices.Unreachable(watched, "Host is offline.");
+            }
+            else if (!OperatingSystem.IsWindows())
+            {
+                services = StatusServerServices.Unreachable(watched, "Service checks run from the Windows IIS host.");
+            }
+            else
+            {
+                services = await TryReadServicesAsync(spec.IpAddress, watched, cancellationToken)
+                    ?? StatusServerServices.Unreachable(watched, "Could not read Windows services.");
+            }
+        }
+
         return new StatusServerInfo
         {
             Id = $"status:{spec.Name}:{application}",
@@ -117,7 +136,8 @@ public sealed class StatusServerMonitor
             Uptime = inventory?.Uptime,
             MemoryUsedPercent = inventory?.MemoryUsedPercent,
             StorageUsedPercent = inventory?.StorageUsedPercent,
-            StorageReported = inventory?.StorageUsedPercent is not null
+            StorageReported = inventory?.StorageUsedPercent is not null,
+            Services = services
         };
     }
 
@@ -223,6 +243,85 @@ public sealed class StatusServerMonitor
         {
             return null;
         }
+    }
+
+    private static async Task<IReadOnlyList<StatusServiceInfo>?> TryReadServicesAsync(
+        string ipAddress,
+        IReadOnlyList<string> names,
+        CancellationToken cancellationToken)
+    {
+        if (!IsValidIPv4(ipAddress) || names.Count == 0)
+        {
+            return null;
+        }
+
+        var filter = string.Join(" OR ", names.Select(name => $"Name='{name}'"));
+        try
+        {
+            var start = new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments =
+                    "-NoProfile -NonInteractive -Command \"$h='" + ipAddress
+                    + "'; @(Get-CimInstance -ComputerName $h -ClassName Win32_Service -Filter \\\"" + filter
+                    + "\\\" | Select-Object Name,State,DisplayName) | ConvertTo-Json -Depth 3\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var process = Process.Start(start);
+            if (process is null)
+            {
+                return null;
+            }
+
+            var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(8));
+            await process.WaitForExitAsync(timeout.Token);
+            return process.ExitCode == 0 ? ParseServicesJson(names, output) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    internal static IReadOnlyList<StatusServiceInfo>? ParseServicesJson(IReadOnlyList<string> watched, string json)
+    {
+        if (string.IsNullOrWhiteSpace(json) || json[0] is not '{' and not '[')
+        {
+            return null;
+        }
+
+        using var document = JsonDocument.Parse(json);
+        var nodes = document.RootElement.ValueKind == JsonValueKind.Array
+            ? document.RootElement.EnumerateArray().ToList()
+            : [document.RootElement];
+        var found = new Dictionary<string, StatusServiceInfo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var node in nodes)
+        {
+            var name = node.TryGetProperty("Name", out var nameNode) ? nameNode.GetString() : null;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            var state = node.TryGetProperty("State", out var stateNode) ? stateNode.GetString() : "Unknown";
+            var display = node.TryGetProperty("DisplayName", out var displayNode) ? displayNode.GetString() : null;
+            found[name] = new StatusServiceInfo
+            {
+                Name = name,
+                DisplayName = string.IsNullOrWhiteSpace(display)
+                    ? StatusServerServices.DisplayName(name)
+                    : display,
+                Status = string.IsNullOrWhiteSpace(state) ? "Unknown" : state,
+                Detail = state
+            };
+        }
+
+        return StatusServerServices.FromReadings(watched, found);
     }
 
     internal static InventoryReading? ParseInventoryJson(string json)

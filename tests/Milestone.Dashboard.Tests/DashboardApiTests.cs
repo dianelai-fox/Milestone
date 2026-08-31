@@ -252,6 +252,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("MasterMind", html);
         Assert.Contains("Perspective", html);
         Assert.Contains("Last checked", html);
+        Assert.Contains(">Services<", html);
         Assert.DoesNotContain("id=\"status-grid\"", html);
         Assert.Contains("id=\"status-rows\"", html);
         Assert.Contains("id=\"status-footer\"", html);
@@ -296,11 +297,12 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("100", html);
         Assert.Contains("Group", html);
         Assert.Contains("/lib/leaflet/leaflet.js", html);
-        Assert.Contains("dashboard.js?v=20260826t", html);
+        Assert.Contains("dashboard.js?v=20260826u", html);
         var js = await _client.GetStringAsync("/js/dashboard.js");
         Assert.Contains("statusPageSize: 10", js);
         Assert.Contains("function renderStatusPager", js);
         Assert.Contains("function renderStatusPie", js);
+        Assert.Contains("function formatStatusServices", js);
         Assert.DoesNotContain("status-deck-group", js);
     }
 
@@ -334,6 +336,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("#status-footer", css);
         Assert.Contains(".status-pie-card", css);
         Assert.Contains(".status-pie", css);
+        Assert.Contains(".service-pill", css);
         Assert.Contains(".server-description", css);
         Assert.Contains(".demo-banner", css);
         Assert.Contains(".connect-actions", css);

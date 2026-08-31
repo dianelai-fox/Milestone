@@ -1306,8 +1306,27 @@ th {
 #status-footer {
   margin-top: 0;
 }
-.status-rows-table { min-width: 1680px; }
+.status-rows-table { min-width: 1960px; }
 .status-rows-table .name-cell { font-weight: 700; }
+.status-rows-table .services-cell {
+  white-space: normal;
+  min-width: 220px;
+  max-width: 320px;
+}
+.service-pill {
+  display: inline-block;
+  margin: 0 6px 6px 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  background: #edf1f4;
+  color: var(--text);
+}
+.service-pill.on { background: var(--teal-soft); color: #0f766e; }
+.service-pill.off { background: #fde8e8; color: var(--red); }
+.service-pill.unk { background: #edf1f4; color: var(--muted); }
 .status-rows-table .detail-cell,
 .status-rows-table .os-cell {
   white-space: normal;

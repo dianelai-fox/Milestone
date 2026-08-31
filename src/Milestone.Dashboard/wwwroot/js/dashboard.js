@@ -935,7 +935,7 @@ function renderServerStatus() {
   title.textContent = filter
     ? `${scope} · ${statusFilterLabel(filter)}`
     : state.statusDeck || (applicationNames.length ? applicationNames.join(" · ") : "Server applications");
-  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers across ${groups.length} application${groups.length === 1 ? "" : "s"}. Import CSV updates Server Description and the other inventory columns.`;
+  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers across ${groups.length} application${groups.length === 1 ? "" : "s"}. The Services column lists SQL, IIS, or names from the CSV Services column.`;
   const pageSize = state.statusPageSize || 10;
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   state.statusPage = Math.min(Math.max(state.statusPage, 1), pageCount);
@@ -946,6 +946,7 @@ function renderServerStatus() {
         <td class="name-cell">${escapeHtml(server.name)}</td>
         <td>${escapeHtml(server.ipAddress)}</td>
         <td><span class="status ${server.online ? "on" : "off"}">${escapeHtml(server.status)}</span></td>
+        <td class="services-cell">${formatStatusServices(server)}</td>
         <td>${escapeHtml(server.deck ?? "—")}</td>
         <td>${escapeHtml(server.description ?? "—")}</td>
         <td>${escapeHtml(server.role ?? "Server")}</td>
@@ -960,7 +961,7 @@ function renderServerStatus() {
         <td>${escapeHtml(formatDate(server.lastBoot) ?? "Not reported")}</td>
         <td>${escapeHtml(formatDate(server.checkedAt) ?? "—")}</td>
         <td class="detail-cell">${escapeHtml(server.detail ?? "—")}</td>
-      </tr>`).join("") || `<tr><td colspan="17">No servers match this filter.</td></tr>`;
+      </tr>`).join("") || `<tr><td colspan="18">No servers match this filter.</td></tr>`;
   const rowsCopy = document.getElementById("status-rows-copy");
   if (rowsCopy) {
     rowsCopy.textContent = visible.length
@@ -1025,6 +1026,19 @@ function renderStatusPager(pageCount) {
       renderServerStatus();
     });
   });
+}
+
+function formatStatusServices(server) {
+  const items = Array.isArray(server.services) ? server.services : [];
+  if (items.length === 0) {
+    return `<span class="muted">None</span>`;
+  }
+  return items.map((service) => {
+    const tone = service.running ? "on" : service.needsAttention ? "off" : "unk";
+    const label = service.displayName || service.name || "Service";
+    const status = service.status || "Unknown";
+    return `<span class="service-pill ${tone}" title="${escapeHtml(service.name ?? "")}${service.detail ? ` · ${escapeHtml(service.detail)}` : ""}">${escapeHtml(label)} · ${escapeHtml(status)}</span>`;
+  }).join("");
 }
 
 function formatStatusResponse(server) {

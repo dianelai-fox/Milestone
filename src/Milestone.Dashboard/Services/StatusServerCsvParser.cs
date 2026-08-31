@@ -39,6 +39,7 @@ public static class StatusServerCsvParser
         var environmentIndex = Index("environment");
         var osIndex = Index("os", "operating system");
         var sqlIndex = Index("sql", "sql server");
+        var servicesIndex = Index("services", "windows services", "service");
 
         foreach (var line in lines.Skip(1))
         {
@@ -63,7 +64,8 @@ public static class StatusServerCsvParser
                 Domain = Read(cells, domainIndex),
                 Environment = Read(cells, environmentIndex),
                 CatalogOs = Read(cells, osIndex),
-                Sql = Read(cells, sqlIndex)
+                Sql = Read(cells, sqlIndex),
+                Services = StatusServerServices.Parse(Read(cells, servicesIndex)).ToList()
             });
         }
 
@@ -74,7 +76,7 @@ public static class StatusServerCsvParser
     {
         var lines = new List<string>
         {
-            "Server Name,IP Address,Server Description,Server Function,Domain,Environment,OS,SQL"
+            "Server Name,IP Address,Server Description,Server Function,Domain,Environment,OS,SQL,Services"
         };
         lines.AddRange(servers.Select(server => string.Join(',',
             CsvText.Escape(server.Name),
@@ -84,7 +86,8 @@ public static class StatusServerCsvParser
             CsvText.Escape(server.Domain),
             CsvText.Escape(server.Environment),
             CsvText.Escape(server.CatalogOs),
-            CsvText.Escape(server.Sql))));
+            CsvText.Escape(server.Sql),
+            CsvText.Escape(string.Join("; ", StatusServerServices.Watched(server))))));
         return string.Join('\n', lines) + "\n";
     }
 

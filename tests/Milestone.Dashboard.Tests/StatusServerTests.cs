@@ -82,6 +82,70 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public void Default_services_follow_server_function()
+    {
+        var db = StatusServerServices.DefaultFor(new StatusServerCatalog.Spec
+        {
+            Name = "FOXUSWDMSDB303",
+            Role = "App/DB",
+            Sql = "Microsoft SQL Server 2022",
+            CatalogOs = "Windows Server 2022"
+        });
+        Assert.Contains("MSSQLSERVER", db);
+        Assert.Contains("SQLSERVERAGENT", db);
+        Assert.Contains("W3SVC", db);
+
+        var app = StatusServerServices.DefaultFor(new StatusServerCatalog.Spec
+        {
+            Name = "FOXUSWDMSAP654",
+            Role = "Application",
+            CatalogOs = "Windows Server 2022"
+        });
+        Assert.Contains("W3SVC", app);
+        Assert.DoesNotContain("MSSQLSERVER", app);
+
+        var linux = StatusServerServices.DefaultFor(new StatusServerCatalog.Spec
+        {
+            Name = "AZTEC-FOX-1.corp.fox",
+            Role = "Aztec Receivers",
+            CatalogOs = "Linux"
+        });
+        Assert.Empty(linux);
+    }
+
+    [Fact]
+    public void Parses_services_from_csv_and_json()
+    {
+        var csv = """
+            Server Name,IP Address,Server Description,Server Function,Domain,Environment,OS,SQL,Services
+            FOXUSWDMSIA304,10.180.80.200,Lenel,Application,corp.fox,Prod,Windows Server 2022,,"MSSQLSERVER; W3SVC"
+            """;
+        var row = Assert.Single(StatusServerCsvParser.Parse(csv));
+        Assert.Equal(["MSSQLSERVER", "W3SVC"], row.Services);
+
+        var services = StatusServerMonitor.ParseServicesJson(
+            ["MSSQLSERVER", "W3SVC"],
+            """
+            [
+              { "Name": "MSSQLSERVER", "State": "Running", "DisplayName": "SQL Server (MSSQLSERVER)" },
+              { "Name": "W3SVC", "State": "Stopped", "DisplayName": "World Wide Web Publishing Service" }
+            ]
+            """);
+        Assert.NotNull(services);
+        Assert.True(services.Single(item => item.Name == "MSSQLSERVER").Running);
+        Assert.True(services.Single(item => item.Name == "W3SVC").NeedsAttention);
+        var onlineHost = new Milestone.Dashboard.Models.StatusServerInfo
+        {
+            Id = "status:lab",
+            Name = "lab",
+            IpAddress = "192.0.2.10",
+            Online = true,
+            Services = services
+        };
+        Assert.True(onlineHost.NeedsAttention);
+    }
+
+    [Fact]
     public void Server_description_becomes_its_own_application_group()
     {
         var csv = MasterMindTemplate.Replace(
@@ -301,7 +365,9 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
                       && server.GetProperty("ipAddress").GetString() == "10.180.80.154"
                       && server.GetProperty("role").GetString() == "App/DB"
                       && server.GetProperty("sql").GetString() == "Microsoft SQL Server 2022"
-                      && server.GetProperty("detail").GetString()?.Length > 0);
+                      && server.GetProperty("detail").GetString()?.Length > 0
+                      && server.GetProperty("services").EnumerateArray()
+                          .Any(item => item.GetProperty("name").GetString() == "MSSQLSERVER"));
         Assert.Contains(
             document.RootElement.GetProperty("servers").EnumerateArray(),
             server => server.GetProperty("name").GetString() == "FOXUSWDMSAP655"
@@ -320,10 +386,12 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         var response = await _client.GetAsync("/api/server-status/template");
         response.EnsureSuccessStatusCode();
         var csv = await response.Content.ReadAsStringAsync();
-        Assert.StartsWith("Server Name,IP Address,Server Description,Server Function,Domain,Environment,OS,SQL", csv);
+        Assert.StartsWith("Server Name,IP Address,Server Description,Server Function,Domain,Environment,OS,SQL,Services", csv);
         Assert.Contains("FOXUSWDMSDB303", csv);
         Assert.Contains("FOXUSWDMSAP655", csv);
         Assert.Contains("MAS Signal Processor", csv);
+        Assert.Contains("MSSQLSERVER", csv);
+        Assert.Contains("W3SVC", csv);
     }
 
     [Fact]
