@@ -68,13 +68,16 @@ public static class StatusServerServices
     public static string DisplayName(string serviceName) =>
         DisplayNames.TryGetValue(serviceName, out var label) ? label : serviceName;
 
-    public static IReadOnlyList<StatusServiceInfo> Unreachable(IEnumerable<string> names, string detail)
+    public static IReadOnlyList<StatusServiceInfo> Unreachable(
+        IEnumerable<string> names,
+        string status,
+        string detail)
     {
         return names.Select(name => new StatusServiceInfo
         {
             Name = name,
             DisplayName = DisplayName(name),
-            Status = "Unreachable",
+            Status = status,
             Detail = detail
         }).ToList();
     }

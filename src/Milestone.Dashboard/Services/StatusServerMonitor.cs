@@ -99,18 +99,22 @@ public sealed class StatusServerMonitor
         IReadOnlyList<StatusServiceInfo> services = [];
         if (watched.Count > 0)
         {
-            if (!reach.Online)
+            if (!OperatingSystem.IsWindows())
             {
-                services = StatusServerServices.Unreachable(watched, "Host is offline.");
-            }
-            else if (!OperatingSystem.IsWindows())
-            {
-                services = StatusServerServices.Unreachable(watched, "Service checks run from the Windows IIS host.");
+                services = StatusServerServices.Unreachable(
+                    watched,
+                    "IIS only",
+                    "Windows service checks run from the IIS host, not from this machine.");
             }
             else
             {
                 services = await TryReadServicesAsync(spec.IpAddress, watched, cancellationToken)
-                    ?? StatusServerServices.Unreachable(watched, "Could not read Windows services.");
+                    ?? StatusServerServices.Unreachable(
+                        watched,
+                        reach.Online ? "No access" : "Host offline",
+                        reach.Online
+                            ? "The host answered, but IIS could not read Win32_Service. Grant the XProtectDashboard app pool remote CIM/WMI permission."
+                            : "The host did not answer SMB (445), RDP (3389), or a Windows service query.");
             }
         }
 

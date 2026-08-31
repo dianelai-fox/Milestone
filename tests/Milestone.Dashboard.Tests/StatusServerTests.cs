@@ -143,6 +143,9 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
             Services = services
         };
         Assert.True(onlineHost.NeedsAttention);
+        var offline = StatusServerServices.Unreachable(["MSSQLSERVER"], "Host offline", "Host is offline.");
+        Assert.Equal("Host offline", Assert.Single(offline).Status);
+        Assert.False(Assert.Single(offline).NeedsAttention);
     }
 
     [Fact]

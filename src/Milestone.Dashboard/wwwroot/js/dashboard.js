@@ -935,7 +935,7 @@ function renderServerStatus() {
   title.textContent = filter
     ? `${scope} · ${statusFilterLabel(filter)}`
     : state.statusDeck || (applicationNames.length ? applicationNames.join(" · ") : "Server applications");
-  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers across ${groups.length} application${groups.length === 1 ? "" : "s"}. The Services column lists SQL, IIS, or names from the CSV Services column.`;
+  copy.textContent = `${visible.length} of ${servers.length} non-XProtect servers across ${groups.length} application${groups.length === 1 ? "" : "s"}. Services show Running or Stopped only after IIS can query Win32_Service on that host. Host offline or No access means the check did not run.`;
   const pageSize = state.statusPageSize || 10;
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   state.statusPage = Math.min(Math.max(state.statusPage, 1), pageCount);
