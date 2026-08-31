@@ -70,6 +70,28 @@ function Restore-LiveSettings($saved) {
     }
 }
 
+function Assert-AspNetCoreHostingBundle {
+    Import-Module WebAdministration -ErrorAction SilentlyContinue
+    $module = $null
+    if (Get-Command Get-WebGlobalModule -ErrorAction SilentlyContinue) {
+        $module = Get-WebGlobalModule -Name "AspNetCoreModuleV2" -ErrorAction SilentlyContinue
+    }
+    $ancm = Join-Path ${env:ProgramFiles} "IIS\Asp.Net Core Module\V2\aspnetcorev2.dll"
+    if (-not $module -and -not (Test-Path $ancm)) {
+        throw @"
+IIS on this server does not have AspNetCoreModuleV2.
+That is what causes HTTP 500.19 error 0x8007000d on web.config.
+
+Install the .NET 8 Hosting Bundle on this machine, then iisreset:
+https://dotnet.microsoft.com/download/dotnet/8.0
+Under ASP.NET Core Runtime 8.0, download Hosting Bundle.
+
+If the bundle was installed before IIS, repair the Hosting Bundle after IIS is present.
+"@
+    }
+}
+
+Assert-AspNetCoreHostingBundle
 Stop-IisSiteIfExists
 Write-Host "Stopping IIS"
 iisreset /stop | Out-Host

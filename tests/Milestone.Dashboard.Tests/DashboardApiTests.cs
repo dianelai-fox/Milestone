@@ -351,6 +351,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("CopyToPublishDirectory>Never", csproj);
         Assert.Contains("Keeping live settings", publish);
         Assert.Contains("Restore-LiveSettings", publish);
+        Assert.Contains("AspNetCoreModuleV2", publish);
+        Assert.Contains("0x8007000d", publish);
     }
 
     [Fact]
