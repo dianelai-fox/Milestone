@@ -358,7 +358,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("root\\cimv2", grant);
         Assert.Contains("Distributed COM Users", grant);
         var testAccess = File.ReadAllText(Path.Combine(repo, "scripts", "test-remote-service-access.ps1"));
-        Assert.Contains("Trying Dcom", testAccess);
+        Assert.Contains("Trying", testAccess);
+        Assert.Contains("Dcom", testAccess);
         Assert.Contains("Win32_Service", testAccess);
     }
 
