@@ -134,6 +134,13 @@ public class StatusServerTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.NotNull(services);
         Assert.True(services.Single(item => item.Name == "MSSQLSERVER").Running);
         Assert.True(services.Single(item => item.Name == "W3SVC").NeedsAttention);
+        var named = StatusServerMonitor.ParseServicesJson(
+            ["MSSQLSERVER"],
+            """
+            [ { "Name": "MSSQL$MASTERMIND", "State": "Running", "DisplayName": "SQL Server (MASTERMIND)" } ]
+            """);
+        Assert.Contains(named!, item => item.Name == "MSSQL$MASTERMIND" && item.Running);
+        Assert.DoesNotContain(named!, item => item.Name == "MSSQLSERVER" && item.Status == "Not found");
         var onlineHost = new Milestone.Dashboard.Models.StatusServerInfo
         {
             Id = "status:lab",

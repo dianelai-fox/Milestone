@@ -86,21 +86,47 @@ public static class StatusServerServices
         IEnumerable<string> watched,
         IReadOnlyDictionary<string, StatusServiceInfo> found)
     {
-        return watched.Select(name =>
+        var list = new List<StatusServiceInfo>();
+        var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var hasNamedSql = found.Keys.Any(name => name.StartsWith("MSSQL$", StringComparison.OrdinalIgnoreCase));
+        var hasNamedAgent = found.Keys.Any(name => name.StartsWith("SQLAgent$", StringComparison.OrdinalIgnoreCase));
+        foreach (var name in watched)
         {
             if (found.TryGetValue(name, out var reading))
             {
-                return reading;
+                list.Add(reading);
+                used.Add(name);
+                continue;
             }
 
-            return new StatusServiceInfo
+            if (name.Equals("MSSQLSERVER", StringComparison.OrdinalIgnoreCase) && hasNamedSql)
+            {
+                continue;
+            }
+
+            if (name.Equals("SQLSERVERAGENT", StringComparison.OrdinalIgnoreCase) && hasNamedAgent)
+            {
+                continue;
+            }
+
+            list.Add(new StatusServiceInfo
             {
                 Name = name,
                 DisplayName = DisplayName(name),
                 Status = "Not found",
-                Detail = "The service was not returned by the host."
-            };
-        }).ToList();
+                Detail = "The service was not returned by the host. A named SQL instance uses MSSQL`$NAME, not MSSQLSERVER."
+            });
+        }
+
+        foreach (var extra in found.Values)
+        {
+            if (used.Add(extra.Name))
+            {
+                list.Add(extra);
+            }
+        }
+
+        return list;
     }
 
     internal static string Sanitize(string? name)

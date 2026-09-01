@@ -108,13 +108,15 @@ public sealed class StatusServerMonitor
             }
             else
             {
-                services = await TryReadServicesAsync(spec.IpAddress, watched, cancellationToken)
-                    ?? StatusServerServices.Unreachable(
-                        watched,
-                        reach.Online ? "No access" : "Host offline",
-                        reach.Online
-                            ? "The host answered, but IIS could not read Win32_Service. Grant the XProtectDashboard app pool remote CIM/WMI permission."
-                            : "The host did not answer SMB (445), RDP (3389), or a Windows service query.");
+                var probe = await TryReadServicesAsync(spec.IpAddress, watched, cancellationToken);
+                services = probe.Services ?? StatusServerServices.Unreachable(
+                    watched,
+                    reach.Online ? "No access" : "Host offline",
+                    reach.Online
+                        ? ShortError(
+                            probe.Error,
+                            "The host answered, but IIS could not read Win32_Service. Run scripts/test-remote-service-access.ps1 on the IIS server. Grant the account from -ShowIisIdentity on that IIS server, not your PC.")
+                        : "The host did not answer SMB (445), RDP (3389), or a Windows service query.");
             }
         }
 
@@ -249,20 +251,55 @@ public sealed class StatusServerMonitor
         }
     }
 
-    private static async Task<IReadOnlyList<StatusServiceInfo>?> TryReadServicesAsync(
+    private sealed record ServiceProbe(IReadOnlyList<StatusServiceInfo>? Services, string? Error);
+
+    private static string ServiceFilter(IReadOnlyList<string> names)
+    {
+        var clauses = new List<string>();
+        foreach (var name in names)
+        {
+            clauses.Add($"Name='{name}'");
+            if (name.Equals("MSSQLSERVER", StringComparison.OrdinalIgnoreCase))
+            {
+                clauses.Add("Name LIKE 'MSSQL$%'");
+            }
+
+            if (name.Equals("SQLSERVERAGENT", StringComparison.OrdinalIgnoreCase))
+            {
+                clauses.Add("Name LIKE 'SQLAgent$%'");
+            }
+        }
+
+        return string.Join(" OR ", clauses);
+    }
+
+    private static string ShortError(string? error, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(error))
+        {
+            return fallback;
+        }
+
+        var text = error.ReplaceLineEndings(" ").Trim();
+        return text.Length <= 220 ? text : text[..220];
+    }
+
+    private static async Task<ServiceProbe> TryReadServicesAsync(
         string ipAddress,
         IReadOnlyList<string> names,
         CancellationToken cancellationToken)
     {
         if (!IsValidIPv4(ipAddress) || names.Count == 0)
         {
-            return null;
+            return new ServiceProbe(null, null);
         }
 
-        var filter = string.Join(" OR ", names.Select(name => $"Name='{name}'"));
+        var filter = ServiceFilter(names).Replace("$", "`$", StringComparison.Ordinal);
         var script =
             "$h='" + ipAddress + "'\n" +
             "$filter=\"" + filter + "\"\n" +
+            "$err=$null\n" +
+            "$connected=$false\n" +
             "function Read-Services([string]$Protocol) {\n" +
             "  $opt = New-CimSessionOption -Protocol $Protocol\n" +
             "  $session = New-CimSession -ComputerName $h -SessionOption $opt -OperationTimeoutSec 4\n" +
@@ -270,15 +307,16 @@ public sealed class StatusServerMonitor
             "    @(Get-CimInstance -CimSession $session -ClassName Win32_Service -Filter $filter | Select-Object Name,State,DisplayName)\n" +
             "  } finally { Remove-CimSession $session }\n" +
             "}\n" +
-            "$result = $null\n" +
+            "$result = @()\n" +
             "foreach ($protocol in @('Dcom','Wsman')) {\n" +
             "  try {\n" +
-            "    $result = Read-Services $protocol\n" +
-            "    if ($result) { break }\n" +
-            "  } catch { }\n" +
+            "    $result = @(Read-Services $protocol)\n" +
+            "    $connected = $true\n" +
+            "    break\n" +
+            "  } catch { $err = $_.Exception.Message }\n" +
             "}\n" +
-            "if (-not $result) { throw 'No service data' }\n" +
-            "$result | ConvertTo-Json -Depth 3\n";
+            "if (-not $connected) { [Console]::Error.WriteLine($err); exit 2 }\n" +
+            "if ($result.Count -eq 0) { '[]' } else { $result | ConvertTo-Json -Depth 3 }\n";
         try
         {
             var start = new ProcessStartInfo
@@ -294,18 +332,24 @@ public sealed class StatusServerMonitor
             using var process = Process.Start(start);
             if (process is null)
             {
-                return null;
+                return new ServiceProbe(null, "Could not start PowerShell.");
             }
 
             var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+            var error = await process.StandardError.ReadToEndAsync(cancellationToken);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromSeconds(12));
             await process.WaitForExitAsync(timeout.Token);
-            return process.ExitCode == 0 ? ParseServicesJson(names, output) : null;
+            if (process.ExitCode != 0)
+            {
+                return new ServiceProbe(null, string.IsNullOrWhiteSpace(error) ? output : error);
+            }
+
+            return new ServiceProbe(ParseServicesJson(names, output) ?? [], error);
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            return new ServiceProbe(null, ex.Message);
         }
     }
 

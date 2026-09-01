@@ -76,6 +76,10 @@ function Grant-Cimv2RemoteRead([string]$Member) {
 }
 
 if ($ShowIisIdentity) {
+    $siteRoot = "C:\inetpub\xprotect-dashboard"
+    if (-not (Test-Path $siteRoot) -and -not (Get-Command Get-IISAppPool -ErrorAction SilentlyContinue)) {
+        throw "Run -ShowIisIdentity on the IIS web server that hosts the dashboard (C:\inetpub\xprotect-dashboard), not on FOXUSWDMSDB305 or your PC."
+    }
     $identity = Get-IisOutboundAccount
     Write-Host "App pool: $AppPoolName"
     Write-Host "IIS identity: $($identity.AppPoolUser)"
