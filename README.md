@@ -82,10 +82,14 @@ WinRM and `\\FOXAWSMSAP076\C$` are blocked from FOX2208553 (`Access is denied` /
 
 **On FOX2208553:**
 
+Administrator PowerShell starts in `C:\Windows\system32`. Use the full path (do not use `.\scripts\...` from system32):
+
 ```powershell
 cd C:\Users\dianela\Milestone
-powershell -ExecutionPolicy Bypass -File .\scripts\pack-for-iis.ps1 -IncludeSite -IncludeLiveSettings
+powershell -ExecutionPolicy Bypass -File C:\Users\dianela\Milestone\scripts\pack-for-iis.ps1 -IncludeSite -IncludeLiveSettings
 ```
+
+Or double-click `C:\Users\dianela\Milestone\scripts\pack-for-iis.cmd`.
 
 That writes `Desktop\xprotect-iis-package.zip`. Copy the zip onto FOXAWSMSAP076 through the RDP window (copy on the PC, paste on the server desktop).
 
