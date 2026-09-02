@@ -75,8 +75,8 @@ $remoteAcl = {
 try {
     Invoke-OnComputer -Computer $ToComputer -ScriptBlock $remoteAcl -ArgumentList @($SitePath, $IisAppPoolName)
 } catch {
-    Write-Warning "Copied files, but could not grant App_Data or recycle the pool: $($_.Exception.Message)"
-    Write-Warning "On $ToComputer run: powershell -ExecutionPolicy Bypass -File .\scripts\grant-app-data-access.ps1"
+    Write-Warning "Copied files. Grant App_Data and recycle on $ToComputer (WinRM is blocked):"
+    Write-Warning "  powershell -ExecutionPolicy Bypass -File $(Get-DevScriptsUnc 'grant-app-data-access.ps1')"
 }
 
 Write-Host ""

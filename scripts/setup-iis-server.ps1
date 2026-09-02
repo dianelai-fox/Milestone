@@ -75,10 +75,19 @@ Under ASP.NET Core Runtime 8.0, download Hosting Bundle.
 }
 
 if (-not (Test-SameComputer $RemoteComputer)) {
-    Write-Host "This PC is $env:COMPUTERNAME. Setting up IIS on $RemoteComputer."
-    Invoke-OnComputer -Computer $RemoteComputer -ScriptBlock $setup -ArgumentList @(
-        $SitePath, $AppPoolName, $SiteName, $Port, $IisWrongPoolName
-    )
+    Write-Host "This PC is $env:COMPUTERNAME. IIS setup cannot use WinRM to $RemoteComputer."
+    try {
+        $dest = Get-UncSitePath -Computer $RemoteComputer -SitePath $SitePath
+        New-Item -ItemType Directory -Force -Path $dest, (Join-Path $dest "App_Data\keys"), (Join-Path $dest "logs") | Out-Null
+        Write-Host "Created $dest through the admin share."
+    } catch {
+        Write-Host "Could not create $SitePath on $RemoteComputer from this PC: $($_.Exception.Message)"
+    }
+    Write-Host ""
+    Write-Host (Get-RunOnIisHelp "setup-iis-server.ps1")
+    Write-Host ""
+    Write-Host "After that succeeds, come back here and run copy-live-iis-data.ps1 and publish-iis.ps1."
+    exit 1
 } else {
     if (-not (Test-IsAdministrator)) {
         throw "Setting up IIS on this server requires Administrator PowerShell."

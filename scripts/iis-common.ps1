@@ -100,6 +100,24 @@ function Restore-LiveSettings([string]$SitePath, $saved) {
     }
 }
 
+function Get-DevScriptsUnc([string]$ScriptName) {
+    $root = "\\$IisDevComputer\C$\Users\dianela\Milestone\scripts"
+    if ([string]::IsNullOrWhiteSpace($ScriptName)) {
+        return $root
+    }
+    return Join-Path $root $ScriptName
+}
+
+function Get-RunOnIisHelp([string]$ScriptName) {
+    $unc = Get-DevScriptsUnc $ScriptName
+    return @"
+WinRM from $env:COMPUTERNAME to $IisWebComputer is blocked (Access is denied). That is normal here. Do not enable WinRM for this.
+
+RDP to $IisWebComputer, open PowerShell as Administrator, and run:
+  powershell -ExecutionPolicy Bypass -File $unc
+"@
+}
+
 function Invoke-OnComputer {
     param(
         [string]$Computer,
@@ -109,5 +127,9 @@ function Invoke-OnComputer {
     if (Test-SameComputer $Computer) {
         return & $ScriptBlock @ArgumentList
     }
-    return Invoke-Command -ComputerName $Computer -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
+    try {
+        return Invoke-Command -ComputerName $Computer -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList -ErrorAction Stop
+    } catch {
+        throw "Cannot use PowerShell remoting to ${Computer}: $($_.Exception.Message)"
+    }
 }

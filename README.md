@@ -78,15 +78,17 @@ Keep the source on your PC. Publish the site to the new web server.
 | Edit / build | **FOX2208553** | `C:\Users\dianela\Milestone` |
 | IIS site | **FOXAWSMSAP076** | `C:\inetpub\xprotect-dashboard` |
 
-Run these from **Administrator PowerShell** on FOX2208553 (`cd C:\Users\dianela\Milestone`). You need permission to `\\FOXAWSMSAP076\C$` and PowerShell remoting.
+WinRM from FOX2208553 to FOXAWSMSAP076 is blocked. That is expected. Do not enable remoting for this.
 
-**One-time on the new web server** (IIS + [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) must already be installed there):
+**One-time: RDP to FOXAWSMSAP076**, open Administrator PowerShell (IIS + [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) must already be installed there):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\setup-iis-server.ps1
+powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\setup-iis-server.ps1
 ```
 
 That creates folder `C:\inetpub\xprotect-dashboard`, app pool **XProtectDashboard** (no space, **No Managed Code**), site **XProtect Dashboard** on port 8080, and Modify on `App_Data`.
+
+Then from **Administrator PowerShell** on FOX2208553 (`cd C:\Users\dianela\Milestone`). You need permission to `\\FOXAWSMSAP076\C$` for file copy.
 
 **One-time: move live settings** from the old IIS folder on FOX2208553 (keeps `appsettings.json` and `App_Data`, not binaries):
 

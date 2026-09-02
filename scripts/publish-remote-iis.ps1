@@ -80,8 +80,9 @@ $remoteFinish = {
 try {
     Invoke-OnComputer -Computer $RemoteComputer -ScriptBlock $remotePrep -ArgumentList @($SitePath, $AppPoolName, $SiteName)
 } catch {
-    Write-Warning "Could not stop the app pool on $RemoteComputer : $($_.Exception.Message)"
-    Write-Warning "If copy fails because a DLL is locked, stop XProtectDashboard on $RemoteComputer and rerun."
+    Write-Warning "WinRM cannot stop the app pool on $RemoteComputer. Copy will use the admin share."
+    Write-Warning "If a DLL is locked, RDP to $RemoteComputer and run:"
+    Write-Warning "  powershell -ExecutionPolicy Bypass -File $(Get-DevScriptsUnc 'recycle-app-pool.ps1')"
 }
 
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
@@ -105,8 +106,8 @@ Restore-LiveSettings $dest $kept
 try {
     Invoke-OnComputer -Computer $RemoteComputer -ScriptBlock $remoteFinish -ArgumentList @($SitePath, $AppPoolName, $SiteName)
 } catch {
-    Write-Warning "Files are on $RemoteComputer but the app pool was not recycled: $($_.Exception.Message)"
-    Write-Warning "On $RemoteComputer run: Restart-WebAppPool $AppPoolName"
+    Write-Warning "Files are on $RemoteComputer. Recycle the pool there (WinRM is blocked):"
+    Write-Warning "  powershell -ExecutionPolicy Bypass -File $(Get-DevScriptsUnc 'recycle-app-pool.ps1')"
 }
 
 Write-Host ""
