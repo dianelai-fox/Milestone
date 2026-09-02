@@ -114,11 +114,13 @@ Do this once.
 
 3. Recycle the **XProtectDashboard** app pool and press Ctrl+F5. SQL/IIS pills should change from **No access** to **Running** or **Stopped**.
 
-If FOXUSWDMSDB305 still shows **No access**, you probably granted the wrong account (`FOX2208553$` is a workstation-style name). Run `-ShowIisIdentity` on the IIS box that has `C:\inetpub\xprotect-dashboard`, then grant **that** account on FOXUSWDMSDB305. From IIS, test with:
+If FOXUSWDMSDB305 still shows **No access**, you probably granted the wrong account (`FOX2208553$` is a workstation-style name). Run `-ShowIisIdentity` on the IIS box that has `C:\inetpub\xprotect-dashboard`, then grant **that** account on FOXUSWDMSDB305. From the **IIS web server** (not FOXUSWDMSDB305), test with:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\test-remote-service-access.ps1 -ComputerName 10.180.80.156
 ```
+
+The dashboard queries by IP over **DCOM**. WinRM to an IP fails with TrustedHosts (0x803381bb) and is not used.
 
 Linux hosts (Aztec receivers) stay **None**. Do not run the grant script on those.
 

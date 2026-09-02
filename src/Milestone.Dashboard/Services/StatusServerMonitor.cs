@@ -308,7 +308,7 @@ public sealed class StatusServerMonitor
             "  } finally { Remove-CimSession $session }\n" +
             "}\n" +
             "$result = @()\n" +
-            "foreach ($protocol in @('Dcom','Wsman')) {\n" +
+            "foreach ($protocol in @('Dcom')) {\n" +
             "  try {\n" +
             "    $result = @(Read-Services $protocol)\n" +
             "    $connected = $true\n" +

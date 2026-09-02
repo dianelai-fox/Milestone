@@ -7,8 +7,14 @@ param(
 
 $ErrorActionPreference = "Continue"
 Write-Host "Testing service read from $env:COMPUTERNAME to $ComputerName"
-Write-Host "This must be the IIS web server (the one with C:\inetpub\xprotect-dashboard), not FOXUSWDMSDB305."
+Write-Host "Run this on the IIS web server (C:\inetpub\xprotect-dashboard), not on FOXUSWDMSDB305."
 Write-Host ""
+
+$siteRoot = "C:\inetpub\xprotect-dashboard"
+if (-not (Test-Path $siteRoot)) {
+    Write-Warning "C:\inetpub\xprotect-dashboard was not found. You are on $env:COMPUTERNAME, not the IIS web server."
+    Write-Warning "DCOM can succeed here and still fail from IIS. Copy this script to the IIS box and run it there."
+}
 
 Import-Module WebAdministration -ErrorAction SilentlyContinue
 $poolUser = $null
@@ -17,7 +23,7 @@ if (Get-Command Get-IISAppPool -ErrorAction SilentlyContinue) {
     $poolUser = $pool.ProcessModel.UserName
 }
 if (-not $poolUser) {
-    Write-Warning "App pool $AppPoolName was not found on this machine. Run this script on the IIS web server."
+    Write-Warning "App pool $AppPoolName was not found on this machine."
 } else {
     Write-Host "App pool identity: $(if ($poolUser) { $poolUser } else { 'ApplicationPoolIdentity' })"
     if ([string]::IsNullOrWhiteSpace($poolUser) -or $poolUser -eq "ApplicationPoolIdentity") {
@@ -25,8 +31,14 @@ if (-not $poolUser) {
     }
 }
 
-$filter = "Name='MSSQLSERVER' OR Name LIKE 'MSSQL$%' OR Name='SQLSERVERAGENT' OR Name LIKE 'SQLAgent$%' OR Name='W3SVC'"
-foreach ($protocol in @("Dcom", "Wsman")) {
+$isIp = [System.Net.IPAddress]::TryParse($ComputerName, [ref]([System.Net.IPAddress]$null))
+$filter = "Name='MSSQLSERVER' OR Name LIKE 'MSSQL`$%' OR Name='SQLSERVERAGENT' OR Name LIKE 'SQLAgent`$%' OR Name='W3SVC'"
+$protocols = @("Dcom")
+if (-not $isIp) {
+    $protocols += "Wsman"
+}
+
+foreach ($protocol in $protocols) {
     Write-Host ""
     Write-Host "Trying $protocol..."
     try {
@@ -36,9 +48,10 @@ foreach ($protocol in @("Dcom", "Wsman")) {
             $rows = @(Get-CimInstance -CimSession $session -ClassName Win32_Service -Filter $filter |
                 Select-Object Name, State, DisplayName)
             if ($rows.Count -eq 0) {
-                Write-Host "$protocol connected, but no SQL/IIS service names were returned. The instance may be named (MSSQL`$INSTANCE)."
+                Write-Host "$protocol connected, but no SQL/IIS service names were returned."
             } else {
                 $rows | Format-Table -AutoSize | Out-Host
+                Write-Host "$protocol succeeded. The dashboard uses DCOM and the server IP, so this is the path IIS must be able to use."
             }
         } finally {
             Remove-CimSession $session
@@ -48,6 +61,10 @@ foreach ($protocol in @("Dcom", "Wsman")) {
     }
 }
 
+if ($isIp) {
+    Write-Host ""
+    Write-Host "WinRM was skipped because the target is an IP address. WinRM needs a host name, HTTPS, or TrustedHosts."
+}
+
 Write-Host ""
-Write-Host "If both fail with Access denied, the account granted on $ComputerName is not the IIS outbound account."
-Write-Host "Run grant-remote-service-access.ps1 -ShowIisIdentity on this IIS server, then grant THAT account on $ComputerName."
+Write-Host "Next: from the IIS web server, run this same command. Then recycle XProtectDashboard and press Ctrl+F5."
