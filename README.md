@@ -69,22 +69,57 @@ Content-Type: application/json
 
 Overrides are stored in `App_Data/location-overrides.json` on the web server.
 
+## Develop on FOX2208553, host on FOXAWSMSAP076
+
+Keep the source on your PC. Publish the site to the new web server.
+
+| Role | Computer | Folder |
+| --- | --- | --- |
+| Edit / build | **FOX2208553** | `C:\Users\dianela\Milestone` |
+| IIS site | **FOXAWSMSAP076** | `C:\inetpub\xprotect-dashboard` |
+
+Run these from **Administrator PowerShell** on FOX2208553 (`cd C:\Users\dianela\Milestone`). You need permission to `\\FOXAWSMSAP076\C$` and PowerShell remoting.
+
+**One-time on the new web server** (IIS + [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) must already be installed there):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-iis-server.ps1
+```
+
+That creates folder `C:\inetpub\xprotect-dashboard`, app pool **XProtectDashboard** (no space, **No Managed Code**), site **XProtect Dashboard** on port 8080, and Modify on `App_Data`.
+
+**One-time: move live settings** from the old IIS folder on FOX2208553 (keeps `appsettings.json` and `App_Data`, not binaries):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\copy-live-iis-data.ps1
+```
+
+**Every publish** from FOX2208553 (builds locally, copies to FOXAWSMSAP076, does **not** overwrite live `appsettings.json` or `App_Data`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\publish-iis.ps1
+```
+
+Then open `http://FOXAWSMSAP076:8080` and press Ctrl+F5.
+
+If `Password` is `ENC:...`, `App_Data\keys` must exist on FOXAWSMSAP076 or login fails. If login fails, use **Connect to XProtect** on the new server. Do not paste the password into chat.
+
+Server Status service checks now use **`CORP\FOXAWSMSAP076$`**, not `FOX2208553$`. Run `-ShowIisIdentity` on FOXAWSMSAP076, then grant that account on each monitored Windows host.
+
+To target a different web server: `-RemoteComputer OTHERWEB01`.
+
 ## Host on IIS
 
 On a **new web server**, HTTP 500.19 error `0x8007000d` on `C:\inetpub\xprotect-dashboard\web.config` means IIS cannot read the ASP.NET Core section. Install the Hosting Bundle first; the site files are not wrong.
 
 1. Install IIS, then install the [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) (ASP.NET Core Runtime 8.0 → **Hosting Bundle**). Run `iisreset`. If the bundle was installed before IIS, repair the Hosting Bundle.
-2. In IIS, the app pool must be named **XProtectDashboard** (no space) and **No Managed Code** (not .NET CLR 4). If you also have **XProtect Dashboard** (with a space), run `scripts/fix-iis-app-pool.ps1` as Administrator to move the site and remove the extra pool.
-3. Publish the site. Prefer `scripts/publish-iis.ps1` so the live `appsettings.json` is kept. A plain `dotnet publish` no longer overwrites that file.
+2. In IIS, the app pool must be named **XProtectDashboard** (no space) and **No Managed Code** (not .NET CLR 4). If you also have **XProtect Dashboard** (with a space), run `scripts/fix-iis-app-pool.ps1` as Administrator on the **web server** to move the site and remove the extra pool.
+3. From FOX2208553, run `scripts/publish-iis.ps1` so the live `appsettings.json` on FOXAWSMSAP076 is kept. A plain `dotnet publish` to the web server must not replace that file.
 
-   ```bash
-   scripts/publish-iis.ps1
-   ```
+   If you publish with `dotnet publish` yourself, do not replace `C:\inetpub\xprotect-dashboard\appsettings.json` on FOXAWSMSAP076. That file is what switches **Demo data** to your live recording servers and cameras (`Milestone:UseDemoData` = `false`).
 
-   If you publish with `dotnet publish` yourself, do not replace `C:\inetpub\xprotect-dashboard\appsettings.json`. That file is what switches **Demo data** to your live recording servers and cameras (`Milestone:UseDemoData` = `false`).
-
-4. In IIS, create a site or application pointed at that folder.
-5. Grant the app-pool identity read access to the publish folder and write access to `App_Data` and `logs`. If the site shows `Access to the path 'C:\Windows\TEMP\MilestoneDashboard' is denied`, the app pool cannot write `App_Data`. On the IIS server run `scripts/grant-app-data-access.ps1` as Administrator, then recycle **XProtectDashboard** and press Ctrl+F5.
+4. In IIS on FOXAWSMSAP076, create a site or application pointed at that folder if `setup-iis-server.ps1` has not already done so.
+5. Grant the app-pool identity read access to the publish folder and write access to `App_Data` and `logs`. If the site shows `Access to the path 'C:\Windows\TEMP\MilestoneDashboard' is denied`, the app pool cannot write `App_Data`. On FOXAWSMSAP076 run `scripts/grant-app-data-access.ps1` as Administrator, then recycle **XProtectDashboard** and press Ctrl+F5.
 6. If you set `ConnectionStrings:Dashboard`, the app creates a small `DashboardSnapshots` table and stores the last successful API pull there. Use a dedicated database, not the XProtect `Surveillance` database.
 
 Windows authentication to XProtect is not used. Use an XProtect Basic user, and prefer HTTPS between the web server and the API Gateway.
@@ -95,29 +130,28 @@ Server Status can list SQL/IIS service state only when the **XProtectDashboard**
 
 Do this once.
 
-1. On the **IIS web server**, open PowerShell as Administrator and print the account to grant:
+1. On **FOXAWSMSAP076**, open PowerShell as Administrator and print the account to grant:
 
    ```powershell
-   cd C:\Users\dianela\Milestone
-   powershell -ExecutionPolicy Bypass -File .\scripts\grant-remote-service-access.ps1 -ShowIisIdentity
+   powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\grant-remote-service-access.ps1 -ShowIisIdentity
    ```
 
-   If the app pool is still **ApplicationPoolIdentity**, the account is the IIS computer account, for example `CORP\WEBSERVER$`.
+   If the app pool is still **ApplicationPoolIdentity**, the account is `CORP\FOXAWSMSAP076$`.
 
 2. On **each monitored Windows server**, open PowerShell as Administrator and grant that account (use the value from step 1):
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File \\path\to\Milestone\scripts\grant-remote-service-access.ps1 -Account "CORP\WEBSERVER$"
+   powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\grant-remote-service-access.ps1 -Account "CORP\FOXAWSMSAP076$"
    ```
 
    That adds the account to **Distributed COM Users** and **Remote Management Users**, turns on the WMI/WinRM firewall rules, and grants **Remote Enable** on `root\cimv2`.
 
 3. Recycle the **XProtectDashboard** app pool and press Ctrl+F5. SQL/IIS pills should change from **No access** to **Running** or **Stopped**.
 
-If FOXUSWDMSDB305 still shows **No access**, you probably granted the wrong account (`FOX2208553$` is a workstation-style name). Run `-ShowIisIdentity` on the IIS box that has `C:\inetpub\xprotect-dashboard`, then grant **that** account on FOXUSWDMSDB305. From the **IIS web server** (not FOXUSWDMSDB305), test with:
+If FOXUSWDMSDB305 still shows **No access**, you probably granted the old PC account (`FOX2208553$`). Run `-ShowIisIdentity` on **FOXAWSMSAP076**, then grant **that** account (`CORP\FOXAWSMSAP076$`) on FOXUSWDMSDB305. From FOXAWSMSAP076 (not FOX2208553), test with:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\test-remote-service-access.ps1 -ComputerName 10.180.80.156
+powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\test-remote-service-access.ps1 -ComputerName 10.180.80.156
 ```
 
 The dashboard queries by IP over **DCOM**. WinRM to an IP fails with TrustedHosts (0x803381bb) and is not used.
@@ -136,13 +170,12 @@ The easiest way is the **Encrypt password** page in the sidebar. Type the XProte
 
 The PowerShell script still works if you prefer it:
 
-1. Publish the new site (stop IIS first, then `scripts/publish-iis.ps1` or your usual publish).
-2. Open PowerShell **as Administrator** on the web server.
-3. Run:
+1. Publish the new site from FOX2208553 (`scripts/publish-iis.ps1`).
+2. Open PowerShell **as Administrator** on **FOXAWSMSAP076**.
+3. Run (copy the script there, or use the UNC path to your PC):
 
    ```powershell
-   cd C:\Users\dianela\Milestone
-   powershell -ExecutionPolicy Bypass -File .\scripts\encrypt-password.ps1
+   powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\encrypt-password.ps1
    ```
 
    If the site folder is not `C:\inetpub\xprotect-dashboard`, pass it:

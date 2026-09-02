@@ -13,8 +13,8 @@ $siteRoot = "C:\inetpub\xprotect-dashboard"
 $siteFound = Test-Path $siteRoot
 if (-not $siteFound) {
     Write-Warning "This computer is $env:COMPUTERNAME. C:\inetpub\xprotect-dashboard is missing."
-    Write-Warning "FOX2208553 is your PC unless the dashboard site is installed here. DCOM can succeed from your login and still fail from IIS."
-    Write-Warning "RDP to the IIS web server (the machine where http://localhost:8080 shows the dashboard) and run this script there."
+    Write-Warning "FOX2208553 is the development PC. Run this on FOXAWSMSAP076, the IIS web server."
+    Write-Warning "DCOM can succeed from your login on the PC and still fail from IIS."
 }
 
 Import-Module WebAdministration -ErrorAction SilentlyContinue

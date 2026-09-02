@@ -1,4 +1,5 @@
 #Requires -RunAsAdministrator
+# Run on FOXAWSMSAP076 after publish. The encrypted value only works on that IIS server.
 param(
     [string]$SitePath = "C:\inetpub\xprotect-dashboard",
     [string]$AppPoolName = "XProtectDashboard"

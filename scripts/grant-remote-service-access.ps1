@@ -1,4 +1,5 @@
 #Requires -RunAsAdministrator
+# -ShowIisIdentity must run on FOXAWSMSAP076. FOX2208553 is only the development PC.
 param(
     [string]$Account,
     [string]$AppPoolName = "XProtectDashboard",
@@ -100,8 +101,8 @@ if ($ShowIisIdentity) {
     if (-not $site.Found) {
         throw @"
 C:\inetpub\xprotect-dashboard was not found on $env:COMPUTERNAME.
-FOX2208553 is not the IIS web server unless the site lives in that folder.
-Open the machine where you published the dashboard and browse http://localhost:8080, then run -ShowIisIdentity there.
+FOX2208553 is the development PC. The IIS site is on FOXAWSMSAP076.
+RDP to FOXAWSMSAP076, browse http://localhost:8080, then run -ShowIisIdentity there.
 "@
     }
     $identity = Get-IisOutboundAccount

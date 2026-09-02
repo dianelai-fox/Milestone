@@ -1,4 +1,5 @@
 #Requires -RunAsAdministrator
+# Run on FOXAWSMSAP076 (the IIS web server).
 param(
     [string]$SitePath = "C:\inetpub\xprotect-dashboard",
     [string]$AppPoolName = "XProtectDashboard"
