@@ -84,7 +84,7 @@ On a **new web server**, HTTP 500.19 error `0x8007000d` on `C:\inetpub\xprotect-
    If you publish with `dotnet publish` yourself, do not replace `C:\inetpub\xprotect-dashboard\appsettings.json`. That file is what switches **Demo data** to your live recording servers and cameras (`Milestone:UseDemoData` = `false`).
 
 4. In IIS, create a site or application pointed at that folder.
-5. Grant the app-pool identity read access to the publish folder and write access to `App_Data` and `logs`.
+5. Grant the app-pool identity read access to the publish folder and write access to `App_Data` and `logs`. If the site shows `Access to the path 'C:\Windows\TEMP\MilestoneDashboard' is denied`, the app pool cannot write `App_Data`. On the IIS server run `scripts/grant-app-data-access.ps1` as Administrator, then recycle **XProtectDashboard** and press Ctrl+F5.
 6. If you set `ConnectionStrings:Dashboard`, the app creates a small `DashboardSnapshots` table and stores the last successful API pull there. Use a dedicated database, not the XProtect `Surveillance` database.
 
 Windows authentication to XProtect is not used. Use an XProtect Basic user, and prefer HTTPS between the web server and the API Gateway.

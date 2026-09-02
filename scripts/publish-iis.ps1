@@ -108,6 +108,12 @@ if ($LASTEXITCODE -ne 0) {
 
 Restore-LiveSettings $keptSettings
 
+$appData = Join-Path $SitePath "App_Data"
+$logs = Join-Path $SitePath "logs"
+New-Item -ItemType Directory -Force -Path (Join-Path $appData "keys"), $logs | Out-Null
+icacls $appData /grant "IIS AppPool\${AppPoolName}:(OI)(CI)M" /T | Out-Host
+icacls $logs /grant "IIS AppPool\${AppPoolName}:(OI)(CI)M" /T | Out-Host
+
 Write-Host "Starting IIS"
 iisreset /start | Out-Host
 if (Get-WebAppPoolState -Name $AppPoolName -ErrorAction SilentlyContinue) {

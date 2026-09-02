@@ -11,45 +11,14 @@ public sealed class StatusServerInventoryStore
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly string _path;
+    private readonly string? _path;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly ILogger<StatusServerInventoryStore> _logger;
 
     public StatusServerInventoryStore(IWebHostEnvironment environment, ILogger<StatusServerInventoryStore> logger)
     {
         _logger = logger;
-        _path = ResolvePath(environment, logger);
-    }
-
-    private static string ResolvePath(IWebHostEnvironment environment, ILogger logger)
-    {
-        var candidates = new[]
-        {
-            Path.Combine(environment.ContentRootPath, "App_Data"),
-            Path.Combine(environment.WebRootPath ?? environment.ContentRootPath, "..", "App_Data"),
-            Path.Combine(Path.GetTempPath(), "MilestoneDashboard")
-        };
-
-        foreach (var folder in candidates)
-        {
-            try
-            {
-                var fullFolder = Path.GetFullPath(folder);
-                Directory.CreateDirectory(fullFolder);
-                var probe = Path.Combine(fullFolder, ".write-test");
-                File.WriteAllText(probe, "ok");
-                File.Delete(probe);
-                return Path.Combine(fullFolder, "status-servers.json");
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Could not use server status folder {Folder}", folder);
-            }
-        }
-
-        logger.LogError(
-            "IIS cannot write server status. Grant Modify on C:\\inetpub\\xprotect-dashboard\\App_Data to IIS AppPool\\XProtectDashboard.");
-        return Path.Combine(Path.GetTempPath(), "MilestoneDashboard", "status-servers.json");
+        _path = AppDataPaths.CombineFile(environment, "status-servers.json", logger);
     }
 
     public async Task<IReadOnlyList<StatusServerCatalog.Spec>> GetAllAsync(CancellationToken cancellationToken)
@@ -123,7 +92,6 @@ public sealed class StatusServerInventoryStore
                 next = byKey.Values.ToList();
             }
 
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
             await WriteUnlockedAsync(next, cancellationToken);
             return next;
         }
@@ -138,7 +106,7 @@ public sealed class StatusServerInventoryStore
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            if (File.Exists(_path))
+            if (_path is not null && File.Exists(_path))
             {
                 File.Delete(_path);
             }
@@ -151,7 +119,7 @@ public sealed class StatusServerInventoryStore
 
     private async Task<IReadOnlyList<StatusServerCatalog.Spec>> ReadUnlockedAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_path))
+        if (_path is null || !File.Exists(_path))
         {
             return [];
         }
@@ -177,6 +145,12 @@ public sealed class StatusServerInventoryStore
         IReadOnlyList<StatusServerCatalog.Spec> servers,
         CancellationToken cancellationToken)
     {
+        if (_path is null)
+        {
+            throw new InvalidOperationException(AppDataPaths.GrantHint);
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         await using var stream = File.Create(_path);
         await JsonSerializer.SerializeAsync(stream, servers, JsonOptions, cancellationToken);
         await stream.FlushAsync(cancellationToken);

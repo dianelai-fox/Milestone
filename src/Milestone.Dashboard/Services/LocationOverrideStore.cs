@@ -11,43 +11,12 @@ public sealed class LocationOverrideStore
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private readonly string _path;
+    private readonly string? _path;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     public LocationOverrideStore(IWebHostEnvironment environment, ILogger<LocationOverrideStore> logger)
     {
-        _path = ResolvePath(environment, logger);
-    }
-
-    private static string ResolvePath(IWebHostEnvironment environment, ILogger logger)
-    {
-        var candidates = new[]
-        {
-            Path.Combine(environment.ContentRootPath, "App_Data"),
-            Path.Combine(environment.WebRootPath ?? environment.ContentRootPath, "..", "App_Data"),
-            Path.Combine(Path.GetTempPath(), "MilestoneDashboard")
-        };
-
-        foreach (var folder in candidates)
-        {
-            try
-            {
-                var fullFolder = Path.GetFullPath(folder);
-                Directory.CreateDirectory(fullFolder);
-                var probe = Path.Combine(fullFolder, ".write-test");
-                File.WriteAllText(probe, "ok");
-                File.Delete(probe);
-                return Path.Combine(fullFolder, "location-overrides.json");
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Could not use location folder {Folder}", folder);
-            }
-        }
-
-        logger.LogError(
-            "IIS cannot write camera locations. Grant Modify on C:\\inetpub\\xprotect-dashboard\\App_Data to IIS AppPool\\XProtectDashboard.");
-        return Path.Combine(Path.GetTempPath(), "MilestoneDashboard", "location-overrides.json");
+        _path = AppDataPaths.CombineFile(environment, "location-overrides.json", logger);
     }
 
     public async Task<IReadOnlyDictionary<string, LocationOverrideRequest>> GetAllAsync(CancellationToken cancellationToken)
@@ -95,7 +64,6 @@ public sealed class LocationOverrideStore
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
             await WriteUnlockedAsync(requests, cancellationToken);
         }
         finally
@@ -106,7 +74,7 @@ public sealed class LocationOverrideStore
 
     private async Task<IReadOnlyDictionary<string, LocationOverrideRequest>> ReadUnlockedAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_path))
+        if (_path is null || !File.Exists(_path))
         {
             return new Dictionary<string, LocationOverrideRequest>(StringComparer.OrdinalIgnoreCase);
         }
@@ -128,6 +96,12 @@ public sealed class LocationOverrideStore
 
     private async Task WriteUnlockedAsync(IEnumerable<LocationOverrideRequest> requests, CancellationToken cancellationToken)
     {
+        if (_path is null)
+        {
+            throw new InvalidOperationException(AppDataPaths.GrantHint);
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         await using var stream = File.Create(_path);
         await JsonSerializer.SerializeAsync(stream, requests, JsonOptions, cancellationToken);
     }
