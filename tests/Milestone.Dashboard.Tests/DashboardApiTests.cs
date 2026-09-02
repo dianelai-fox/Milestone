@@ -361,6 +361,9 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Trying", testAccess);
         Assert.Contains("Dcom", testAccess);
         Assert.Contains("Win32_Service", testAccess);
+        var fixPool = File.ReadAllText(Path.Combine(repo, "scripts", "fix-iis-app-pool.ps1"));
+        Assert.Contains("XProtectDashboard", fixPool);
+        Assert.Contains("managedRuntimeVersion", fixPool);
     }
 
     [Fact]

@@ -74,7 +74,7 @@ Overrides are stored in `App_Data/location-overrides.json` on the web server.
 On a **new web server**, HTTP 500.19 error `0x8007000d` on `C:\inetpub\xprotect-dashboard\web.config` means IIS cannot read the ASP.NET Core section. Install the Hosting Bundle first; the site files are not wrong.
 
 1. Install IIS, then install the [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) (ASP.NET Core Runtime 8.0 → **Hosting Bundle**). Run `iisreset`. If the bundle was installed before IIS, repair the Hosting Bundle.
-2. In IIS, the app pool must be **No Managed Code** (not .NET CLR 4). The included `web.config` uses AspNetCoreModuleV2.
+2. In IIS, the app pool must be named **XProtectDashboard** (no space) and **No Managed Code** (not .NET CLR 4). If you also have **XProtect Dashboard** (with a space), run `scripts/fix-iis-app-pool.ps1` as Administrator to move the site and remove the extra pool.
 3. Publish the site. Prefer `scripts/publish-iis.ps1` so the live `appsettings.json` is kept. A plain `dotnet publish` no longer overwrites that file.
 
    ```bash
