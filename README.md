@@ -102,6 +102,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\copy-live-iis-data.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\publish-iis.ps1
 ```
 
+If the script says the app pool was not recycled, RDP to FOXAWSMSAP076 and run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\recycle-app-pool.ps1
+```
+
 Then open `http://FOXAWSMSAP076:8080` and press Ctrl+F5.
 
 If `Password` is `ENC:...`, `App_Data\keys` must exist on FOXAWSMSAP076 or login fails. If login fails, use **Connect to XProtect** on the new server. Do not paste the password into chat.
