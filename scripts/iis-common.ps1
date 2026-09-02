@@ -100,21 +100,61 @@ function Restore-LiveSettings([string]$SitePath, $saved) {
     }
 }
 
-function Get-DevScriptsUnc([string]$ScriptName) {
-    $root = "\\$IisDevComputer\C$\Users\dianela\Milestone\scripts"
+function Get-IisScriptsPath([string]$ScriptName) {
+    $root = Join-Path $IisSitePath "scripts"
     if ([string]::IsNullOrWhiteSpace($ScriptName)) {
         return $root
     }
     return Join-Path $root $ScriptName
 }
 
-function Get-RunOnIisHelp([string]$ScriptName) {
-    $unc = Get-DevScriptsUnc $ScriptName
-    return @"
-WinRM from $env:COMPUTERNAME to $IisWebComputer is blocked (Access is denied). That is normal here. Do not enable WinRM for this.
+function Get-DevScriptsUnc([string]$ScriptName) {
+    return Get-IisScriptsPath $ScriptName
+}
 
-RDP to $IisWebComputer, open PowerShell as Administrator, and run:
-  powershell -ExecutionPolicy Bypass -File $unc
+function Get-WindowsPowerShell {
+    return Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
+}
+
+function Test-PathQuick([string]$Path, [int]$Seconds = 4) {
+    $job = Start-Job -ScriptBlock { Test-Path -LiteralPath $using:Path }
+    if (-not (Wait-Job $job -Timeout $Seconds)) {
+        Stop-Job $job -ErrorAction SilentlyContinue
+        Remove-Job $job -Force -ErrorAction SilentlyContinue
+        return $false
+    }
+    $result = Receive-Job $job
+    Remove-Job $job -Force -ErrorAction SilentlyContinue
+    return [bool]$result
+}
+
+function Copy-ScriptsToIis([string]$RemoteComputer) {
+    $source = $PSScriptRoot
+    if (-not $source) {
+        $source = Split-Path -Parent $MyInvocation.MyCommand.Path
+    }
+    $dest = Get-UncSitePath -Computer $RemoteComputer -SitePath (Get-IisScriptsPath)
+    New-Item -ItemType Directory -Force -Path $dest | Out-Null
+    & robocopy $source $dest /E /R:2 /W:2 /NFL /NDL /NJH | Out-Host
+    if ($LASTEXITCODE -ge 8) {
+        throw "Could not copy scripts to $dest (robocopy exit $LASTEXITCODE)."
+    }
+    Write-Host "Copied scripts to $dest"
+    return $dest
+}
+
+function Get-RunOnIisHelp([string]$ScriptName) {
+    $local = Get-IisScriptsPath $ScriptName
+    $ps = Get-WindowsPowerShell
+    return @"
+Do not run scripts from \\$IisDevComputer\C$\Users\dianela\... on $IisWebComputer.
+That path hangs for accounts such as sa-dlai (no access to Diane's profile share).
+
+On FOX2208553, copy the scripts first:
+  powershell -ExecutionPolicy Bypass -File C:\Users\dianela\Milestone\scripts\copy-scripts-to-iis.ps1
+
+Then RDP to $IisWebComputer, open Windows PowerShell as Administrator (not PowerShell 7), and run:
+  $ps -ExecutionPolicy Bypass -File $local
 "@
 }
 

@@ -78,12 +78,19 @@ Keep the source on your PC. Publish the site to the new web server.
 | Edit / build | **FOX2208553** | `C:\Users\dianela\Milestone` |
 | IIS site | **FOXAWSMSAP076** | `C:\inetpub\xprotect-dashboard` |
 
-WinRM from FOX2208553 to FOXAWSMSAP076 is blocked. That is expected. Do not enable remoting for this.
+WinRM from FOX2208553 to FOXAWSMSAP076 is blocked. That is expected. Do not enable remoting. Do not run scripts from `\\FOX2208553\C$\Users\dianela\...` while logged onto FOXAWSMSAP076 as `sa-dlai` — that share hangs.
 
-**One-time: RDP to FOXAWSMSAP076**, open Administrator PowerShell (IIS + [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) must already be installed there):
+**One-time: on FOX2208553**, copy the scripts onto the web server:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\setup-iis-server.ps1
+cd C:\Users\dianela\Milestone
+powershell -ExecutionPolicy Bypass -File .\scripts\copy-scripts-to-iis.ps1
+```
+
+**Then RDP to FOXAWSMSAP076.** Press Ctrl+C if a UNC command is still frozen. Open **Windows PowerShell** as Administrator (not PowerShell 7). IIS + the [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) must already be installed:
+
+```powershell
+C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:\inetpub\xprotect-dashboard\scripts\setup-iis-server.ps1
 ```
 
 That creates folder `C:\inetpub\xprotect-dashboard`, app pool **XProtectDashboard** (no space, **No Managed Code**), site **XProtect Dashboard** on port 8080, and Modify on `App_Data`.
@@ -105,7 +112,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\publish-iis.ps1
 If the script says the app pool was not recycled, RDP to FOXAWSMSAP076 and run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\recycle-app-pool.ps1
+C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:\inetpub\xprotect-dashboard\scripts\recycle-app-pool.ps1
 ```
 
 Then open `http://FOXAWSMSAP076:8080` and press Ctrl+F5.
@@ -141,7 +148,7 @@ Do this once.
 1. On **FOXAWSMSAP076**, open PowerShell as Administrator and print the account to grant:
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\grant-remote-service-access.ps1 -ShowIisIdentity
+   C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:\inetpub\xprotect-dashboard\scripts\grant-remote-service-access.ps1 -ShowIisIdentity
    ```
 
    If the app pool is still **ApplicationPoolIdentity**, the account is `CORP\FOXAWSMSAP076$`.
@@ -149,7 +156,7 @@ Do this once.
 2. On **each monitored Windows server**, open PowerShell as Administrator and grant that account (use the value from step 1):
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\grant-remote-service-access.ps1 -Account "CORP\FOXAWSMSAP076$"
+   C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File \\FOXAWSMSAP076\C$\inetpub\xprotect-dashboard\scripts\grant-remote-service-access.ps1 -Account "CORP\FOXAWSMSAP076$"
    ```
 
    That adds the account to **Distributed COM Users** and **Remote Management Users**, turns on the WMI/WinRM firewall rules, and grants **Remote Enable** on `root\cimv2`.
@@ -159,7 +166,7 @@ Do this once.
 If FOXUSWDMSDB305 still shows **No access**, you probably granted the old PC account (`FOX2208553$`). Run `-ShowIisIdentity` on **FOXAWSMSAP076**, then grant **that** account (`CORP\FOXAWSMSAP076$`) on FOXUSWDMSDB305. From FOXAWSMSAP076 (not FOX2208553), test with:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\test-remote-service-access.ps1 -ComputerName 10.180.80.156
+C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:\inetpub\xprotect-dashboard\scripts\test-remote-service-access.ps1 -ComputerName 10.180.80.156
 ```
 
 The dashboard queries by IP over **DCOM**. WinRM to an IP fails with TrustedHosts (0x803381bb) and is not used.
@@ -183,7 +190,7 @@ The PowerShell script still works if you prefer it:
 3. Run (copy the script there, or use the UNC path to your PC):
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File \\FOX2208553\C$\Users\dianela\Milestone\scripts\encrypt-password.ps1
+   C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:\inetpub\xprotect-dashboard\scripts\encrypt-password.ps1
    ```
 
    If the site folder is not `C:\inetpub\xprotect-dashboard`, pass it:

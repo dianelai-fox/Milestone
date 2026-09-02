@@ -75,13 +75,13 @@ Under ASP.NET Core Runtime 8.0, download Hosting Bundle.
 }
 
 if (-not (Test-SameComputer $RemoteComputer)) {
-    Write-Host "This PC is $env:COMPUTERNAME. IIS setup cannot use WinRM to $RemoteComputer."
+    Write-Host "This PC is $env:COMPUTERNAME. Copying scripts to $RemoteComputer, then you run setup there."
     try {
         $dest = Get-UncSitePath -Computer $RemoteComputer -SitePath $SitePath
         New-Item -ItemType Directory -Force -Path $dest, (Join-Path $dest "App_Data\keys"), (Join-Path $dest "logs") | Out-Null
-        Write-Host "Created $dest through the admin share."
+        Copy-ScriptsToIis -RemoteComputer $RemoteComputer | Out-Null
     } catch {
-        Write-Host "Could not create $SitePath on $RemoteComputer from this PC: $($_.Exception.Message)"
+        Write-Host "Could not copy to $RemoteComputer from this PC: $($_.Exception.Message)"
     }
     Write-Host ""
     Write-Host (Get-RunOnIisHelp "setup-iis-server.ps1")
@@ -101,7 +101,7 @@ try {
 } catch {
     $fromUnc = $null
 }
-if ($fromUnc -and (Test-Path (Join-Path $fromUnc "appsettings.json"))) {
+if ($fromUnc -and (Test-PathQuick (Join-Path $fromUnc "appsettings.json"))) {
     Write-Host "Found live settings on $FromComputer. Next:"
     Write-Host "  powershell -ExecutionPolicy Bypass -File .\scripts\copy-live-iis-data.ps1"
 } else {
