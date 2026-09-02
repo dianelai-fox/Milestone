@@ -7,8 +7,27 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Get-DashboardSite {
+    Import-Module WebAdministration -ErrorAction SilentlyContinue
+    $expected = [IO.Path]::GetFullPath("C:\inetpub\xprotect-dashboard").TrimEnd('\')
+    if (Get-Command Get-Website -ErrorAction SilentlyContinue) {
+        foreach ($site in @(Get-Website)) {
+            if (-not $site.physicalPath) { continue }
+            $path = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($site.physicalPath)).TrimEnd('\')
+            if ($path -eq $expected) {
+                return [pscustomobject]@{ Found = $true; SiteName = $site.Name; AppPool = $site.applicationPool; Path = $path }
+            }
+        }
+    }
+    return [pscustomobject]@{ Found = Test-Path $expected; SiteName = $null; AppPool = $AppPoolName; Path = $expected }
+}
+
 function Get-IisOutboundAccount {
     Import-Module WebAdministration -ErrorAction SilentlyContinue
+    $site = Get-DashboardSite
+    if ($site.AppPool) {
+        $AppPoolName = $site.AppPool
+    }
     $user = $null
     if (Get-Command Get-IISAppPool -ErrorAction SilentlyContinue) {
         $user = (Get-IISAppPool -Name $AppPoolName -ErrorAction SilentlyContinue).ProcessModel.UserName
@@ -76,12 +95,18 @@ function Grant-Cimv2RemoteRead([string]$Member) {
 }
 
 if ($ShowIisIdentity) {
-    $siteRoot = "C:\inetpub\xprotect-dashboard"
-    if (-not (Test-Path $siteRoot) -and -not (Get-Command Get-IISAppPool -ErrorAction SilentlyContinue)) {
-        throw "Run -ShowIisIdentity on the IIS web server that hosts the dashboard (C:\inetpub\xprotect-dashboard), not on FOXUSWDMSDB305 or your PC."
+    $site = Get-DashboardSite
+    Write-Host "This computer: $env:COMPUTERNAME"
+    if (-not $site.Found) {
+        throw @"
+C:\inetpub\xprotect-dashboard was not found on $env:COMPUTERNAME.
+FOX2208553 is not the IIS web server unless the site lives in that folder.
+Open the machine where you published the dashboard and browse http://localhost:8080, then run -ShowIisIdentity there.
+"@
     }
     $identity = Get-IisOutboundAccount
-    Write-Host "App pool: $AppPoolName"
+    Write-Host "Site: $($site.SiteName)"
+    Write-Host "App pool: $($identity.AppPoolUser) / $($site.AppPool)"
     Write-Host "IIS identity: $($identity.AppPoolUser)"
     Write-Host "Grant this account on each monitored Windows server:"
     Write-Host "  $($identity.GrantAccount)"

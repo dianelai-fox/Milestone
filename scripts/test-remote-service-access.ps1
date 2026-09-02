@@ -7,23 +7,37 @@ param(
 
 $ErrorActionPreference = "Continue"
 Write-Host "Testing service read from $env:COMPUTERNAME to $ComputerName"
-Write-Host "Run this on the IIS web server (C:\inetpub\xprotect-dashboard), not on FOXUSWDMSDB305."
 Write-Host ""
 
 $siteRoot = "C:\inetpub\xprotect-dashboard"
-if (-not (Test-Path $siteRoot)) {
-    Write-Warning "C:\inetpub\xprotect-dashboard was not found. You are on $env:COMPUTERNAME, not the IIS web server."
-    Write-Warning "DCOM can succeed here and still fail from IIS. Copy this script to the IIS box and run it there."
+$siteFound = Test-Path $siteRoot
+if (-not $siteFound) {
+    Write-Warning "This computer is $env:COMPUTERNAME. C:\inetpub\xprotect-dashboard is missing."
+    Write-Warning "FOX2208553 is your PC unless the dashboard site is installed here. DCOM can succeed from your login and still fail from IIS."
+    Write-Warning "RDP to the IIS web server (the machine where http://localhost:8080 shows the dashboard) and run this script there."
 }
 
 Import-Module WebAdministration -ErrorAction SilentlyContinue
+$resolvedPool = $AppPoolName
+if (Get-Command Get-Website -ErrorAction SilentlyContinue) {
+    foreach ($site in @(Get-Website)) {
+        if (-not $site.physicalPath) { continue }
+        $path = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($site.physicalPath)).TrimEnd('\')
+        if ($path -eq [IO.Path]::GetFullPath($siteRoot).TrimEnd('\')) {
+            $resolvedPool = $site.applicationPool
+            Write-Host "Found dashboard site '$($site.Name)' using app pool '$resolvedPool'"
+            break
+        }
+    }
+}
+
 $poolUser = $null
 if (Get-Command Get-IISAppPool -ErrorAction SilentlyContinue) {
-    $pool = Get-IISAppPool -Name $AppPoolName -ErrorAction SilentlyContinue
+    $pool = Get-IISAppPool -Name $resolvedPool -ErrorAction SilentlyContinue
     $poolUser = $pool.ProcessModel.UserName
 }
 if (-not $poolUser) {
-    Write-Warning "App pool $AppPoolName was not found on this machine."
+    Write-Warning "App pool $resolvedPool was not found on this machine."
 } else {
     Write-Host "App pool identity: $(if ($poolUser) { $poolUser } else { 'ApplicationPoolIdentity' })"
     if ([string]::IsNullOrWhiteSpace($poolUser) -or $poolUser -eq "ApplicationPoolIdentity") {
