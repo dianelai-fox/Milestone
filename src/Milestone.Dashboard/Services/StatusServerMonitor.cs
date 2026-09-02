@@ -280,7 +280,7 @@ public sealed class StatusServerMonitor
                 || error.Contains("timeout", StringComparison.OrdinalIgnoreCase)
                 || error.Contains("0x40004", StringComparison.OrdinalIgnoreCase)))
         {
-            return "DCOM/WMI timed out from the IIS server (TCP 135 / RPC). That is a firewall path, not a SQL password. From FOXAWSMSAP076, SMB can work while WMI is blocked.";
+            return "DCOM/WMI timed out from the IIS server. TCP 135 can be open while the RPC ports after it are blocked. That is a firewall path, not a SQL password.";
         }
 
         return "The host answered, but IIS could not read Win32_Service. Run scripts/test-remote-service-access.ps1 on the IIS server. Grant the account from -ShowIisIdentity on that IIS server, not your PC.";

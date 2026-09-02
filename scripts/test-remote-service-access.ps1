@@ -112,12 +112,15 @@ if ($dcomTimedOut) {
     Write-Host "This is a firewall / RPC path problem, not a SQL login problem."
     Write-Host "FOXAWSMSAP076 is the IIS server. FOXUSWDMSDB305 (10.180.80.156) is on-prem."
     if (-not $tcp135) {
-        Write-Host "TCP 135 (RPC/WMI) did not connect. Granting CORP\$($env:COMPUTERNAME)`$ will not help until 135 is open."
+        Write-Host "TCP 135 (RPC mapper) did not connect. Granting CORP\$($env:COMPUTERNAME)`$ will not help until 135 is open."
+    } else {
+        Write-Host "TCP 135 is open. DCOM still timed out, so the RPC ports after the mapper are blocked or WMI is hanging."
+        Write-Host "On FOXUSWDMSDB305 run grant-remote-service-access.ps1 -Account 'CORP\$($env:COMPUTERNAME)`$' so the WMI firewall group is on."
+        Write-Host "If that is already done, ask the network team to allow dynamic RPC (often 49152-65535) from $env:COMPUTERNAME ($ComputerName path) to the SQL host."
     }
     if ($tcp445 -or $tcp3389) {
         Write-Host "SMB or RDP is open, so Server Status can show Online and still show No access on every service pill."
     }
-    Write-Host "Ask the network team to allow WMI/DCOM from $env:COMPUTERNAME to $ComputerName (TCP 135 and RPC)."
     Write-Host "DCOM worked from FOX2208553 because that PC is on the same LAN as the SQL servers."
 } elseif (-not $siteFound) {
     Write-Host "Next: run this same command on FOXAWSMSAP076, then recycle XProtectDashboard and press Ctrl+F5."
