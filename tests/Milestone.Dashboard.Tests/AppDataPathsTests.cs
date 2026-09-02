@@ -20,16 +20,18 @@ public class AppDataPathsTests
         var folder = AppDataPaths.TryGetWritableDirectory(env);
 
         Assert.Equal(Path.Combine(root.Path, "App_Data"), folder);
-        Assert.All(
-            AppDataPaths.CandidateFolders(env),
-            candidate => Assert.False(
-                candidate.StartsWith(
-                    Path.Combine(Path.GetTempPath(), "MilestoneDashboard"),
-                    StringComparison.OrdinalIgnoreCase)));
+        var forbidden = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "MilestoneDashboard"));
+        Assert.All(AppDataPaths.CandidateFolders(env), candidate =>
+        {
+            var full = Path.GetFullPath(candidate);
+            Assert.False(
+                full.Equals(forbidden, StringComparison.OrdinalIgnoreCase)
+                || full.StartsWith(forbidden + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
+        });
     }
 
     [Fact]
-    public void Returns_null_instead_of_system_temp_when_App_Data_is_not_writable()
+    public async Task Returns_null_instead_of_system_temp_when_App_Data_is_not_writable()
     {
         using var root = new TempSite();
         var appData = Path.Combine(root.Path, "App_Data");
@@ -50,7 +52,7 @@ public class AppDataPathsTests
 
             Assert.Null(AppDataPaths.TryGetWritableDirectory(env));
             var store = new StatusServerInventoryStore(env, NullLogger<StatusServerInventoryStore>.Instance);
-            Assert.Empty(store.GetAllAsync(CancellationToken.None).GetAwaiter().GetResult());
+            Assert.Empty(await store.GetAllAsync(CancellationToken.None));
         }
         finally
         {
@@ -119,7 +121,7 @@ public class AppDataPathsTests
         public string ApplicationName { get; set; } = "Milestone.Dashboard.Tests";
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
         public string ContentRootPath { get; set; } = "";
-        public string EnvironmentName { get; set; } = Environments.Development;
+        public string EnvironmentName { get; set; } = "Development";
         public string WebRootPath { get; set; } = "";
         public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
     }
