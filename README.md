@@ -153,7 +153,9 @@ Do this once.
 
 3. Recycle the **XProtectDashboard** app pool and press Ctrl+F5. SQL/IIS pills should change from **No access** to **Running** or **Stopped**.
 
-If FOXUSWDMSDB305 still shows **No access**, you probably granted the old PC account (`FOX2208553$`). Run `-ShowIisIdentity` on **FOXAWSMSAP076**, then grant **that** account (`CORP\FOXAWSMSAP076$`) on FOXUSWDMSDB305. From FOXAWSMSAP076 (not FOX2208553), test with:
+If FOXUSWDMSDB305 still shows **No access** after the grant, the usual cause from FOXAWSMSAP076 is a **DCOM timeout**, not the wrong account. `test-remote-service-access.ps1` will say `New-CimSession : Timed out` and TCP 135 is blocked. Granting `CORP\FOXAWSMSAP076$` cannot help until the network team allows WMI/RPC from FOXAWSMSAP076 to `10.180.80.156`. DCOM worked from FOX2208553 because that PC is on the same LAN as the SQL servers.
+
+If the test fails with Access denied (not Timed out), you granted the old PC account (`FOX2208553$`). Run `-ShowIisIdentity` on **FOXAWSMSAP076**, then grant **that** account (`CORP\FOXAWSMSAP076$`) on FOXUSWDMSDB305. From FOXAWSMSAP076 (not FOX2208553), test with:
 
 ```powershell
 C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:\inetpub\xprotect-dashboard\scripts\test-remote-service-access.ps1 -ComputerName 10.180.80.156

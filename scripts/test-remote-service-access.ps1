@@ -32,32 +32,55 @@ if (Get-Command Get-Website -ErrorAction SilentlyContinue) {
 }
 
 $poolUser = $null
-if (Get-Command Get-IISAppPool -ErrorAction SilentlyContinue) {
+if (Test-Path "IIS:\AppPools\$resolvedPool") {
+    $poolUser = (Get-Item "IIS:\AppPools\$resolvedPool").processModel.userName
+    if ([string]::IsNullOrWhiteSpace($poolUser)) {
+        $poolUser = "ApplicationPoolIdentity"
+    }
+    Write-Host "App pool identity: $poolUser"
+    if ($poolUser -eq "ApplicationPoolIdentity" -or $poolUser -eq "NetworkService" -or $poolUser -eq "LocalSystem") {
+        Write-Host "Remote calls use computer account: $env:USERDOMAIN\$env:COMPUTERNAME`$"
+    }
+} elseif (Get-Command Get-IISAppPool -ErrorAction SilentlyContinue) {
     $pool = Get-IISAppPool -Name $resolvedPool -ErrorAction SilentlyContinue
     $poolUser = $pool.ProcessModel.UserName
-}
-if (-not $poolUser) {
-    Write-Warning "App pool $resolvedPool was not found on this machine."
-} else {
     Write-Host "App pool identity: $(if ($poolUser) { $poolUser } else { 'ApplicationPoolIdentity' })"
-    if ([string]::IsNullOrWhiteSpace($poolUser) -or $poolUser -eq "ApplicationPoolIdentity") {
-        Write-Host "Remote calls use computer account: $env:USERDOMAIN\$env:COMPUTERNAME`$"
+} else {
+    Write-Warning "Could not read app pool $resolvedPool. The site was still found if the line above listed it."
+}
+
+function Test-TcpPort([string]$Target, [int]$Port) {
+    try {
+        $r = Test-NetConnection -ComputerName $Target -Port $Port -WarningAction SilentlyContinue
+        $ok = [bool]$r.TcpTestSucceeded
+        Write-Host ("  TCP {0,-5} {1}" -f $Port, $(if ($ok) { "open" } else { "blocked or no reply" }))
+        return $ok
+    } catch {
+        Write-Host ("  TCP {0,-5} {1}" -f $Port, $_.Exception.Message)
+        return $false
     }
 }
 
 $isIp = [System.Net.IPAddress]::TryParse($ComputerName, [ref]([System.Net.IPAddress]$null))
+Write-Host ""
+Write-Host "Port check from $env:COMPUTERNAME (SMB 445 / RDP 3389 can work while WMI 135 is blocked):"
+$tcp445 = Test-TcpPort $ComputerName 445
+$tcp3389 = Test-TcpPort $ComputerName 3389
+$tcp135 = Test-TcpPort $ComputerName 135
+
 $filter = "Name='MSSQLSERVER' OR Name LIKE 'MSSQL`$%' OR Name='SQLSERVERAGENT' OR Name LIKE 'SQLAgent`$%' OR Name='W3SVC'"
 $protocols = @("Dcom")
 if (-not $isIp) {
     $protocols += "Wsman"
 }
 
+$dcomTimedOut = $false
 foreach ($protocol in $protocols) {
     Write-Host ""
     Write-Host "Trying $protocol..."
     try {
         $opt = New-CimSessionOption -Protocol $protocol
-        $session = New-CimSession -ComputerName $ComputerName -SessionOption $opt -OperationTimeoutSec 8
+        $session = New-CimSession -ComputerName $ComputerName -SessionOption $opt -OperationTimeoutSec 8 -ErrorAction Stop
         try {
             $rows = @(Get-CimInstance -CimSession $session -ClassName Win32_Service -Filter $filter |
                 Select-Object Name, State, DisplayName)
@@ -71,7 +94,11 @@ foreach ($protocol in $protocols) {
             Remove-CimSession $session
         }
     } catch {
-        Write-Host "$protocol failed: $($_.Exception.Message)"
+        $msg = $_.Exception.Message
+        Write-Host "$protocol failed: $msg"
+        if ($msg -match "Timed out|timeout|0x40004") {
+            $dcomTimedOut = $true
+        }
     }
 }
 
@@ -81,4 +108,20 @@ if ($isIp) {
 }
 
 Write-Host ""
-Write-Host "Next: from the IIS web server, run this same command. Then recycle XProtectDashboard and press Ctrl+F5."
+if ($dcomTimedOut) {
+    Write-Host "This is a firewall / RPC path problem, not a SQL login problem."
+    Write-Host "FOXAWSMSAP076 is the IIS server. FOXUSWDMSDB305 (10.180.80.156) is on-prem."
+    if (-not $tcp135) {
+        Write-Host "TCP 135 (RPC/WMI) did not connect. Granting CORP\$($env:COMPUTERNAME)`$ will not help until 135 is open."
+    }
+    if ($tcp445 -or $tcp3389) {
+        Write-Host "SMB or RDP is open, so Server Status can show Online and still show No access on every service pill."
+    }
+    Write-Host "Ask the network team to allow WMI/DCOM from $env:COMPUTERNAME to $ComputerName (TCP 135 and RPC)."
+    Write-Host "DCOM worked from FOX2208553 because that PC is on the same LAN as the SQL servers."
+} elseif (-not $siteFound) {
+    Write-Host "Next: run this same command on FOXAWSMSAP076, then recycle XProtectDashboard and press Ctrl+F5."
+} else {
+    Write-Host "If DCOM succeeded, recycle XProtectDashboard and press Ctrl+F5."
+    Write-Host "If DCOM failed with Access denied, grant the IIS computer account on the target with grant-remote-service-access.ps1."
+}

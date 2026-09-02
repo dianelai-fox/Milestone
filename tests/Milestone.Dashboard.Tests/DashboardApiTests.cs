@@ -348,11 +348,12 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         var repo = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
         var csproj = File.ReadAllText(Path.Combine(repo, "src", "Milestone.Dashboard", "Milestone.Dashboard.csproj"));
         var publish = File.ReadAllText(Path.Combine(repo, "scripts", "publish-iis.ps1"));
+        var iisCommon = File.ReadAllText(Path.Combine(repo, "scripts", "iis-common.ps1"));
         Assert.Contains("CopyToPublishDirectory>Never", csproj);
-        Assert.Contains("Keeping live settings", publish);
+        Assert.Contains("Keeping live settings", iisCommon);
         Assert.Contains("Restore-LiveSettings", publish);
-        Assert.Contains("AspNetCoreModuleV2", publish);
-        Assert.Contains("0x8007000d", publish);
+        Assert.Contains("AspNetCoreModuleV2", iisCommon);
+        Assert.Contains("0x8007000d", iisCommon);
         var grant = File.ReadAllText(Path.Combine(repo, "scripts", "grant-remote-service-access.ps1"));
         Assert.Contains("ShowIisIdentity", grant);
         Assert.Contains("root\\cimv2", grant);
@@ -361,6 +362,8 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Trying", testAccess);
         Assert.Contains("Dcom", testAccess);
         Assert.Contains("Win32_Service", testAccess);
+        Assert.Contains("TCP 135", testAccess);
+        Assert.Contains("Timed out", testAccess);
         var fixPool = File.ReadAllText(Path.Combine(repo, "scripts", "fix-iis-app-pool.ps1"));
         Assert.Contains("XProtectDashboard", fixPool);
         Assert.Contains("managedRuntimeVersion", fixPool);

@@ -115,7 +115,7 @@ public sealed class StatusServerMonitor
                     reach.Online
                         ? ShortError(
                             probe.Error,
-                            "The host answered, but IIS could not read Win32_Service. Run scripts/test-remote-service-access.ps1 on the IIS server. Grant the account from -ShowIisIdentity on that IIS server, not your PC.")
+                            ServiceProbeHint(probe.Error))
                         : "The host did not answer SMB (445), RDP (3389), or a Windows service query.");
             }
         }
@@ -271,6 +271,19 @@ public sealed class StatusServerMonitor
         }
 
         return string.Join(" OR ", clauses);
+    }
+
+    private static string ServiceProbeHint(string? error)
+    {
+        if (!string.IsNullOrWhiteSpace(error)
+            && (error.Contains("Timed out", StringComparison.OrdinalIgnoreCase)
+                || error.Contains("timeout", StringComparison.OrdinalIgnoreCase)
+                || error.Contains("0x40004", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "DCOM/WMI timed out from the IIS server (TCP 135 / RPC). That is a firewall path, not a SQL password. From FOXAWSMSAP076, SMB can work while WMI is blocked.";
+        }
+
+        return "The host answered, but IIS could not read Win32_Service. Run scripts/test-remote-service-access.ps1 on the IIS server. Grant the account from -ShowIisIdentity on that IIS server, not your PC.";
     }
 
     private static string ShortError(string? error, string fallback)
