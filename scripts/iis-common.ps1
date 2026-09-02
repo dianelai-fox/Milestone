@@ -147,14 +147,16 @@ function Get-RunOnIisHelp([string]$ScriptName) {
     $local = Get-IisScriptsPath $ScriptName
     $ps = Get-WindowsPowerShell
     return @"
-Do not run scripts from \\$IisDevComputer\C$\Users\dianela\... on $IisWebComputer.
-That path hangs for accounts such as sa-dlai (no access to Diane's profile share).
+\\$IisWebComputer\C$ is not available (network name cannot be found).
+Do not use WinRM. Do not run \\$IisDevComputer\C$\Users\dianela\... from $IisWebComputer.
 
-On FOX2208553, copy the scripts first:
-  powershell -ExecutionPolicy Bypass -File C:\Users\dianela\Milestone\scripts\copy-scripts-to-iis.ps1
+On FOX2208553:
+  powershell -ExecutionPolicy Bypass -File C:\Users\dianela\Milestone\scripts\pack-for-iis.ps1
+Copy Desktop\xprotect-iis-package.zip onto $IisWebComputer through RDP.
 
-Then RDP to $IisWebComputer, open Windows PowerShell as Administrator (not PowerShell 7), and run:
+On $IisWebComputer, Windows PowerShell as Administrator (not PowerShell 7):
   $ps -ExecutionPolicy Bypass -File $local
+If that file is not there yet, unzip the package to the desktop and run expand-iis-package.ps1 from the unzipped scripts folder.
 "@
 }
 

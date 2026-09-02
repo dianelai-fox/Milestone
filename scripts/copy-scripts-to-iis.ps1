@@ -1,5 +1,4 @@
-# Copy scripts from FOX2208553 onto FOXAWSMSAP076.
-# Run this on the development PC. Do not run scripts from \\FOX2208553\C$\Users\dianela on the web server.
+# Prefer C$ when it works. If the share is missing, pack a zip for RDP copy.
 param(
     [string]$RemoteComputer
 )
@@ -13,12 +12,15 @@ if (Test-SameComputer $RemoteComputer) {
     return
 }
 
-Write-Host "Copying scripts from $env:COMPUTERNAME to $RemoteComputer"
-Copy-ScriptsToIis -RemoteComputer $RemoteComputer | Out-Null
-$local = Get-IisScriptsPath "setup-iis-server.ps1"
-$ps = Get-WindowsPowerShell
-Write-Host ""
-Write-Host "RDP to $RemoteComputer. Open Windows PowerShell as Administrator (not PowerShell 7)."
-Write-Host "Press Ctrl+C if a UNC command is still frozen."
-Write-Host ""
-Write-Host "  $ps -ExecutionPolicy Bypass -File $local"
+try {
+    Write-Host "Trying admin share on $RemoteComputer"
+    Copy-ScriptsToIis -RemoteComputer $RemoteComputer | Out-Null
+    $local = Get-IisScriptsPath "setup-iis-server.ps1"
+    $ps = Get-WindowsPowerShell
+    Write-Host "RDP to $RemoteComputer and run:"
+    Write-Host "  $ps -ExecutionPolicy Bypass -File $local"
+} catch {
+    Write-Host "Admin share failed: $($_.Exception.Message)"
+    Write-Host "Packing a zip to copy through RDP instead."
+    & (Join-Path $PSScriptRoot "pack-for-iis.ps1")
+}

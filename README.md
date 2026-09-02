@@ -78,42 +78,28 @@ Keep the source on your PC. Publish the site to the new web server.
 | Edit / build | **FOX2208553** | `C:\Users\dianela\Milestone` |
 | IIS site | **FOXAWSMSAP076** | `C:\inetpub\xprotect-dashboard` |
 
-WinRM from FOX2208553 to FOXAWSMSAP076 is blocked. That is expected. Do not enable remoting. Do not run scripts from `\\FOX2208553\C$\Users\dianela\...` while logged onto FOXAWSMSAP076 as `sa-dlai` — that share hangs.
+WinRM and `\\FOXAWSMSAP076\C$` are blocked from FOX2208553 (`Access is denied` / `network name cannot be found`). That is expected. Copy a zip through RDP instead.
 
-**One-time: on FOX2208553**, copy the scripts onto the web server:
+**On FOX2208553:**
 
 ```powershell
 cd C:\Users\dianela\Milestone
-powershell -ExecutionPolicy Bypass -File .\scripts\copy-scripts-to-iis.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\pack-for-iis.ps1 -IncludeSite -IncludeLiveSettings
 ```
 
-**Then RDP to FOXAWSMSAP076.** Press Ctrl+C if a UNC command is still frozen. Open **Windows PowerShell** as Administrator (not PowerShell 7). IIS + the [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) must already be installed:
+That writes `Desktop\xprotect-iis-package.zip`. Copy the zip onto FOXAWSMSAP076 through the RDP window (copy on the PC, paste on the server desktop).
+
+**On FOXAWSMSAP076**, open **Windows PowerShell as Administrator** (not PowerShell 7). IIS + the [.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) must already be installed:
 
 ```powershell
+Expand-Archive -Path C:\Users\sa-dlai\Desktop\xprotect-iis-package.zip -DestinationPath C:\Users\sa-dlai\Desktop\xprotect-iis-package -Force
+C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:\Users\sa-dlai\Desktop\xprotect-iis-package\scripts\expand-iis-package.ps1 -ZipPath C:\Users\sa-dlai\Desktop\xprotect-iis-package.zip
 C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:\inetpub\xprotect-dashboard\scripts\setup-iis-server.ps1
 ```
 
-That creates folder `C:\inetpub\xprotect-dashboard`, app pool **XProtectDashboard** (no space, **No Managed Code**), site **XProtect Dashboard** on port 8080, and Modify on `App_Data`.
+That creates `C:\inetpub\xprotect-dashboard`, app pool **XProtectDashboard** (no space, **No Managed Code**), the site on port 8080, and Modify on `App_Data`. Live `appsettings.json` is not overwritten after the first copy.
 
-Then from **Administrator PowerShell** on FOX2208553 (`cd C:\Users\dianela\Milestone`). You need permission to `\\FOXAWSMSAP076\C$` for file copy.
-
-**One-time: move live settings** from the old IIS folder on FOX2208553 (keeps `appsettings.json` and `App_Data`, not binaries):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\copy-live-iis-data.ps1
-```
-
-**Every publish** from FOX2208553 (builds locally, copies to FOXAWSMSAP076, does **not** overwrite live `appsettings.json` or `App_Data`):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\publish-iis.ps1
-```
-
-If the script says the app pool was not recycled, RDP to FOXAWSMSAP076 and run:
-
-```powershell
-C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File C:\inetpub\xprotect-dashboard\scripts\recycle-app-pool.ps1
-```
+**Later publishes:** run `pack-for-iis.ps1 -IncludeSite` on FOX2208553, copy the new zip through RDP, then run `expand-iis-package.ps1` on FOXAWSMSAP076.
 
 Then open `http://FOXAWSMSAP076:8080` and press Ctrl+F5.
 

@@ -82,6 +82,8 @@ if (-not (Test-SameComputer $RemoteComputer)) {
         Copy-ScriptsToIis -RemoteComputer $RemoteComputer | Out-Null
     } catch {
         Write-Host "Could not copy to $RemoteComputer from this PC: $($_.Exception.Message)"
+        Write-Host "Packing a zip to copy through RDP instead."
+        & (Join-Path $PSScriptRoot "pack-for-iis.ps1")
     }
     Write-Host ""
     Write-Host (Get-RunOnIisHelp "setup-iis-server.ps1")

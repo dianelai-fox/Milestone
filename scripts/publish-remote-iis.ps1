@@ -85,7 +85,14 @@ try {
     Write-Warning "  powershell -ExecutionPolicy Bypass -File $(Get-DevScriptsUnc 'recycle-app-pool.ps1')"
 }
 
-New-Item -ItemType Directory -Force -Path $dest | Out-Null
+try {
+    New-Item -ItemType Directory -Force -Path $dest | Out-Null
+} catch {
+    Write-Host "Cannot reach $dest ($($_.Exception.Message)). Packing a zip for RDP copy."
+    & (Join-Path $PSScriptRoot "pack-for-iis.ps1") -IncludeSite
+    return
+}
+
 $kept = Save-LiveSettings $dest
 
 Write-Host "Copying site files to $dest"
