@@ -297,7 +297,7 @@ public class DashboardApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("100", html);
         Assert.Contains("Group", html);
         Assert.Contains("/lib/leaflet/leaflet.js", html);
-        Assert.Contains("dashboard.js?v=20260826w", html);
+        Assert.Contains("dashboard.js?v=20260930a", html);
         var js = await _client.GetStringAsync("/js/dashboard.js");
         Assert.Contains("statusPageSize: 10", js);
         Assert.Contains("function renderStatusPager", js);

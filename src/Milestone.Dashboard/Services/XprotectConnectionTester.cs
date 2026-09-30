@@ -82,7 +82,7 @@ public sealed class XprotectConnectionTester
             }
             catch (Exception ex)
             {
-                lastError = $"Could not reach {tokenUrl}. {ex.Message}";
+                lastError = $"Could not reach {tokenUrl}. {ExceptionText.Flatten(ex)}";
             }
         }
 

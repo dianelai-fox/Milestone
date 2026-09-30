@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>XProtect Operations</title>
   <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="/css/site.css?v=20260826w" />
+  <link rel="stylesheet" href="/css/site.css?v=20260930a" />
 </head>
 <body>
   <div class="sidebar-rail">
@@ -588,7 +588,7 @@
           <h1>Connect to XProtect</h1>
         </div>
         <section class="card encrypt-card">
-          <p class="muted">HTTP 400 on login usually means the Basic user, password, or gateway URL is wrong. Use a Basic user from Management Client, not a Windows login. The gateway URL is the management server or API Gateway root, with no <code>/API</code> on the end.</p>
+          <p class="muted">HTTP 400 on login usually means the Basic user, password, or gateway URL is wrong. Use a Basic user from Management Client, not a Windows login. The gateway URL is the management server or API Gateway root, with no <code>/API</code> on the end. <strong>The SSL connection could not be established</strong> on a new IIS server usually means FOXAWSMSAP076 does not trust the Fox internal certificate. Run <code>scripts/test-xprotect-tls.ps1</code> on that server, or check Bypass TLS only as a temporary lab workaround, then recycle the app pool.</p>
           <form id="connect-form" class="encrypt-form">
             <label for="connect-gateway">Gateway URL</label>
             <input id="connect-gateway" name="gateway" type="url" placeholder="https://your-management-server" autocomplete="off" />
@@ -641,6 +641,6 @@
   </div>
 
   <script src="/lib/leaflet/leaflet.js"></script>
-  <script src="/js/dashboard.js?v=20260826w"></script>
+  <script src="/js/dashboard.js?v=20260930a"></script>
 </body>
 </html>

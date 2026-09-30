@@ -27,7 +27,9 @@ dotnet test
 
 ## Connect to XProtect
 
-If the badge says **Unavailable** and the page shows `XProtect login failed (HTTP 400)`, the site is already in live mode but the gateway rejected the login. Open **Connect to XProtect** in the sidebar (the page also opens itself after a login error). Use an XProtect **Basic user**, not a Windows/`DOMAIN\user` account. Set the gateway URL to the management server or API Gateway root, with no `/API` suffix. Click **Test login**, then **Save connection**. Recycle the app pool only if you changed **Use demo data**.
+If the badge says **Unavailable** and the page shows `The SSL connection could not be established`, FOXAWSMSAP076 does not trust the certificate on `Milestone.int.apps.fox`. That is not a wrong password. On the IIS server run `scripts/test-xprotect-tls.ps1`. Import the Fox internal CA into Local Computer Trusted Root, or temporarily check **Bypass TLS certificate errors**, Save, recycle **XProtectDashboard**, and press Ctrl+F5.
+
+If the page shows `XProtect login failed (HTTP 400)`, the site is already in live mode but the gateway rejected the login. Open **Connect to XProtect** in the sidebar. Use an XProtect **Basic user**, not a Windows/`DOMAIN\user` account. Set the gateway URL to the management server or API Gateway root, with no `/API` suffix. Click **Test login**, then **Save connection**. Recycle the app pool if you changed **Use demo data** or **Bypass TLS**.
 
 1. Confirm the API Gateway answers:
 

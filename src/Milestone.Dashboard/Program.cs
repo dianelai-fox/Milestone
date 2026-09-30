@@ -641,7 +641,7 @@ static string UserFacingError(Exception? error)
     {
         if (current is HttpRequestException)
         {
-            return "Could not reach XProtect. Check Milestone:GatewayBaseUrl, Username, Password, and whether UseDemoData should be true. " + current.Message;
+            return "Could not reach XProtect. Check Milestone:GatewayBaseUrl, Username, Password, and whether UseDemoData should be true. " + ExceptionText.Flatten(current);
         }
 
         if (current is InvalidOperationException or CryptographicException)
